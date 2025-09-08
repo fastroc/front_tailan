@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Journal JE{{ journal.id|stringformat:"04d" }} - {{ journal.narration|default:"No narration" }} - {{ active_company.name|default:"Professional Accounting System" }}{% endblock %}
+
+{% block content %}
+<!-- Company Context Header -->
+{% if active_company %}
+<div class="company-context-header mb-3">
+    <div class="d-flex align-items-center">
+        <div class="company-logo-small me-3">
+            {% if active_company.logo %}
+                <img src="{{ active_company.logo.url }}" alt="{{ active_company.name }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
+            {% else %}
+                <div class="bg-primary rounded d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; color: white; font-weight: 600;">
+                    {{ active_company.name|first|upper }}
+                </div>
+            {% endif %}
+        </div>
+        <div>
+            <h6 class="text-muted mb-0">
+                <i class="bi bi-building me-1"></i>
+                {{ active_company.name }}
+            </h6>
+            <small class="text-muted">Journal Entry JE{{ journal.id|stringformat:"04d" }}</small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="container-fluid py-4">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        {% if active_company %}
+            <li class="breadcrumb-item">{{ active_company.name }}</li>
+        {% endif %}
+      <li class="breadcrumb-item">
+        <a href="{% url 'journals:list' %}" class="text-decoration-none">
+          <i class="bi bi-journal-text me-1"></i>Manual Journal
+        </a>
+      </li>
+      <li class="breadcrumb-item active">JE{{ journal.id|stringformat:"04d" }}</li>
+    </ol>
+  </nav>
+
+  <!-- Journal Header -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-white">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <h1 class="h4 mb-1">Journal Entry JE{{ journal.id|stringformat:"04d" }}</h1>
+          <p class="text-muted mb-0">{{ journal.narration|default:"No narration provided" }}</p>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <span class="badge {% if journal.status == 'draft' %}bg-warning{% elif journal.status == 'posted' %}bg-success{% elif journal.status == 'reversed' %}bg-danger{% endif %}">
+            {{ journal.get_status_display }}
+          </span>
+          <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+              Actions
+            </button>
+            <ul class="dropdown-menu">
+              {% if journal.status == 'draft' %}
+                <li><a class="dropdown-item" href="{% url 'journals:edit' journal.id %}">
+                  <i class="bi bi-pencil me-2"></i>Edit Journal
+                </a></li>
+              {% endif %}
+              <li><a class="dropdown-item" href="{% url 'journals:duplicate' journal.id %}">
+                <i class="bi bi-files me-2"></i>Duplicate
+              </a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <strong>Date:</strong><br>
+          <span>{{ journal.date|date:"d M Y" }}</span>
+        </div>
+        <div class="col-md-3">
+          <strong>Reference:</strong><br>
+          <span>{{ journal.reference|default:"—" }}</span>
+        </div>
+        <div class="col-md-3">
+          <strong>Total Amount:</strong><br>
+          <span class="fw-bold">${{ journal.total_amount|floatformat:2 }}</span>
+        </div>
+        <div class="col-md-3">
+          <strong>Balance Status:</strong><br>
+          <span class="{% if journal.is_balanced %}text-success{% else %}text-danger{% endif %}">
+            {% if journal.is_balanced %}Balanced{% else %}Not Balanced{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Journal Lines -->
+  <div class="card shadow-sm">
+    <div class="card-header bg-white">
+      <h5 class="mb-0">Journal Lines</h5>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Description</th>
+              <th>Account</th>
+              <th>Tax Rate</th>
+              <th class="text-end">Debit</th>
+              <th class="text-end">Credit</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for line in journal.lines.all %}
+            <tr>
+              <td>{{ line.description|default:"—" }}</td>
+              <td>
+                <span class="fw-semibold">{{ line.account_code }}</span>
+                <div class="small text-muted">Account Code</div>
+              </td>
+              <td>{{ line.tax_rate|default:"No Tax" }}</td>
+              <td class="text-end">
+                {% if line.debit %}
+                  <span class="fw-bold">${{ line.debit|floatformat:2 }}</span>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td class="text-end">
+                {% if line.credit %}
+                  <span class="fw-bold">${{ line.credit|floatformat:2 }}</span>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">
+                No journal lines found
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-light">
+            <tr>
+              <td colspan="3" class="text-end fw-bold">TOTALS:</td>
+              <td class="text-end fw-bold">
+                ${{ journal.lines.all|default_if_none:0 }}
+              </td>
+              <td class="text-end fw-bold">
+                ${{ journal.lines.all|default_if_none:0 }}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+console.log('Journal detail page loaded');
+</script>
+{% endblock %}

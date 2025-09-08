@@ -1,0 +1,456 @@
+{% extends 'base.html' %}
+
+{% block title %}Reconciliation Process Showcase - Professional Accounting System{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="h3 mb-1 fw-bold text-dark">
+            <i class="bi bi-play-circle text-primary me-2"></i>Reconciliation Process Showcase
+        </h2>
+        <p class="text-muted mb-0">See how the bank reconciliation process works step by step</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'reconciliation:file_list' %}" class="btn btn-outline-secondary btn-professional">
+            <i class="bi bi-arrow-left me-2"></i>Back to Files
+        </a>
+        <a href="{% url 'reconciliation:upload_csv' %}" class="btn btn-primary btn-professional">
+            <i class="bi bi-cloud-upload me-2"></i>Try It Yourself
+        </a>
+    </div>
+</div>
+
+<!-- Process Steps Navigation -->
+<div class="card card-professional border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <div class="row">
+            <div class="col-md-3 text-center">
+                <div class="position-relative">
+                    <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center text-white fw-bold mb-2" 
+                         style="width: 50px; height: 50px;">1</div>
+                    <div class="position-absolute top-50 start-100 translate-middle-y d-none d-md-block" 
+                         style="width: 100px; height: 2px; background: linear-gradient(to right, #3b82f6, #e5e7eb);">
+                    </div>
+                </div>
+                <h6 class="fw-bold text-primary">Upload</h6>
+                <p class="text-muted small mb-0">Upload bank CSV file</p>
+            </div>
+            <div class="col-md-3 text-center">
+                <div class="position-relative">
+                    <div class="bg-warning rounded-circle d-inline-flex align-items-center justify-content-center text-white fw-bold mb-2" 
+                         style="width: 50px; height: 50px;">2</div>
+                    <div class="position-absolute top-50 start-100 translate-middle-y d-none d-md-block" 
+                         style="width: 100px; height: 2px; background: linear-gradient(to right, #f59e0b, #e5e7eb);">
+                    </div>
+                </div>
+                <h6 class="fw-bold text-warning">Process</h6>
+                <p class="text-muted small mb-0">Extract transactions</p>
+            </div>
+            <div class="col-md-3 text-center">
+                <div class="position-relative">
+                    <div class="bg-info rounded-circle d-inline-flex align-items-center justify-content-center text-white fw-bold mb-2" 
+                         style="width: 50px; height: 50px;">3</div>
+                    <div class="position-absolute top-50 start-100 translate-middle-y d-none d-md-block" 
+                         style="width: 100px; height: 2px; background: linear-gradient(to right, #06b6d4, #e5e7eb);">
+                    </div>
+                </div>
+                <h6 class="fw-bold text-info">Review</h6>
+                <p class="text-muted small mb-0">Verify transactions</p>
+            </div>
+            <div class="col-md-3 text-center">
+                <div class="bg-success rounded-circle d-inline-flex align-items-center justify-content-center text-white fw-bold mb-2" 
+                     style="width: 50px; height: 50px;">4</div>
+                <h6 class="fw-bold text-success">Complete</h6>
+                <p class="text-muted small mb-0">Reconciliation done</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Step 1: File Upload Demo -->
+<div id="step1" class="card card-professional border-0 shadow-sm mb-4">
+    <div class="card-header bg-primary bg-opacity-5 border-0">
+        <div class="d-flex align-items-center">
+            <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center text-white fw-bold me-3" 
+                 style="width: 40px; height: 40px;">1</div>
+            <div>
+                <h5 class="fw-bold text-dark mb-0">File Upload</h5>
+                <p class="text-muted small mb-0">Bank statement CSV file uploaded successfully</p>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="bg-light rounded p-4 h-100">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>
+                        january_2025_statement.csv
+                    </h6>
+                    <div class="row g-2 small">
+                        <div class="col-6"><strong>Bank Account:</strong></div>
+                        <div class="col-6">Business Checking</div>
+                        <div class="col-6"><strong>Period:</strong></div>
+                        <div class="col-6">January 2025</div>
+                        <div class="col-6"><strong>File Size:</strong></div>
+                        <div class="col-6">2.1 KB</div>
+                        <div class="col-6"><strong>Uploaded:</strong></div>
+                        <div class="col-6">Jan 7, 2025 10:30 AM</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="bg-success bg-opacity-5 border border-success border-opacity-25 rounded p-4 h-100">
+                    <h6 class="fw-bold text-success mb-3">
+                        <i class="bi bi-check-circle me-2"></i>Upload Successful
+                    </h6>
+                    <ul class="small mb-0 text-success">
+                        <li>File format validated ✓</li>
+                        <li>CSV structure verified ✓</li>
+                        <li>Required columns detected ✓</li>
+                        <li>Ready for processing ✓</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Step 2: Processing Demo -->
+<div id="step2" class="card card-professional border-0 shadow-sm mb-4">
+    <div class="card-header bg-warning bg-opacity-5 border-0">
+        <div class="d-flex align-items-center">
+            <div class="bg-warning rounded-circle d-inline-flex align-items-center justify-content-center text-white fw-bold me-3" 
+                 style="width: 40px; height: 40px;">2</div>
+            <div>
+                <h5 class="fw-bold text-dark mb-0">Processing Complete</h5>
+                <p class="text-muted small mb-0">Transactions extracted and imported successfully</p>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="text-center bg-light rounded p-3">
+                    <div class="text-primary fs-3 fw-bold">10</div>
+                    <div class="small text-muted">Rows Processed</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center bg-light rounded p-3">
+                    <div class="text-success fs-3 fw-bold">10</div>
+                    <div class="small text-muted">Transactions Imported</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center bg-light rounded p-3">
+                    <div class="text-info fs-3 fw-bold">0</div>
+                    <div class="small text-muted">Errors Found</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center bg-light rounded p-3">
+                    <div class="text-warning fs-3 fw-bold">2.3s</div>
+                    <div class="small text-muted">Processing Time</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-success border-0 bg-success bg-opacity-10">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-check-circle text-success me-3 fs-4"></i>
+                <div>
+                    <strong>Processing Complete!</strong><br>
+                    <small class="text-muted">All transactions have been successfully extracted and are ready for review.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Step 3: Transaction Review Demo -->
+<div id="step3" class="card card-professional border-0 shadow-sm mb-4">
+    <div class="card-header bg-info bg-opacity-5 border-0">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                <div class="bg-info rounded-circle d-inline-flex align-items-center justify-content-center text-white fw-bold me-3" 
+                     style="width: 40px; height: 40px;">3</div>
+                <div>
+                    <h5 class="fw-bold text-dark mb-0">Transaction Review</h5>
+                    <p class="text-muted small mb-0">10 transactions ready for reconciliation</p>
+                </div>
+            </div>
+            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">
+                All Transactions Verified
+            </span>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="border-0 py-3 ps-4">Date</th>
+                        <th class="border-0 py-3">Description</th>
+                        <th class="border-0 py-3">Payee</th>
+                        <th class="border-0 py-3 text-end">Amount</th>
+                        <th class="border-0 py-3 text-center pe-4">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="transaction-row">
+                        <td class="ps-4 py-3">
+                            <div class="fw-medium">Jan 01, 2025</div>
+                            <small class="text-muted">Monday</small>
+                        </td>
+                        <td class="py-3">
+                            <div class="fw-medium">Starting balance for new year</div>
+                            <small class="text-muted">Ref: OB001</small>
+                        </td>
+                        <td class="py-3">Opening Balance</td>
+                        <td class="py-3 text-end">
+                            <span class="fw-bold text-success">+$5,000.00</span>
+                            <div class="small text-success">Credit</div>
+                        </td>
+                        <td class="py-3 text-center pe-4">
+                            <span class="badge bg-success bg-opacity-10 text-success">
+                                <i class="bi bi-check-circle me-1"></i>Verified
+                            </span>
+                        </td>
+                    </tr>
+                    <tr class="transaction-row">
+                        <td class="ps-4 py-3">
+                            <div class="fw-medium">Jan 02, 2025</div>
+                            <small class="text-muted">Tuesday</small>
+                        </td>
+                        <td class="py-3">
+                            <div class="fw-medium">Office rent payment</div>
+                            <small class="text-muted">Ref: RENT001</small>
+                        </td>
+                        <td class="py-3">Property Management LLC</td>
+                        <td class="py-3 text-end">
+                            <span class="fw-bold text-danger">-$1,200.00</span>
+                            <div class="small text-danger">Debit</div>
+                        </td>
+                        <td class="py-3 text-center pe-4">
+                            <span class="badge bg-success bg-opacity-10 text-success">
+                                <i class="bi bi-check-circle me-1"></i>Verified
+                            </span>
+                        </td>
+                    </tr>
+                    <tr class="transaction-row">
+                        <td class="ps-4 py-3">
+                            <div class="fw-medium">Jan 03, 2025</div>
+                            <small class="text-muted">Wednesday</small>
+                        </td>
+                        <td class="py-3">
+                            <div class="fw-medium">Client payment received for services</div>
+                            <small class="text-muted">Ref: INV2025-001</small>
+                        </td>
+                        <td class="py-3">ABC Corporation</td>
+                        <td class="py-3 text-end">
+                            <span class="fw-bold text-success">+$2,500.00</span>
+                            <div class="small text-success">Credit</div>
+                        </td>
+                        <td class="py-3 text-center pe-4">
+                            <span class="badge bg-success bg-opacity-10 text-success">
+                                <i class="bi bi-check-circle me-1"></i>Verified
+                            </span>
+                        </td>
+                    </tr>
+                    <tr class="transaction-row">
+                        <td class="ps-4 py-3">
+                            <div class="fw-medium">Jan 08, 2025</div>
+                            <small class="text-muted">Monday</small>
+                        </td>
+                        <td class="py-3">
+                            <div class="fw-medium">Consulting fee payment</div>
+                            <small class="text-muted">Ref: CONS004</small>
+                        </td>
+                        <td class="py-3">XYZ Company</td>
+                        <td class="py-3 text-end">
+                            <span class="fw-bold text-success">+$1,800.00</span>
+                            <div class="small text-success">Credit</div>
+                        </td>
+                        <td class="py-3 text-center pe-4">
+                            <span class="badge bg-warning bg-opacity-10 text-warning">
+                                <i class="bi bi-clock me-1"></i>Review
+                            </span>
+                        </td>
+                    </tr>
+                    <tr class="transaction-row">
+                        <td class="ps-4 py-3">
+                            <div class="fw-medium">Jan 15, 2025</div>
+                            <small class="text-muted">Monday</small>
+                        </td>
+                        <td class="py-3">
+                            <div class="fw-medium">Bi-weekly payroll processing</div>
+                            <small class="text-muted">Ref: PAY006</small>
+                        </td>
+                        <td class="py-3">ADP Payroll</td>
+                        <td class="py-3 text-end">
+                            <span class="fw-bold text-danger">-$3,200.00</span>
+                            <div class="small text-danger">Debit</div>
+                        </td>
+                        <td class="py-3 text-center pe-4">
+                            <span class="badge bg-success bg-opacity-10 text-success">
+                                <i class="bi bi-check-circle me-1"></i>Verified
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-transparent border-0">
+            <div class="text-center">
+                <small class="text-muted">Showing 5 of 10 transactions • </small>
+                <a href="#" class="text-decoration-none">View all transactions</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Step 4: Reconciliation Summary -->
+<div id="step4" class="card card-professional border-0 shadow-sm">
+    <div class="card-header bg-success bg-opacity-5 border-0">
+        <div class="d-flex align-items-center">
+            <div class="bg-success rounded-circle d-inline-flex align-items-center justify-content-center text-white fw-bold me-3" 
+                 style="width: 40px; height: 40px;">4</div>
+            <div>
+                <h5 class="fw-bold text-dark mb-0">Reconciliation Complete</h5>
+                <p class="text-muted small mb-0">All transactions have been successfully reconciled</p>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="bg-success bg-opacity-5 border border-success border-opacity-25 rounded p-3 text-center">
+                    <i class="bi bi-check-circle text-success fs-3 mb-2"></i>
+                    <div class="fw-bold text-success">10/10</div>
+                    <div class="small text-muted">Transactions Matched</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="bg-info bg-opacity-5 border border-info border-opacity-25 rounded p-3 text-center">
+                    <i class="bi bi-arrow-up-circle text-info fs-3 mb-2"></i>
+                    <div class="fw-bold text-info">$9,300.00</div>
+                    <div class="small text-muted">Total Credits</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="bg-danger bg-opacity-5 border border-danger border-opacity-25 rounded p-3 text-center">
+                    <i class="bi bi-arrow-down-circle text-danger fs-3 mb-2"></i>
+                    <div class="fw-bold text-danger">$4,964.99</div>
+                    <div class="small text-muted">Total Debits</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="bg-primary bg-opacity-5 border border-primary border-opacity-25 rounded p-3 text-center">
+                    <i class="bi bi-calculator text-primary fs-3 mb-2"></i>
+                    <div class="fw-bold text-primary">$4,335.01</div>
+                    <div class="small text-muted">Net Balance</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-success border-0 bg-success bg-opacity-10">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-check-circle text-success me-3 fs-4 mt-1"></i>
+                <div>
+                    <h6 class="fw-bold text-success mb-2">Reconciliation Successful!</h6>
+                    <p class="mb-2">Your January 2025 bank statement has been successfully reconciled. All transactions have been verified and matched.</p>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-success">Generate Report</button>
+                        <button class="btn btn-sm btn-outline-success">Export Data</button>
+                        <button class="btn btn-sm btn-outline-success">Archive File</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="text-center mt-5">
+    <div class="mb-3">
+        <h5 class="fw-bold text-dark">Ready to start reconciling?</h5>
+        <p class="text-muted">Upload your own bank statement and experience this smooth process yourself.</p>
+    </div>
+    <div class="d-flex justify-content-center gap-3">
+        <a href="{% url 'reconciliation:upload_csv' %}" class="btn btn-primary btn-lg btn-professional">
+            <i class="bi bi-cloud-upload me-2"></i>Upload Bank Statement
+        </a>
+        <a href="{% url 'reconciliation:file_list' %}" class="btn btn-outline-primary btn-lg btn-professional">
+            <i class="bi bi-list me-2"></i>View All Files
+        </a>
+    </div>
+</div>
+
+<style>
+/* Professional card styling */
+.card-professional {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+/* Professional button styling */
+.btn-professional {
+    font-weight: 500;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.btn-professional:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Table enhancements */
+.transaction-row:hover {
+    background-color: rgba(59, 130, 246, 0.02);
+}
+
+/* Step navigation lines */
+@media (max-width: 767px) {
+    .position-absolute {
+        display: none !important;
+    }
+}
+
+/* Badge enhancements */
+.badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.4rem 0.8rem;
+}
+
+/* Smooth scrolling for step navigation */
+html {
+    scroll-behavior: smooth;
+}
+</style>
+
+<script>
+// Add smooth step-by-step reveal animation on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const steps = ['step1', 'step2', 'step3', 'step4'];
+    
+    steps.forEach((stepId, index) => {
+        const step = document.getElementById(stepId);
+        if (step) {
+            step.style.opacity = '0';
+            step.style.transform = 'translateY(20px)';
+            step.style.transition = 'all 0.6s ease';
+            
+            setTimeout(() => {
+                step.style.opacity = '1';
+                step.style.transform = 'translateY(0)';
+            }, index * 200);
+        }
+    });
+});
+</script>
+{% endblock %}

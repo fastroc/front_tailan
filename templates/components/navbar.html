@@ -1,0 +1,80 @@
+<!-- Professional Top Navigation Bar -->
+<nav class="navbar navbar-expand-lg navbar-light">
+  <div class="container-fluid">
+    <!-- Brand -->
+    <a class="navbar-brand d-flex align-items-center" href="/dashboard/">
+      <i class="fas fa-calculator me-2"></i>
+      <span>Manual Accounting</span>
+    </a>
+
+    <!-- Mobile Toggle -->
+    <button
+      class="navbar-toggler"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#navbarNav"
+    >
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Navigation Links -->
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="/dashboard/">
+            <i class="fas fa-home me-1"></i> Dashboard
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'reconciliation:file_list' %}">
+            <i class="fas fa-sync me-1"></i> Reconciliation
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'coa:chart_list' %}">
+            <i class="fas fa-list me-1"></i> Chart of Accounts
+          </a>
+        </li>
+      </ul>
+
+      <!-- User Menu -->
+      <div class="navbar-nav ms-auto">
+        <!-- Current Period Indicator -->
+        <span class="nav-link text-muted me-3">
+          <i class="fas fa-calendar me-1"></i>
+          <small>Period: January 2025</small>
+        </span>
+
+        <!-- User Dropdown -->
+        <div class="nav-item dropdown">
+          <a
+            class="nav-link dropdown-toggle"
+            href="#"
+            role="button"
+            data-bs-toggle="dropdown"
+          >
+            <i class="fas fa-user me-1"></i> User
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+              <a class="dropdown-item" href="#"
+                ><i class="fas fa-user-cog me-2"></i>Profile</a
+              >
+            </li>
+            <li>
+              <a class="dropdown-item" href="#"
+                ><i class="fas fa-cog me-2"></i>Settings</a
+              >
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+            <li>
+              <a class="dropdown-item" href="#"
+                ><i class="fas fa-sign-out-alt me-2"></i>Logout</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>

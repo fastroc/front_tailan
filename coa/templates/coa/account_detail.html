@@ -1,0 +1,316 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ account.full_name }} - {{ active_company.name|default:"Chart of Accounts" }}{% endblock %}
+
+{% block content %}
+<!-- Company Context Header -->
+{% if active_company %}
+<div class="company-context-header mb-3">
+    <div class="d-flex align-items-center">
+        <div class="company-logo-small me-3">
+            {% if active_company.logo %}
+                <img src="{{ active_company.logo.url }}" alt="{{ active_company.name }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
+            {% else %}
+                <div class="bg-primary rounded d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; color: white; font-weight: 600;">
+                    {{ active_company.name|first|upper }}
+                </div>
+            {% endif %}
+        </div>
+        <div>
+            <h6 class="text-muted mb-0">
+                <i class="bi bi-building me-1"></i>
+                {{ active_company.name }}
+            </h6>
+            <small class="text-muted">Account Details</small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        {% if active_company %}
+            <li class="breadcrumb-item">{{ active_company.name }}</li>
+        {% endif %}
+        <li class="breadcrumb-item">
+            <a href="{% url 'coa:chart_of_accounts' %}" class="text-decoration-none">
+                <i class="bi bi-list-task me-1"></i>Chart of Accounts
+            </a>
+        </li>
+        <li class="breadcrumb-item active">{{ account.code }}</li>
+    </ol>
+</nav>
+
+<!-- Account Header -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="d-flex align-items-start">
+            <div class="flex-grow-1">
+                <div class="d-flex align-items-center mb-2">
+                    <code class="bg-light px-3 py-2 rounded border text-dark fw-bold me-3 fs-5">{{ account.code }}</code>
+                    <div>
+                        <h1 class="h3 mb-1 fw-bold text-dark">{{ account.name }}</h1>
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2">
+                            {{ account.get_account_type_display }}
+                        </span>
+                    </div>
+                </div>
+                {% if account.description %}
+                <p class="text-muted mb-0">{{ account.description }}</p>
+                {% endif %}
+            </div>
+            <div class="d-flex gap-2">
+                {% if not account.is_locked %}
+                <button class="btn btn-outline-primary btn-professional">
+                    <i class="bi bi-pencil me-2"></i>
+                    Edit Account
+                </button>
+                {% endif %}
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-download me-2"></i>Export Transactions</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-clock-history me-2"></i>View History</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        {% if account.can_be_deleted %}
+                        <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-trash me-2"></i>Delete Account</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card card-professional border-0 bg-light">
+            <div class="card-body text-center">
+                <div class="small text-muted mb-1">Year-to-Date Balance</div>
+                <div class="display-6 fw-bold {% if account.ytd_balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    ${{ account.ytd_balance|floatformat:2 }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Account Details Cards -->
+<div class="row g-4 mb-4">
+    <!-- Account Information -->
+    <div class="col-lg-6">
+        <div class="card card-professional h-100">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Account Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-muted small">Account Code:</dt>
+                    <dd class="col-sm-8">
+                        <code class="bg-light px-2 py-1 rounded border text-dark">{{ account.code }}</code>
+                    </dd>
+                    
+                    <dt class="col-sm-4 text-muted small">Account Type:</dt>
+                    <dd class="col-sm-8">
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">
+                            {{ account.get_account_type_display }}
+                        </span>
+                    </dd>
+                    
+                    <dt class="col-sm-4 text-muted small">Tax Rate:</dt>
+                    <dd class="col-sm-8">
+                        <div>
+                            <div class="fw-medium">{{ account.tax_rate.name }}</div>
+                            <div class="small text-muted">{{ account.tax_rate.percentage_display }}</div>
+                        </div>
+                    </dd>
+                    
+                    {% if account.parent_account %}
+                    <dt class="col-sm-4 text-muted small">Parent Account:</dt>
+                    <dd class="col-sm-8">
+                        <a href="{% url 'coa:account_detail' account.parent_account.id %}" class="text-decoration-none">
+                            {{ account.parent_account.full_name }}
+                        </a>
+                    </dd>
+                    {% endif %}
+                    
+                    <dt class="col-sm-4 text-muted small">Status:</dt>
+                    <dd class="col-sm-8">
+                        <div class="d-flex flex-wrap gap-1">
+                            {% if account.is_active %}
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">
+                                    <i class="bi bi-check-circle me-1"></i>Active
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25">
+                                    <i class="bi bi-pause-circle me-1"></i>Inactive
+                                </span>
+                            {% endif %}
+                            {% if account.is_locked %}
+                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">
+                                    <i class="bi bi-lock me-1"></i>Locked
+                                </span>
+                            {% endif %}
+                        </div>
+                    </dd>
+                    
+                    <dt class="col-sm-4 text-muted small">Created:</dt>
+                    <dd class="col-sm-8">
+                        <div class="small">
+                            <div>{{ account.created_at|date:"M j, Y g:i A" }}</div>
+                            {% if account.created_by %}
+                                <div class="text-muted">by {{ account.created_by.get_full_name|default:account.created_by.username }}</div>
+                            {% endif %}
+                        </div>
+                    </dd>
+                    
+                    {% if account.updated_at != account.created_at %}
+                    <dt class="col-sm-4 text-muted small">Last Updated:</dt>
+                    <dd class="col-sm-8">
+                        <div class="small">
+                            <div>{{ account.updated_at|date:"M j, Y g:i A" }}</div>
+                            {% if account.updated_by %}
+                                <div class="text-muted">by {{ account.updated_by.get_full_name|default:account.updated_by.username }}</div>
+                            {% endif %}
+                        </div>
+                    </dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Balance Summary -->
+    <div class="col-lg-6">
+        <div class="card card-professional h-100">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-graph-up me-2"></i>
+                    Balance Summary
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="p-3 rounded bg-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="small text-muted">Year-to-Date Balance</div>
+                                    <div class="fs-4 fw-bold {% if account.ytd_balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        ${{ account.ytd_balance|floatformat:2 }}
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    {% if account.ytd_balance >= 0 %}
+                                        <i class="bi bi-trend-up text-success fs-2"></i>
+                                    {% else %}
+                                        <i class="bi bi-trend-down text-danger fs-2"></i>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 rounded border">
+                            <div class="small text-muted">Transactions</div>
+                            <div class="h5 fw-bold text-primary">--</div>
+                            <div class="small text-muted">This Month</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 rounded border">
+                            <div class="small text-muted">Last Activity</div>
+                            <div class="h5 fw-bold text-info">--</div>
+                            <div class="small text-muted">Days Ago</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="d-grid gap-2 mt-3">
+                    <button class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-plus-circle me-2"></i>
+                        Add Transaction
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                        View All Transactions
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Child Accounts -->
+{% if children %}
+<div class="card card-professional">
+    <div class="card-header bg-transparent border-0 pb-0">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-diagram-2 me-2"></i>
+            Child Accounts ({{ children.count }})
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="border-0 py-3">Code</th>
+                        <th class="border-0 py-3">Name</th>
+                        <th class="border-0 py-3">Type</th>
+                        <th class="border-0 py-3 text-end">Balance</th>
+                        <th class="border-0 py-3 text-center">Status</th>
+                        <th class="border-0 py-3 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for child in children %}
+                    <tr>
+                        <td class="py-3">
+                            <code class="bg-light px-2 py-1 rounded border text-dark">{{ child.code }}</code>
+                        </td>
+                        <td class="py-3">
+                            <div class="fw-medium">{{ child.name }}</div>
+                            {% if child.description %}
+                                <div class="small text-muted">{{ child.description|truncatechars:50 }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="py-3">
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25">
+                                {{ child.get_account_type_display }}
+                            </span>
+                        </td>
+                        <td class="py-3 text-end">
+                            <span class="fw-bold {% if child.ytd_balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                ${{ child.ytd_balance|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td class="py-3 text-center">
+                            {% if child.is_active %}
+                                <span class="badge bg-success bg-opacity-10 text-success">
+                                    <i class="bi bi-check-circle"></i>
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary">
+                                    <i class="bi bi-pause-circle"></i>
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 text-center">
+                            <a href="{% url 'coa:account_detail' child.id %}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

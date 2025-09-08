@@ -1,0 +1,435 @@
+{% extends 'base.html' %}
+
+{% block title %}Setup Complete - Professional Accounting System{% endblock %}
+
+{% block content %}
+<!-- Success Header -->
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-8 text-center">
+        <div class="mb-4">
+            <div class="success-icon mb-4">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+            </div>
+            <h1 class="display-5 fw-bold text-dark mb-3">🎉 Setup Complete!</h1>
+            <p class="lead text-muted">
+                Congratulations! Your professional accounting system is now ready for {{ company_name|default:"your business" }}.
+            </p>
+        </div>
+        
+        <!-- Celebration Animation -->
+        <div class="celebration-container mb-4">
+            <div class="confetti"></div>
+            <div class="confetti"></div>
+            <div class="confetti"></div>
+            <div class="confetti"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Setup Summary -->
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-10">
+        <div class="card card-professional border-0 shadow-sm">
+            <div class="card-header bg-gradient-primary text-white border-0">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-clipboard-check me-3 fs-4"></i>
+                    <div>
+                        <h4 class="card-title mb-0">Setup Summary</h4>
+                        <small class="opacity-75">Here's what we've configured for your business</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="row g-0">
+                    <!-- Company Details -->
+                    <div class="col-md-6 p-4 border-end">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                                    <i class="bi bi-building text-success fs-4"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h5 class="fw-bold mb-2">Company Details</h5>
+                                <div class="mb-2">
+                                    <strong>Name:</strong> {{ company_setup.company_name|default:"Not specified" }}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Industry:</strong> {{ company_setup.industry|default:"Not specified"|title }}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Currency:</strong> {{ company_setup.currency|default:"USD" }}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Timezone:</strong> {{ company_setup.timezone|default:"UTC" }}
+                                </div>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">
+                                    <i class="bi bi-check-circle me-1"></i>Configured
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Financial Year -->
+                    <div class="col-md-6 p-4">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                                    <i class="bi bi-calendar-range text-info fs-4"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h5 class="fw-bold mb-2">Financial Year</h5>
+                                <div class="mb-2">
+                                    <strong>Period:</strong> 
+                                    {% if financial_year.start_date %}
+                                        {{ financial_year.start_date }} to {{ financial_year.end_date }}
+                                    {% else %}
+                                        Calendar Year (Jan - Dec)
+                                    {% endif %}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Type:</strong> {{ financial_year.type|default:"calendar"|title }}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Reporting:</strong> {{ financial_year.reporting_frequency|default:"monthly"|title }}
+                                </div>
+                                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">
+                                    <i class="bi bi-check-circle me-1"></i>Configured
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Chart of Accounts -->
+                    <div class="col-md-6 p-4 border-end border-top">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                                    <i class="bi bi-list-task text-primary fs-4"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h5 class="fw-bold mb-2">Chart of Accounts</h5>
+                                <div class="mb-2">
+                                    <strong>Status:</strong> Ready for use
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Structure:</strong> Professional template
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Categories:</strong> Assets, Liabilities, Equity, Income, Expenses
+                                </div>
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">
+                                    <i class="bi bi-check-circle me-1"></i>Ready
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Opening Balances -->
+                    <div class="col-md-6 p-4 border-top">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="bg-warning bg-opacity-10 rounded-circle p-3">
+                                    <i class="bi bi-calculator text-warning fs-4"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h5 class="fw-bold mb-2">Opening Balances</h5>
+                                <div class="mb-2">
+                                    <strong>Status:</strong> Configured
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Accounts:</strong> Ready for transactions
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Balance Check:</strong> Verified
+                                </div>
+                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">
+                                    <i class="bi bi-check-circle me-1"></i>Complete
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Next Steps -->
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-10">
+        <div class="card card-professional">
+            <div class="card-header bg-transparent border-0">
+                <h4 class="card-title mb-0">
+                    <i class="bi bi-rocket me-2"></i>Ready to Get Started?
+                </h4>
+                <p class="text-muted mb-0">Here are the key features you can now use</p>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <!-- Bank Reconciliation -->
+                    <div class="col-md-4">
+                        <div class="feature-card text-center p-4 border rounded-3 h-100">
+                            <div class="feature-icon mb-3">
+                                <i class="bi bi-arrow-repeat text-primary" style="font-size: 2.5rem;"></i>
+                            </div>
+                            <h5 class="fw-bold mb-2">Bank Reconciliation</h5>
+                            <p class="text-muted mb-3">Match your bank statements with your accounting records</p>
+                            <a href="{% url 'reconciliation:dashboard' %}" class="btn btn-outline-primary btn-professional">
+                                Start Reconciling
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Transaction Entry -->
+                    <div class="col-md-4">
+                        <div class="feature-card text-center p-4 border rounded-3 h-100">
+                            <div class="feature-icon mb-3">
+                                <i class="bi bi-plus-circle text-success" style="font-size: 2.5rem;"></i>
+                            </div>
+                            <h5 class="fw-bold mb-2">Record Transactions</h5>
+                            <p class="text-muted mb-3">Add income, expenses, and transfers to your accounts</p>
+                            <a href="#" class="btn btn-outline-success btn-professional">
+                                Add Transactions
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Financial Reports -->
+                    <div class="col-md-4">
+                        <div class="feature-card text-center p-4 border rounded-3 h-100">
+                            <div class="feature-icon mb-3">
+                                <i class="bi bi-graph-up text-info" style="font-size: 2.5rem;"></i>
+                            </div>
+                            <h5 class="fw-bold mb-2">Financial Reports</h5>
+                            <p class="text-muted mb-3">Generate profit & loss, balance sheet, and other reports</p>
+                            <a href="#" class="btn btn-outline-info btn-professional">
+                                View Reports
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="row justify-content-center">
+    <div class="col-lg-6 text-center">
+        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+            <a href="{% url 'home' %}" class="btn btn-primary btn-lg btn-professional px-5">
+                <i class="bi bi-house-door me-2"></i>
+                Go to Dashboard
+            </a>
+            <a href="{% url 'coa:chart_of_accounts' %}" class="btn btn-outline-secondary btn-lg btn-professional px-5">
+                <i class="bi bi-gear me-2"></i>
+                Manage Settings
+            </a>
+        </div>
+        
+        <!-- Additional Help -->
+        <div class="mt-4">
+            <small class="text-muted">
+                Need help getting started? 
+                <a href="#" class="text-decoration-none">Check out our quick start guide</a>
+                or <a href="#" class="text-decoration-none">contact support</a>.
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- Professional CSS and Animations -->
+<style>
+/* Success celebration animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes confetti {
+    0% {
+        transform: translateY(-100vh) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+    }
+}
+
+.celebration-container {
+    position: relative;
+    height: 60px;
+    overflow: hidden;
+}
+
+.confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #f9ca24);
+    animation: confetti 3s ease-in-out infinite;
+}
+
+.confetti:nth-child(1) {
+    left: 10%;
+    animation-delay: 0s;
+    background: #ff6b6b;
+}
+
+.confetti:nth-child(2) {
+    left: 30%;
+    animation-delay: 0.5s;
+    background: #4ecdc4;
+}
+
+.confetti:nth-child(3) {
+    left: 60%;
+    animation-delay: 1s;
+    background: #45b7d1;
+}
+
+.confetti:nth-child(4) {
+    left: 80%;
+    animation-delay: 1.5s;
+    background: #f9ca24;
+}
+
+/* Success icon animation */
+.success-icon {
+    animation: fadeInUp 0.8s ease-out;
+}
+
+/* Gradient header */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+}
+
+/* Feature cards */
+.feature-card {
+    transition: all 0.3s ease;
+    border: 2px solid transparent !important;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    border-color: var(--bs-primary) !important;
+}
+
+.feature-icon {
+    transition: transform 0.3s ease;
+}
+
+.feature-card:hover .feature-icon {
+    transform: scale(1.1);
+}
+
+/* Professional button styling */
+.btn-professional {
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    border-width: 2px;
+}
+
+.btn-professional:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-lg.btn-professional {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+}
+
+/* Card enhancements */
+.card-professional {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.card-professional:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Page animations */
+.row {
+    animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.row:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.row:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .display-5 {
+        font-size: 2rem;
+    }
+    
+    .feature-card {
+        margin-bottom: 1rem;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add smooth scroll behavior
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelector(this.getAttribute('href')).scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+    });
+    
+    // Add entrance animations
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.animation = 'fadeInUp 0.6s ease-out forwards';
+            }
+        });
+    }, observerOptions);
+    
+    document.querySelectorAll('.card').forEach(card => {
+        observer.observe(card);
+    });
+    
+    // Celebration effect
+    setTimeout(() => {
+        const confetti = document.querySelectorAll('.confetti');
+        confetti.forEach((piece, index) => {
+            setTimeout(() => {
+                piece.style.animationPlayState = 'running';
+            }, index * 200);
+        });
+    }, 500);
+});
+</script>
+{% endblock %}

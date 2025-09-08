@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}New Fixed Asset - {{ active_company.name|default:"Professional Accounting System" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-control:focus { border-color:#2563eb; box-shadow:0 0 0 .25rem rgba(37,99,235,.25); }
+  .btn-primary { background:#2563eb; border-color:#2563eb; }
+  .btn-primary:hover { background:#1d4ed8; border-color:#1d4ed8; }
+  .form-label { font-weight:600; }
+  .section-label { font-size:.875rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6b7280; }
+  .details-section { border-bottom:1px solid #e5e7eb; padding-bottom:1.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Company Context Header -->
+{% if active_company %}
+<div class="company-context-header mb-3">
+    <div class="d-flex align-items-center">
+        <div class="company-logo-small me-3">
+            {% if active_company.logo %}
+                <img src="{{ active_company.logo.url }}" alt="{{ active_company.name }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
+            {% else %}
+                <div class="bg-primary rounded d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; color: white; font-weight: 600;">
+                    {{ active_company.name|first|upper }}
+                </div>
+            {% endif %}
+        </div>
+        <div>
+            <h6 class="text-muted mb-0">
+                <i class="bi bi-building me-1"></i>
+                {{ active_company.name }}
+            </h6>
+            <small class="text-muted">New Fixed Asset</small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Breadcrumb Navigation -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        {% if active_company %}
+            <li class="breadcrumb-item">{{ active_company.name }}</li>
+        {% endif %}
+        <li class="breadcrumb-item">
+            <a href="{% url 'assets:list' %}" class="text-decoration-none">
+                <i class="bi bi-building me-1"></i>Fixed Assets
+            </a>
+        </li>
+        <li class="breadcrumb-item active">New Asset</li>
+    </ol>
+</nav>
+
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-lg-8 mx-auto">
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="mb-0">New fixed asset</h5>
+        <a href="{% url 'assets:list' %}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+
+      <form method="post" class="needs-validation" novalidate>
+        {% csrf_token %}
+        
+        <!-- Asset Details -->
+        <div class="details-section mb-4">
+          <div class="section-label mb-3">Asset Details</div>
+          
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="assetName" class="form-label">Asset name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="assetName" name="name" placeholder="Dell Laptop" required>
+            </div>
+            <div class="col-md-6">
+              <label for="assetNumber" class="form-label">Asset number</label>
+              <input type="text" class="form-control" id="assetNumber" name="number" placeholder="COMP-001">
+            </div>
+            
+            <div class="col-12">
+              <label for="description" class="form-label">Description</label>
+              <textarea class="form-control" id="description" name="description" rows="2" placeholder="Brief description of the asset"></textarea>
+            </div>
+            
+            <div class="col-md-6">
+              <label for="assetType" class="form-label">Asset type</label>
+              <select class="form-control" id="assetType" name="type">
+                <option value="">Choose...</option>
+                {% for t in asset_types %}
+                <option value="{{ t.0 }}">{{ t.1 }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Purchase Details -->
+        <div class="details-section mb-4">
+          <div class="section-label mb-3">Purchase Details</div>
+          
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="purchasePrice" class="form-label">Purchase price <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control" id="purchasePrice" name="purchase_price" placeholder="0.00" step="0.01" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label for="purchaseDate" class="form-label">Purchase date <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" id="purchaseDate" name="purchase_date" required>
+            </div>
+            
+            <div class="col-md-6">
+              <label for="supplier" class="form-label">Supplier</label>
+              <input type="text" class="form-control" id="supplier" name="supplier" placeholder="Company name">
+            </div>
+            <div class="col-md-6">
+              <label for="serialNumber" class="form-label">Serial number</label>
+              <input type="text" class="form-control" id="serialNumber" name="serial_number" placeholder="SN123456">
+            </div>
+          </div>
+        </div>
+
+        <!-- Depreciation Details -->
+        <div class="details-section mb-4">
+          <div class="section-label mb-3">Depreciation Details</div>
+          
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="depreciationMethod" class="form-label">Depreciation method</label>
+              <select class="form-control" id="depreciationMethod" name="depreciation_method">
+                {% for m in depreciation_methods %}
+                <option value="{{ m.0 }}">{{ m.1 }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="usefulLife" class="form-label">Useful life (years)</label>
+              <input type="number" class="form-control" id="usefulLife" name="useful_life" placeholder="5" min="1">
+            </div>
+            
+            <div class="col-md-6">
+              <label for="salvageValue" class="form-label">Salvage value</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control" id="salvageValue" name="salvage_value" placeholder="0.00" step="0.01">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="d-flex justify-content-end gap-2">
+          <a href="{% url 'assets:list' %}" class="btn btn-outline-secondary">Cancel</a>
+          <button type="submit" name="status" value="draft" class="btn btn-outline-primary">Save as draft</button>
+          <button type="submit" name="status" value="registered" class="btn btn-primary">Save asset</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Form validation
+(function() {
+  'use strict';
+  window.addEventListener('load', function() {
+    var forms = document.getElementsByClassName('needs-validation');
+    var validation = Array.prototype.filter.call(forms, function(form) {
+      form.addEventListener('submit', function(event) {
+        if (form.checkValidity() === false) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  }, false);
+})();
+</script>
+{% endblock %}

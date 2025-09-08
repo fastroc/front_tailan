@@ -1,0 +1,120 @@
+<!-- Professional Sidebar Navigation -->
+<nav class="nav flex-column py-3">
+  <!-- Dashboard -->
+  <a class="nav-link active" href="/dashboard/">
+    <i class="fas fa-home me-2"></i>
+    Dashboard
+  </a>
+
+  <!-- Reconciliation Module -->
+  <div class="nav-section">
+    <h6
+      class="nav-header text-muted text-uppercase fw-bold px-3 py-2 mb-1"
+      style="font-size: 0.7rem; letter-spacing: 0.5px"
+    >
+      Bank Reconciliation
+    </h6>
+    <a class="nav-link" href="{% url 'reconciliation:upload' %}">
+      <i class="fas fa-upload me-2"></i>
+      Upload Statement
+    </a>
+    <a class="nav-link" href="{% url 'reconciliation:file_list' %}">
+      <i class="fas fa-file-alt me-2"></i>
+      View Files
+    </a>
+    <a class="nav-link" href="#">
+      <i class="fas fa-tasks me-2"></i>
+      Processing Queue
+      <span class="badge bg-warning ms-auto">3</span>
+    </a>
+  </div>
+
+  <!-- Chart of Accounts -->
+  <div class="nav-section mt-3">
+    <h6
+      class="nav-header text-muted text-uppercase fw-bold px-3 py-2 mb-1"
+      style="font-size: 0.7rem; letter-spacing: 0.5px"
+    >
+      Chart of Accounts
+    </h6>
+    <a class="nav-link" href="{% url 'coa:chart_list' %}">
+      <i class="fas fa-list me-2"></i>
+      View Chart
+    </a>
+    <a class="nav-link" href="{% url 'coa:create_account' %}">
+      <i class="fas fa-plus me-2"></i>
+      Add Account
+    </a>
+    <a class="nav-link" href="#">
+      <i class="fas fa-university me-2"></i>
+      Bank Accounts
+    </a>
+  </div>
+
+  <!-- Manual Journal -->
+  <div class="nav-section mt-3">
+    <h6
+      class="nav-header text-muted text-uppercase fw-bold px-3 py-2 mb-1"
+      style="font-size: 0.7rem; letter-spacing: 0.5px"
+    >
+      Journal Entries
+    </h6>
+    <a class="nav-link" href="#">
+      <i class="fas fa-edit me-2"></i>
+      Create Entry
+    </a>
+    <a class="nav-link" href="#">
+      <i class="fas fa-list me-2"></i>
+      View Entries
+    </a>
+    <a class="nav-link" href="#">
+      <i class="fas fa-clock me-2"></i>
+      Pending Approval
+      <span class="badge bg-info ms-auto">2</span>
+    </a>
+  </div>
+
+  <!-- Reports -->
+  <div class="nav-section mt-3">
+    <h6
+      class="nav-header text-muted text-uppercase fw-bold px-3 py-2 mb-1"
+      style="font-size: 0.7rem; letter-spacing: 0.5px"
+    >
+      Reports
+    </h6>
+    <a class="nav-link" href="#">
+      <i class="fas fa-balance-scale me-2"></i>
+      Trial Balance
+    </a>
+    <a class="nav-link" href="#">
+      <i class="fas fa-chart-line me-2"></i>
+      Profit & Loss
+    </a>
+    <a class="nav-link" href="#">
+      <i class="fas fa-clipboard-list me-2"></i>
+      Balance Sheet
+    </a>
+  </div>
+
+  <!-- Settings -->
+  <div class="nav-section mt-3">
+    <h6
+      class="nav-header text-muted text-uppercase fw-bold px-3 py-2 mb-1"
+      style="font-size: 0.7rem; letter-spacing: 0.5px"
+    >
+      Setup
+    </h6>
+    <a class="nav-link" href="#">
+      <i class="fas fa-play-circle me-2"></i>
+      Opening Balances
+    </a>
+    <a class="nav-link" href="#">
+      <i class="fas fa-calendar-alt me-2"></i>
+      Period Management
+    </a>
+    <a class="nav-link" href="#">
+      <i class="fas fa-cog me-2"></i>
+      System Settings
+    </a>
+  </div>
+</nav>

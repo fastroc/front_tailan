@@ -1,0 +1,75 @@
+{% extends 'base.html' %} {% block title %}Page Not Found - Manual Accounting
+System{% endblock %} {% block content %}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+      <div class="py-5">
+        <!-- 404 Icon -->
+        <div class="text-primary mb-4">
+          <i class="fas fa-search fa-4x"></i>
+        </div>
+
+        <!-- Error Message -->
+        <h1 class="h2 text-navy fw-bold mb-3">Page Not Found</h1>
+        <p class="text-muted mb-4">
+          Sorry, the page you are looking for doesn't exist or has been moved.
+        </p>
+
+        <!-- Helpful Actions -->
+        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+          <a href="/dashboard/" class="btn btn-primary">
+            <i class="fas fa-home me-1"></i>
+            Back to Dashboard
+          </a>
+          <a
+            href="{% url 'reconciliation:file_list' %}"
+            class="btn btn-outline-secondary"
+          >
+            <i class="fas fa-sync me-1"></i>
+            Go to Reconciliation
+          </a>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="mt-4 pt-4" style="border-top: 1px solid var(--border-gray)">
+          <h6 class="text-muted mb-3">Popular Pages:</h6>
+          <div class="row">
+            <div class="col-md-6">
+              <ul class="list-unstyled">
+                <li>
+                  <a
+                    href="{% url 'reconciliation:upload' %}"
+                    class="text-decoration-none"
+                    ><i class="fas fa-upload me-1"></i> Upload Statement</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="{% url 'coa:chart_list' %}"
+                    class="text-decoration-none"
+                    ><i class="fas fa-list me-1"></i> Chart of Accounts</a
+                  >
+                </li>
+              </ul>
+            </div>
+            <div class="col-md-6">
+              <ul class="list-unstyled">
+                <li>
+                  <a href="#" class="text-decoration-none"
+                    ><i class="fas fa-balance-scale me-1"></i> Trial Balance</a
+                  >
+                </li>
+                <li>
+                  <a href="#" class="text-decoration-none"
+                    ><i class="fas fa-chart-line me-1"></i> Financial Reports</a
+                  >
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

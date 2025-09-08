@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+
+{% block title %}Company Setup - Professional Accounting System{% endblock %}
+
+{% block content %}
+<!-- Progress Header -->
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-10">
+        <div class="text-center mb-4">
+            <h1 class="h3 mb-1 fw-bold text-dark">Welcome to Professional Accounting</h1>
+            <p class="text-muted mb-0">Let's set up your company details to get started</p>
+        </div>
+        
+        <!-- Progress Steps -->
+        <div class="row g-2 mb-4">
+            <div class="col-3">
+                <div class="card card-professional border-2 border-primary bg-primary bg-opacity-5">
+                    <div class="card-body text-center py-2">
+                        <i class="bi bi-arrow-right-circle-fill text-primary mb-1"></i>
+                        <div class="small fw-medium text-primary">Company Details</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="card card-professional border-0 bg-light">
+                    <div class="card-body text-center py-2">
+                        <i class="bi bi-circle text-muted mb-1"></i>
+                        <div class="small text-muted">Financial Year</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="card card-professional border-0 bg-light">
+                    <div class="card-body text-center py-2">
+                        <i class="bi bi-circle text-muted mb-1"></i>
+                        <div class="small text-muted">Chart of Accounts</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="card card-professional border-0 bg-light">
+                    <div class="card-body text-center py-2">
+                        <i class="bi bi-circle text-muted mb-1"></i>
+                        <div class="small text-muted">Opening Balances</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card card-professional">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <div class="mb-3">
+                        <i class="bi bi-building text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h3 class="h4 fw-bold text-dark mb-2">Tell us about your company</h3>
+                    <p class="text-muted">This information will be used throughout your accounting system</p>
+                </div>
+
+                <form method="post" id="companySetupForm">
+                    {% csrf_token %}
+                    
+                    <!-- Company Name -->
+                    <div class="mb-4">
+                        <label for="companyName" class="form-label fw-medium">
+                            Company Name <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control form-control-lg" id="companyName" name="company_name" 
+                               required placeholder="Enter your company name">
+                        <div class="form-text">This will appear on your reports and invoices</div>
+                    </div>
+
+                    <!-- Industry Selection -->
+                    <div class="mb-4">
+                        <label for="industry" class="form-label fw-medium">Industry</label>
+                        <select class="form-select form-select-lg" id="industry" name="industry">
+                            <option value="">Select your industry...</option>
+                            {% for value, label in industries %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">This helps us suggest appropriate account types</div>
+                    </div>
+
+                    <!-- Currency Selection -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="currency" class="form-label fw-medium">
+                                Base Currency <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select form-select-lg" id="currency" name="currency" required>
+                                {% for value, label in currencies %}
+                                <option value="{{ value }}" {% if value == 'USD' %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="timezone" class="form-label fw-medium">Timezone</label>
+                            <select class="form-select form-select-lg" id="timezone" name="timezone">
+                                <option value="UTC">UTC (Universal Time)</option>
+                                <option value="America/New_York">Eastern Time (US)</option>
+                                <option value="America/Chicago">Central Time (US)</option>
+                                <option value="America/Denver">Mountain Time (US)</option>
+                                <option value="America/Los_Angeles">Pacific Time (US)</option>
+                                <option value="Europe/London">London (GMT)</option>
+                                <option value="Europe/Berlin">Central European Time</option>
+                                <option value="Australia/Sydney">Sydney (AEDT)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Preview Card -->
+                    <div class="card bg-light border-0 p-3 mb-4" id="companyPreview" style="display: none;">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="bi bi-building-check text-success fs-2"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="fw-bold mb-1">Company Preview</h6>
+                                <div class="small text-muted">
+                                    <div id="previewName">Company Name</div>
+                                    <div id="previewDetails">Industry • Currency</div>
+                                </div>
+                            </div>
+                            <span class="badge bg-success bg-opacity-10 text-success">
+                                <i class="bi bi-check-circle me-1"></i>Ready
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-between pt-3 border-top">
+                        <a href="{% url 'home' %}" class="btn btn-outline-secondary btn-professional">
+                            <i class="bi bi-arrow-left me-2"></i>
+                            Back to Dashboard
+                        </a>
+                        
+                        <button type="submit" class="btn btn-primary btn-professional">
+                            Continue to Financial Year Setup
+                            <i class="bi bi-arrow-right ms-2"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Sidebar -->
+    <div class="col-lg-4">
+        <div class="card card-professional border-0 bg-light">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    Setup Tips
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2">Company Name:</h6>
+                    <ul class="small mb-0">
+                        <li>Use your legal business name</li>
+                        <li>This appears on all reports</li>
+                        <li>Can be changed later if needed</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2">Currency Selection:</h6>
+                    <p class="small text-muted">
+                        Choose your primary business currency. This will be used for all 
+                        transactions and reports by default.
+                    </p>
+                </div>
+                
+                <div>
+                    <h6 class="fw-bold mb-2">Industry Benefits:</h6>
+                    <p class="small text-muted">
+                        Selecting your industry helps us suggest relevant account types 
+                        and reporting structures for your business.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('companySetupForm');
+    const companyName = document.getElementById('companyName');
+    const industry = document.getElementById('industry');
+    const currency = document.getElementById('currency');
+    const preview = document.getElementById('companyPreview');
+    const previewName = document.getElementById('previewName');
+    const previewDetails = document.getElementById('previewDetails');
+    
+    // Update preview as user types
+    function updatePreview() {
+        const name = companyName.value.trim();
+        const selectedIndustry = industry.options[industry.selectedIndex].text;
+        const selectedCurrency = currency.options[currency.selectedIndex].text;
+        
+        if (name) {
+            previewName.textContent = name;
+            previewDetails.textContent = `${selectedIndustry} • ${selectedCurrency}`;
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+    
+    companyName.addEventListener('input', updatePreview);
+    industry.addEventListener('change', updatePreview);
+    currency.addEventListener('change', updatePreview);
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Setting up company...';
+        submitBtn.disabled = true;
+    });
+});
+</script>
+{% endblock %}

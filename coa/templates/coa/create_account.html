@@ -1,0 +1,374 @@
+{% extends 'base.html' %}
+
+{% block title %}Create New Account - {{ active_company.name|default:"Chart of Accounts" }}{% endblock %}
+
+{% block content %}
+<!-- Company Context Header -->
+{% if active_company %}
+<div class="company-context-header mb-3">
+    <div class="d-flex align-items-center">
+        <div class="company-logo-small me-3">
+            {% if active_company.logo %}
+                <img src="{{ active_company.logo.url }}" alt="{{ active_company.name }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
+            {% else %}
+                <div class="bg-primary rounded d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; color: white; font-weight: 600;">
+                    {{ active_company.name|first|upper }}
+                </div>
+            {% endif %}
+        </div>
+        <div>
+            <h6 class="text-muted mb-0">
+                <i class="bi bi-building me-1"></i>
+                {{ active_company.name }}
+            </h6>
+            <small class="text-muted">Create New Account</small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        {% if active_company %}
+            <li class="breadcrumb-item">{{ active_company.name }}</li>
+        {% endif %}
+        <li class="breadcrumb-item">
+            <a href="{% url 'coa:chart_of_accounts' %}" class="text-decoration-none">
+                <i class="bi bi-list-task me-1"></i>Chart of Accounts
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Create Account</li>
+    </ol>
+</nav>
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h1 class="h3 mb-1 fw-bold text-dark">Create New Account</h1>
+        <p class="text-muted mb-0">Add a new account to your chart of accounts</p>
+    </div>
+    <a href="{% url 'coa:chart_of_accounts' %}" class="btn btn-outline-secondary btn-professional">
+        <i class="bi bi-arrow-left me-2"></i>
+        Back to Chart of Accounts
+    </a>
+</div>
+
+<!-- Create Account Form -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card card-professional">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    Account Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="createAccountForm">
+                    {% csrf_token %}
+                    
+                    <!-- Basic Information -->
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <label for="code" class="form-label fw-medium">
+                                Account Code <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control form-control-lg" id="code" name="code" 
+                                   required maxlength="10" placeholder="e.g. 1000">
+                            <div class="form-text">Unique code up to 10 characters</div>
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <label for="name" class="form-label fw-medium">
+                                Account Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control form-control-lg" id="name" name="name" 
+                                   required maxlength="150" placeholder="e.g. Cash at Bank - Operating">
+                            <div class="form-text">Descriptive name up to 150 characters</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Account Configuration -->
+                    <div class="row g-4 mt-2">
+                        <div class="col-md-6">
+                            <label for="account_type" class="form-label fw-medium">
+                                Account Type <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select form-select-lg" id="account_type" name="account_type" required>
+                                <option value="">Select account type...</option>
+                                <optgroup label="ASSETS">
+                                    <option value="CURRENT_ASSET">Current Asset</option>
+                                    <option value="FIXED_ASSET">Fixed Asset</option>
+                                    <option value="INVENTORY">Inventory</option>
+                                    <option value="NON_CURRENT_ASSET">Non-current Asset</option>
+                                    <option value="PREPAYMENT">Prepayment</option>
+                                </optgroup>
+                                <optgroup label="LIABILITIES">
+                                    <option value="CURRENT_LIABILITY">Current Liability</option>
+                                    <option value="LIABILITY">Liability</option>
+                                    <option value="NON_CURRENT_LIABILITY">Non-current Liability</option>
+                                </optgroup>
+                                <optgroup label="EQUITY">
+                                    <option value="EQUITY">Equity</option>
+                                </optgroup>
+                                <optgroup label="REVENUE">
+                                    <option value="OTHER_INCOME">Other Income</option>
+                                    <option value="REVENUE">Revenue</option>
+                                    <option value="SALES">Sales</option>
+                                </optgroup>
+                                <optgroup label="EXPENSES">
+                                    <option value="DEPRECIATION">Depreciation</option>
+                                    <option value="DIRECT_COST">Direct Cost</option>
+                                    <option value="EXPENSE">Expense</option>
+                                    <option value="OVERHEAD">Overhead</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="tax_rate" class="form-label fw-medium">
+                                Tax Rate <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select form-select-lg" id="tax_rate" name="tax_rate" required>
+                                <option value="">Select tax rate...</option>
+                                {% for tax_rate in tax_rates %}
+                                <option value="{{ tax_rate.id }}" data-rate="{{ tax_rate.percentage_display }}">
+                                    {{ tax_rate.name }} ({{ tax_rate.percentage_display }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Parent Account (Optional) -->
+                    <div class="row g-4 mt-2">
+                        <div class="col-12">
+                            <label for="parent_account" class="form-label fw-medium">
+                                Parent Account <span class="text-muted">(Optional)</span>
+                            </label>
+                            <select class="form-select" id="parent_account" name="parent_account">
+                                <option value="">No parent account (top-level account)</option>
+                                {% for parent in parent_accounts %}
+                                <option value="{{ parent.id }}">{{ parent.full_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Select a parent account to create a sub-account</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Description -->
+                    <div class="mt-4">
+                        <label for="description" class="form-label fw-medium">
+                            Description <span class="text-muted">(Optional)</span>
+                        </label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                                placeholder="Enter a description of how this account should be used..."></textarea>
+                        <div class="form-text">Detailed description to help users understand the account's purpose</div>
+                    </div>
+                    
+                    <!-- Preview Section -->
+                    <div class="mt-4 p-4 bg-light rounded" id="accountPreview" style="display: none;">
+                        <h6 class="fw-bold mb-3">
+                            <i class="bi bi-eye me-2"></i>Account Preview
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <strong>Full Account Name:</strong>
+                                    <div id="previewFullName" class="text-muted">--</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <strong>Account Type:</strong>
+                                    <div id="previewType" class="text-muted">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-3 mt-4 pt-3 border-top">
+                        <button type="submit" class="btn btn-primary btn-professional btn-lg">
+                            <i class="bi bi-plus-circle me-2"></i>
+                            Create Account
+                        </button>
+                        <button type="reset" class="btn btn-outline-secondary btn-lg">
+                            <i class="bi bi-arrow-clockwise me-2"></i>
+                            Reset Form
+                        </button>
+                        <a href="{% url 'coa:chart_of_accounts' %}" class="btn btn-outline-danger btn-lg ms-auto">
+                            <i class="bi bi-x-circle me-2"></i>
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Sidebar -->
+    <div class="col-lg-4">
+        <div class="card card-professional border-0 bg-light">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Account Setup Tips
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2">Account Code Guidelines:</h6>
+                    <ul class="small mb-0">
+                        <li>Use numbers for systematic organization</li>
+                        <li>Assets: 1000-1999</li>
+                        <li>Liabilities: 2000-2999</li>
+                        <li>Equity: 3000-3999</li>
+                        <li>Revenue: 4000-4999</li>
+                        <li>Expenses: 5000-5999</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2">Account Types:</h6>
+                    <div class="small">
+                        <div class="mb-1">
+                            <span class="badge bg-primary bg-opacity-10 text-primary me-1">Assets</span>
+                            Resources owned by the business
+                        </div>
+                        <div class="mb-1">
+                            <span class="badge bg-danger bg-opacity-10 text-danger me-1">Liabilities</span>
+                            Debts and obligations
+                        </div>
+                        <div class="mb-1">
+                            <span class="badge bg-warning bg-opacity-10 text-warning me-1">Equity</span>
+                            Owner's stake in the business
+                        </div>
+                        <div class="mb-1">
+                            <span class="badge bg-success bg-opacity-10 text-success me-1">Revenue</span>
+                            Income from business operations
+                        </div>
+                        <div class="mb-1">
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary me-1">Expenses</span>
+                            Costs of doing business
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h6 class="fw-bold mb-2">Best Practices:</h6>
+                    <ul class="small mb-0">
+                        <li>Use clear, descriptive names</li>
+                        <li>Be consistent with naming conventions</li>
+                        <li>Add descriptions for complex accounts</li>
+                        <li>Choose appropriate tax settings</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Professional Form Enhancement Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const codeInput = document.getElementById('code');
+    const nameInput = document.getElementById('name');
+    const typeSelect = document.getElementById('account_type');
+    const preview = document.getElementById('accountPreview');
+    const previewFullName = document.getElementById('previewFullName');
+    const previewType = document.getElementById('previewType');
+    
+    function updatePreview() {
+        const code = codeInput.value.trim();
+        const name = nameInput.value.trim();
+        const type = typeSelect.value;
+        
+        if (code && name) {
+            previewFullName.textContent = `${code} - ${name}`;
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+        
+        if (type) {
+            const selectedOption = typeSelect.options[typeSelect.selectedIndex];
+            previewType.textContent = selectedOption.text;
+        }
+    }
+    
+    codeInput.addEventListener('input', updatePreview);
+    nameInput.addEventListener('input', updatePreview);
+    typeSelect.addEventListener('change', updatePreview);
+    
+    // Form validation
+    const form = document.getElementById('createAccountForm');
+    form.addEventListener('submit', function(e) {
+        const code = codeInput.value.trim();
+        const name = nameInput.value.trim();
+        const type = typeSelect.value;
+        const taxRate = document.getElementById('tax_rate').value;
+        
+        if (!code || !name || !type || !taxRate) {
+            e.preventDefault();
+            alert('Please fill in all required fields.');
+            return false;
+        }
+        
+        // Show loading state
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+        submitBtn.disabled = true;
+    });
+    
+    // Reset form
+    const resetBtn = form.querySelector('button[type="reset"]');
+    resetBtn.addEventListener('click', function() {
+        setTimeout(() => {
+            preview.style.display = 'none';
+        }, 100);
+    });
+});
+</script>
+
+<style>
+/* Professional form styling */
+.form-control:focus, .form-select:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.1);
+}
+
+.form-control-lg, .form-select-lg {
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+}
+
+.form-text {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+optgroup {
+    font-weight: 600;
+    color: #374151;
+}
+
+optgroup option {
+    font-weight: 400;
+    padding-left: 1rem;
+}
+
+/* Preview styling */
+#accountPreview {
+    border: 1px solid #e5e7eb;
+    background-color: #f8fafc !important;
+}
+
+/* Professional button spacing */
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+</style>
+{% endblock %}

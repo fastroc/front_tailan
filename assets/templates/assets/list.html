@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Fixed Assets - {{ active_company.name|default:"Professional Accounting System" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .fa-banner { background:#f6f7f8; border:1px solid #e5e7eb; border-radius:.5rem; }
+  .x-tabs .nav-link { font-weight:600; }
+  .x-tabs .nav-link.active { border-bottom:3px solid #2563eb; color:#111827; }
+  .empty-box { border:1px solid #e5e7eb; border-radius:.5rem; background:#fff; }
+  .asset-row:hover { background:#f9fafb; }
+  .status-badge { font-size:.75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Company Context Header -->
+{% if active_company %}
+<div class="company-context-header mb-3">
+    <div class="d-flex align-items-center">
+        <div class="company-logo-small me-3">
+            {% if active_company.logo %}
+                <img src="{{ active_company.logo.url }}" alt="{{ active_company.name }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
+            {% else %}
+                <div class="bg-primary rounded d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; color: white; font-weight: 600;">
+                    {{ active_company.name|first|upper }}
+                </div>
+            {% endif %}
+        </div>
+        <div>
+            <h6 class="text-muted mb-0">
+                <i class="bi bi-building me-1"></i>
+                {{ active_company.name }}
+            </h6>
+            <small class="text-muted">Fixed Assets</small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Breadcrumb Navigation -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        {% if active_company %}
+            <li class="breadcrumb-item">{{ active_company.name }}</li>
+        {% endif %}
+        <li class="breadcrumb-item">Assets</li>
+        <li class="breadcrumb-item active">Fixed Assets</li>
+    </ol>
+</nav>
+
+<div class="container-fluid py-4">
+  <!-- Header actions -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Fixed Assets</h5>
+    <div class="d-flex gap-2">
+      <a href="{% url 'assets:run_depreciation' %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-calculator me-1"></i>Run depreciation</a>
+      <a href="{% url 'assets:new' %}" class="btn btn-success btn-sm"><i class="bi bi-plus me-1"></i>New asset</a>
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="{% url 'assets:import' %}"><i class="bi bi-upload me-2"></i>Import registry</a></li>
+          <li><a class="dropdown-item" href="{% url 'assets:export' %}"><i class="bi bi-download me-2"></i>Export</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sub banner (optional) -->
+  <div class="fa-banner p-2 mb-3 small text-muted d-flex justify-content-between">
+    <span>Last depreciation: <strong>{{ last_depr_date|default:'none' }}</strong></span>
+    <a class="text-decoration-underline" href="#" onclick="document.getElementById('promoBanner')?.classList.toggle('d-none'); return false;">Show banner</a>
+  </div>
+  <div id="promoBanner" class="alert alert-info d-none">Tip: Add your existing assets or import your registry to start tracking depreciation.</div>
+
+  <!-- Tabs: Draft | Registered | Sold/Disposed -->
+  <ul class="nav nav-tabs x-tabs mb-3">
+    <li class="nav-item"><a class="nav-link {% if tab == 'draft' %}active{% endif %}" href="{% url 'assets:list' %}?tab=draft">Draft <span class="badge bg-secondary ms-1">{{ counts.draft|default:0 }}</span></a></li>
+    <li class="nav-item"><a class="nav-link {% if tab == 'registered' %}active{% endif %}" href="{% url 'assets:list' %}?tab=registered">Registered <span class="badge bg-secondary ms-1">{{ counts.registered|default:0 }}</span></a></li>
+    <li class="nav-item"><a class="nav-link {% if tab == 'sold' %}active{% endif %}" href="{% url 'assets:list' %}?tab=sold">Sold/Disposed <span class="badge bg-secondary ms-1">{{ counts.sold|default:0 }}</span></a></li>
+  </ul>
+
+  {% if assets %}
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Asset</th>
+            <th>Asset #</th>
+            <th>Type</th>
+            <th class="text-end">Purchase price</th>
+            <th>Purchase date</th>
+            <th>Status</th>
+            <th class="text-end">Book value</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in assets %}
+          <tr class="asset-row">
+            <td>
+              <a href="{% url 'assets:detail' a.id %}" class="fw-semibold text-decoration-none">{{ a.name }}</a>
+              <div class="small text-muted">{{ a.description|default:'' }}</div>
+            </td>
+            <td>{{ a.number }}</td>
+            <td>{{ a.type_name }}</td>
+            <td class="text-end">${{ a.purchase_price|floatformat:2 }}</td>
+            <td>{{ a.purchase_date|date:'d M Y' }}</td>
+            <td><span class="badge bg-{{ a.status_badge }} status-badge">{{ a.status|title }}</span></td>
+            <td class="text-end">${{ a.book_value|default:0|floatformat:2 }}</td>
+            <td class="text-end">
+              <div class="btn-group btn-group-sm">
+                <a class="btn btn-outline-secondary" href="{% url 'assets:edit' a.id %}"><i class="bi bi-pencil"></i></a>
+                <a class="btn btn-outline-secondary" href="{% url 'assets:depreciation' a.id %}"><i class="bi bi-graph-up"></i></a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-box p-5 text-center text-muted">
+    <div class="fw-semibold mb-1">No {{ tab|default:'draft' }} assets to display</div>
+    <div class="small">Add an asset manually from the <a href="{% url 'assets:new' %}">New asset</a> button or import your registry to see them here.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

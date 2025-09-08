@@ -1,0 +1,394 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload Bank Statement - {{ active_company.name|default:"Professional Accounting System" }}{% endblock %}
+
+{% block content %}
+<!-- Company Context Header -->
+{% if active_company %}
+<div class="company-context-header mb-3">
+    <div class="d-flex align-items-center">
+        <div class="company-logo-small me-3">
+            {% if active_company.logo %}
+                <img src="{{ active_company.logo.url }}" alt="{{ active_company.name }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
+            {% else %}
+                <div class="bg-primary rounded d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; color: white; font-weight: 600;">
+                    {{ active_company.name|first|upper }}
+                </div>
+            {% endif %}
+        </div>
+        <div>
+            <h6 class="text-muted mb-0">
+                <i class="bi bi-building me-1"></i>
+                {{ active_company.name }}
+            </h6>
+            <small class="text-muted">Bank Reconciliation</small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Breadcrumb Navigation -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        {% if active_company %}
+            <li class="breadcrumb-item">{{ active_company.name }}</li>
+        {% endif %}
+        <li class="breadcrumb-item">Banking</li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'reconciliation:file_list' %}" class="text-decoration-none">Reconciliation</a>
+        </li>
+        <li class="breadcrumb-item active">Upload Statement</li>
+    </ol>
+</nav>
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="h3 mb-1 fw-bold text-dark">
+            <i class="bi bi-cloud-upload text-primary me-2"></i>Upload Bank Statement
+        </h2>
+        <p class="text-muted mb-0">Upload your bank statement CSV file for reconciliation</p>
+    </div>
+    <div>
+        <a href="{% url 'reconciliation:file_list' %}" class="btn btn-outline-secondary btn-professional">
+            <i class="bi bi-arrow-left me-2"></i>Back to Files
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Upload Form Card -->
+        <div class="card card-professional border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    {% csrf_token %}
+                    
+                    <!-- File Upload Area -->
+                    <div class="mb-4">
+                        <label for="{{ form.file.id_for_label }}" class="form-label fw-medium text-dark">
+                            Bank Statement File <span class="text-danger">*</span>
+                        </label>
+                        <div class="upload-area border-2 border-dashed rounded p-4 text-center position-relative" 
+                             id="uploadArea" style="border-color: #e5e7eb; background-color: #f9fafb;">
+                            <div id="uploadPrompt">
+                                <i class="bi bi-cloud-upload text-primary mb-3" style="font-size: 3rem;"></i>
+                                <h5 class="fw-bold text-dark mb-2">Drop your CSV file here</h5>
+                                <p class="text-muted mb-3">or click to browse and select a file</p>
+                                <div class="btn btn-primary btn-professional">
+                                    <i class="bi bi-folder2-open me-2"></i>Choose File
+                                </div>
+                            </div>
+                            <div id="fileInfo" class="d-none">
+                                <i class="bi bi-file-earmark-spreadsheet text-success mb-3" style="font-size: 3rem;"></i>
+                                <h6 class="fw-bold text-dark mb-2" id="fileName"></h6>
+                                <p class="text-muted mb-0" id="fileSize"></p>
+                                <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="removeFile">
+                                    <i class="bi bi-x-lg me-1"></i>Remove File
+                                </button>
+                            </div>
+                            {{ form.file }}
+                        </div>
+                        {% if form.file.errors %}
+                            <div class="text-danger small mt-2">
+                                {% for error in form.file.errors %}
+                                    <div><i class="bi bi-exclamation-triangle me-1"></i>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Bank Details Section -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="{{ form.bank_account_name.id_for_label }}" class="form-label fw-medium text-dark">
+                                Bank Account Name
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0">
+                                    <i class="bi bi-bank text-muted"></i>
+                                </span>
+                                {{ form.bank_account_name }}
+                            </div>
+                            {% if form.bank_account_name.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.bank_account_name.errors %}
+                                        <div><i class="bi bi-exclamation-triangle me-1"></i>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="text-muted">e.g., "Business Checking Account"</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.statement_period.id_for_label }}" class="form-label fw-medium text-dark">
+                                Statement Period
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0">
+                                    <i class="bi bi-calendar-range text-muted"></i>
+                                </span>
+                                {{ form.statement_period }}
+                            </div>
+                            {% if form.statement_period.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.statement_period.errors %}
+                                        <div><i class="bi bi-exclamation-triangle me-1"></i>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="text-muted">e.g., "January 2024" or "Q1 2024"</small>
+                        </div>
+                    </div>
+                    
+                    <!-- File Format Help -->
+                    <div class="alert alert-info border-0 bg-info bg-opacity-5" role="alert">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0 me-3">
+                                <i class="bi bi-info-circle text-info"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="fw-bold text-info mb-2">Supported File Formats</h6>
+                                <ul class="mb-0 small">
+                                    <li>CSV files from most major banks (Chase, Bank of America, Wells Fargo, etc.)</li>
+                                    <li>Standard columns: Date, Description, Amount, Balance</li>
+                                    <li>Maximum file size: 10MB</li>
+                                    <li>Encoding: UTF-8 or Windows-1252</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Submit Button -->
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted">
+                                <i class="bi bi-shield-check me-1"></i>
+                                Your data is processed securely and never shared with third parties.
+                            </small>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg btn-professional" id="submitBtn">
+                            <span class="spinner-border spinner-border-sm me-2 d-none" id="uploadSpinner"></span>
+                            <i class="bi bi-cloud-upload me-2" id="uploadIcon"></i>
+                            <span id="submitText">Upload & Process</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Help Section -->
+        <div class="card card-professional border-0 mt-4">
+            <div class="card-header bg-transparent border-0 pb-2">
+                <h6 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-question-circle me-2"></i>Need Help?
+                </h6>
+            </div>
+            <div class="card-body pt-2">
+                <div class="accordion accordion-flush" id="helpAccordion">
+                    <div class="accordion-item border-0">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent p-0 shadow-none" 
+                                    type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                How do I export my bank statement?
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                            <div class="accordion-body px-0">
+                                <ol class="small text-muted mb-0">
+                                    <li>Log into your online banking</li>
+                                    <li>Navigate to account statements or transaction history</li>
+                                    <li>Select the date range you want to reconcile</li>
+                                    <li>Export as CSV or download as spreadsheet</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item border-0">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent p-0 shadow-none" 
+                                    type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                What if my CSV format is different?
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                            <div class="accordion-body px-0">
+                                <p class="small text-muted mb-0">
+                                    Our system automatically detects common CSV formats. If you're having trouble, 
+                                    make sure your file includes columns for Date, Description, and Amount. 
+                                    Contact support if you need help with a specific bank format.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Professional card styling */
+.card-professional {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+/* Professional button styling */
+.btn-professional {
+    font-weight: 500;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.btn-professional:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Upload area styling */
+.upload-area {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+    border-color: #3b82f6 !important;
+    background-color: #eff6ff !important;
+}
+
+.upload-area.dragover {
+    border-color: #3b82f6 !important;
+    background-color: #dbeafe !important;
+}
+
+/* Form control enhancements */
+.form-control {
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-left: 0;
+}
+
+.form-control:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.1);
+}
+
+.input-group-text {
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem 0 0 0.5rem;
+}
+
+/* File input styling */
+#id_file {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* Loading state */
+.btn:disabled {
+    opacity: 0.7;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('id_file');
+    const uploadPrompt = document.getElementById('uploadPrompt');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const removeFile = document.getElementById('removeFile');
+    const submitBtn = document.getElementById('submitBtn');
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadSpinner = document.getElementById('uploadSpinner');
+    const uploadIcon = document.getElementById('uploadIcon');
+    const submitText = document.getElementById('submitText');
+    
+    // File selection handling
+    fileInput.addEventListener('change', handleFileSelect);
+    
+    // Drag and drop handling
+    uploadArea.addEventListener('dragover', handleDragOver);
+    uploadArea.addEventListener('dragleave', handleDragLeave);
+    uploadArea.addEventListener('drop', handleDrop);
+    
+    // Remove file handling
+    removeFile.addEventListener('click', clearFile);
+    
+    // Form submission handling
+    uploadForm.addEventListener('submit', handleSubmit);
+    
+    function handleFileSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            showFileInfo(files[0]);
+        }
+    }
+    
+    function handleDragOver(e) {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    }
+    
+    function handleDragLeave(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+    }
+    
+    function handleDrop(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            showFileInfo(files[0]);
+        }
+    }
+    
+    function showFileInfo(file) {
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        uploadPrompt.classList.add('d-none');
+        fileInfo.classList.remove('d-none');
+    }
+    
+    function clearFile() {
+        fileInput.value = '';
+        uploadPrompt.classList.remove('d-none');
+        fileInfo.classList.add('d-none');
+    }
+    
+    function handleSubmit(e) {
+        if (!fileInput.files.length) {
+            e.preventDefault();
+            alert('Please select a file to upload.');
+            return;
+        }
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        uploadSpinner.classList.remove('d-none');
+        uploadIcon.classList.add('d-none');
+        submitText.textContent = 'Uploading...';
+    }
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+});
+</script>
+{% endblock %}

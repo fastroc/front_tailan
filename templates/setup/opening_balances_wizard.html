@@ -1,0 +1,538 @@
+{% extends 'base.html' %}
+
+{% block title %}Opening Balances Setup - Professional Accounting System{% endblock %}
+
+{% block content %}
+<!-- Progress Header -->
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-12">
+        <div class="text-center mb-4">
+            <h1 class="h3 mb-1 fw-bold text-dark">Enter Your Opening Balances</h1>
+            <p class="text-muted mb-0">Set the starting balances for your accounts as of your financial year start date</p>
+        </div>
+        
+        <!-- Progress Steps -->
+        <div class="row g-2 mb-4">
+            <div class="col-3">
+                <div class="card card-professional border-0 bg-success bg-opacity-10">
+                    <div class="card-body text-center py-2">
+                        <i class="bi bi-check-circle-fill text-success mb-1"></i>
+                        <div class="small fw-medium text-success">Company Details</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="card card-professional border-0 bg-success bg-opacity-10">
+                    <div class="card-body text-center py-2">
+                        <i class="bi bi-check-circle-fill text-success mb-1"></i>
+                        <div class="small fw-medium text-success">Financial Year</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="card card-professional border-0 bg-success bg-opacity-10">
+                    <div class="card-body text-center py-2">
+                        <i class="bi bi-check-circle-fill text-success mb-1"></i>
+                        <div class="small fw-medium text-success">Chart of Accounts</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="card card-professional border-2 border-primary bg-primary bg-opacity-5">
+                    <div class="card-body text-center py-2">
+                        <i class="bi bi-arrow-right-circle-fill text-primary mb-1"></i>
+                        <div class="small fw-medium text-primary">Opening Balances</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="row">
+    <!-- Opening Balances Form -->
+    <div class="col-lg-8">
+        <div class="card card-professional">
+            <div class="card-header bg-transparent border-0">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h4 class="card-title mb-0">
+                            <i class="bi bi-calculator me-2"></i>Account Balances
+                        </h4>
+                        <small class="text-muted">Enter balances as of your financial year start date</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="clearAllBtn">
+                            <i class="bi bi-x-circle me-1"></i>Clear All
+                        </button>
+                        <button type="button" class="btn btn-outline-success btn-sm" id="validateBtn">
+                            <i class="bi bi-check-circle me-1"></i>Validate
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-body p-0">
+                <form method="post" id="openingBalancesForm">
+                    {% csrf_token %}
+                    
+                    <!-- Balance Validation Alert -->
+                    <div id="balanceAlert" class="alert alert-info border-0 rounded-0 d-none">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <div class="flex-grow-1">
+                                <strong>Balance Check:</strong>
+                                <span id="balanceMessage">Assets should equal Liabilities + Equity</span>
+                            </div>
+                            <div class="text-end">
+                                <div class="small">Difference: <span id="balanceDifference" class="fw-bold">$0.00</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if accounts_by_type %}
+                        {% for account_type, type_data in accounts_by_type.items %}
+                        <!-- Account Type Section -->
+                        <div class="account-type-section">
+                            <div class="bg-light px-4 py-3 border-bottom">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <i class="{{ type_data.icon }} text-primary me-2 fs-5"></i>
+                                        <h5 class="mb-0 fw-bold">{{ type_data.label }}</h5>
+                                        <span class="badge bg-secondary ms-2">{{ type_data.accounts|length }}</span>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <span class="small text-muted">
+                                            {% if type_data.is_debit_normal %}
+                                                Debit increases
+                                            {% else %}
+                                                Credit increases
+                                            {% endif %}
+                                        </span>
+                                        <span class="fw-bold text-primary" id="total-{{ account_type }}">$0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Account Entries -->
+                            <div class="account-entries">
+                                {% for account in type_data.accounts %}
+                                <div class="row align-items-center py-3 px-4 border-bottom account-row" data-account-type="{{ account_type }}">
+                                    <div class="col-md-1">
+                                        <span class="badge bg-light text-dark border">{{ account.code }}</span>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <div>
+                                            <div class="fw-medium">{{ account.name }}</div>
+                                            {% if account.description %}
+                                            <small class="text-muted">{{ account.description }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" 
+                                                   class="form-control balance-input" 
+                                                   name="balance_{{ account.id }}"
+                                                   placeholder="0.00"
+                                                   step="0.01"
+                                                   data-account-id="{{ account.id }}"
+                                                   data-account-type="{{ account_type }}"
+                                                   data-account-name="{{ account.name }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="balance-status text-muted" id="status-{{ account.id }}">
+                                                <i class="bi bi-dash-circle"></i> Not set
+                                            </span>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm clear-balance" data-account-id="{{ account.id }}">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <!-- Balance Summary -->
+                        <div class="bg-light px-4 py-4">
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <div class="card border-0 bg-white">
+                                        <div class="card-body py-3">
+                                            <div class="text-success fs-4" id="totalAssets">$0.00</div>
+                                            <div class="small text-muted">Total Assets</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card border-0 bg-white">
+                                        <div class="card-body py-3">
+                                            <div class="text-danger fs-4" id="totalLiabilities">$0.00</div>
+                                            <div class="small text-muted">Total Liabilities</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card border-0 bg-white">
+                                        <div class="card-body py-3">
+                                            <div class="text-info fs-4" id="totalEquity">$0.00</div>
+                                            <div class="small text-muted">Total Equity</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    {% else %}
+                        <!-- No Accounts Warning -->
+                        <div class="text-center py-5">
+                            <i class="bi bi-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3 mb-2">No Chart of Accounts Found</h4>
+                            <p class="text-muted mb-4">You need to set up your Chart of Accounts before entering opening balances.</p>
+                            <a href="{% url 'coa:chart_of_accounts' %}" class="btn btn-primary btn-professional">
+                                <i class="bi bi-list-task me-2"></i>Set Up Chart of Accounts
+                            </a>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Action Buttons -->
+                    {% if accounts_by_type %}
+                    <div class="px-4 py-4 border-top bg-white">
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'coa:chart_of_accounts' %}" class="btn btn-outline-secondary btn-professional">
+                                <i class="bi bi-arrow-left me-2"></i>
+                                Back to Chart of Accounts
+                            </a>
+                            
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-primary btn-professional" id="saveProgressBtn">
+                                    <i class="bi bi-save me-2"></i>Save Progress
+                                </button>
+                                <button type="submit" class="btn btn-success btn-professional">
+                                    <i class="bi bi-check-circle me-2"></i>Complete Setup
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Sidebar -->
+    <div class="col-lg-4">
+        <!-- Setup Progress Card -->
+        <div class="card card-professional mb-3">
+            <div class="card-header bg-transparent border-0">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-trophy me-2"></i>Setup Progress
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-3" style="height: 8px;">
+                    <div class="progress-bar bg-success" style="width: 75%"></div>
+                </div>
+                <div class="small text-muted mb-2">3 of 4 steps complete</div>
+                
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small">✅ Company Details</span>
+                    <span class="badge bg-success bg-opacity-10 text-success">Done</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small">✅ Financial Year</span>
+                    <span class="badge bg-success bg-opacity-10 text-success">Done</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small">✅ Chart of Accounts</span>
+                    <span class="badge bg-success bg-opacity-10 text-success">Done</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="small">🔄 Opening Balances</span>
+                    <span class="badge bg-primary bg-opacity-10 text-primary">Current</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Guide -->
+        <div class="card card-professional border-0 bg-light">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-lightbulb me-2"></i>Opening Balances Guide
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2">What are Opening Balances?</h6>
+                    <p class="small text-muted mb-0">
+                        These are the starting amounts in your accounts at the beginning of your 
+                        financial year. They represent your business position on day one.
+                    </p>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2">Balance Equation:</h6>
+                    <div class="bg-white rounded p-3 border">
+                        <div class="text-center">
+                            <div class="fw-bold text-primary">Assets = Liabilities + Equity</div>
+                            <small class="text-muted">This equation must always balance</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2">Common Examples:</h6>
+                    <ul class="small mb-0">
+                        <li><strong>Cash:</strong> Bank account balances</li>
+                        <li><strong>Accounts Receivable:</strong> Money owed to you</li>
+                        <li><strong>Accounts Payable:</strong> Money you owe</li>
+                        <li><strong>Equipment:</strong> Value of business assets</li>
+                        <li><strong>Owner's Equity:</strong> Your investment</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2">Tips:</h6>
+                    <ul class="small mb-0">
+                        <li>Use your last financial statement</li>
+                        <li>Check with your accountant</li>
+                        <li>Assets and Equity are positive</li>
+                        <li>Liabilities are positive amounts</li>
+                        <li>Leave zero balances empty</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-info border-0 p-3">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <small>
+                            <strong>Need Help?</strong><br>
+                            Don't worry if you're not sure about some balances. 
+                            You can always adjust them later.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Professional JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('openingBalancesForm');
+    const balanceInputs = document.querySelectorAll('.balance-input');
+    const clearButtons = document.querySelectorAll('.clear-balance');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const validateBtn = document.getElementById('validateBtn');
+    const balanceAlert = document.getElementById('balanceAlert');
+    
+    // Real-time balance calculation and validation
+    function updateBalances() {
+        let totalAssets = 0;
+        let totalLiabilities = 0;
+        let totalEquity = 0;
+        
+        // Calculate totals by account type
+        balanceInputs.forEach(input => {
+            const value = parseFloat(input.value) || 0;
+            const accountType = input.dataset.accountType;
+            const accountId = input.dataset.accountId;
+            const statusElement = document.getElementById(`status-${accountId}`);
+            
+            // Update individual account status
+            if (value !== 0) {
+                statusElement.innerHTML = `<i class="bi bi-check-circle text-success"></i> $${value.toFixed(2)}`;
+                statusElement.classList.remove('text-muted');
+                statusElement.classList.add('text-success');
+            } else {
+                statusElement.innerHTML = `<i class="bi bi-dash-circle"></i> Not set`;
+                statusElement.classList.remove('text-success');
+                statusElement.classList.add('text-muted');
+            }
+            
+            // Add to totals
+            if (accountType.includes('asset')) {
+                totalAssets += value;
+            } else if (accountType.includes('liability')) {
+                totalLiabilities += value;
+            } else if (accountType === 'equity') {
+                totalEquity += value;
+            }
+        });
+        
+        // Update section totals
+        updateSectionTotal('current_asset', totalAssets);
+        updateSectionTotal('fixed_asset', 0); // Will be calculated separately if needed
+        updateSectionTotal('current_liability', totalLiabilities);
+        updateSectionTotal('long_term_liability', 0);
+        updateSectionTotal('equity', totalEquity);
+        
+        // Update main totals
+        document.getElementById('totalAssets').textContent = `$${totalAssets.toFixed(2)}`;
+        document.getElementById('totalLiabilities').textContent = `$${totalLiabilities.toFixed(2)}`;
+        document.getElementById('totalEquity').textContent = `$${totalEquity.toFixed(2)}`;
+        
+        // Check balance equation
+        const difference = totalAssets - (totalLiabilities + totalEquity);
+        const balanceDifference = document.getElementById('balanceDifference');
+        const balanceMessage = document.getElementById('balanceMessage');
+        
+        if (Math.abs(difference) < 0.01) {
+            balanceAlert.classList.remove('alert-warning', 'alert-danger');
+            balanceAlert.classList.add('alert-success', 'd-block');
+            balanceAlert.classList.remove('d-none');
+            balanceMessage.textContent = 'Perfect! Your books are balanced.';
+            balanceDifference.textContent = '$0.00';
+            balanceDifference.className = 'fw-bold text-success';
+        } else if (totalAssets > 0 || totalLiabilities > 0 || totalEquity > 0) {
+            balanceAlert.classList.remove('alert-success', 'alert-info');
+            balanceAlert.classList.add('alert-warning', 'd-block');
+            balanceAlert.classList.remove('d-none');
+            balanceMessage.textContent = 'Assets should equal Liabilities + Equity';
+            balanceDifference.textContent = `$${Math.abs(difference).toFixed(2)}`;
+            balanceDifference.className = 'fw-bold text-warning';
+        } else {
+            balanceAlert.classList.add('d-none');
+        }
+    }
+    
+    function updateSectionTotal(sectionType, total) {
+        const element = document.getElementById(`total-${sectionType}`);
+        if (element) {
+            element.textContent = `$${total.toFixed(2)}`;
+        }
+    }
+    
+    // Event listeners
+    balanceInputs.forEach(input => {
+        input.addEventListener('input', updateBalances);
+        input.addEventListener('change', updateBalances);
+    });
+    
+    // Clear individual balance
+    clearButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const accountId = this.dataset.accountId;
+            const input = document.querySelector(`input[data-account-id="${accountId}"]`);
+            input.value = '';
+            updateBalances();
+        });
+    });
+    
+    // Clear all balances
+    clearAllBtn.addEventListener('click', function() {
+        if (confirm('Are you sure you want to clear all balances?')) {
+            balanceInputs.forEach(input => {
+                input.value = '';
+            });
+            updateBalances();
+        }
+    });
+    
+    // Validate balances
+    validateBtn.addEventListener('click', function() {
+        updateBalances();
+        // Scroll to balance alert
+        balanceAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        const submitBtn = this.querySelector('button[type="submit"]');
+        
+        // Check if any balances are entered
+        const hasBalances = Array.from(balanceInputs).some(input => parseFloat(input.value) || 0 !== 0);
+        
+        if (!hasBalances) {
+            if (!confirm('You haven\'t entered any opening balances. Are you sure you want to continue with zero balances?')) {
+                e.preventDefault();
+                return;
+            }
+        }
+        
+        // Show loading state
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Completing setup...';
+        submitBtn.disabled = true;
+    });
+    
+    // Save progress
+    document.getElementById('saveProgressBtn')?.addEventListener('click', function() {
+        // In a real application, this would save to backend
+        alert('Progress saved! You can continue later from where you left off.');
+    });
+    
+    // Initial calculation
+    updateBalances();
+});
+</script>
+
+<style>
+/* Professional styling for balance entries */
+.account-row:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.02);
+}
+
+.balance-input:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.1);
+}
+
+.account-type-section {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.account-entries .account-row:last-child {
+    border-bottom: none !important;
+}
+
+/* Balance validation styling */
+.alert {
+    border-left: 4px solid currentColor;
+}
+
+.progress {
+    border-radius: 1rem;
+}
+
+.progress-bar {
+    border-radius: 1rem;
+}
+
+/* Professional input group styling */
+.input-group-text {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    color: #6c757d;
+}
+
+/* Card hover effects */
+.card-professional:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+/* Button enhancements */
+.btn-professional {
+    font-weight: 500;
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.btn-professional:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+</style>
+{% endblock %}

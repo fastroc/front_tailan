@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+
+{% block title %}Professional Accounting System{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card-professional" style="background: linear-gradient(135deg, var(--bs-primary) 0%, #1e40af 100%); color: white; border-radius: 0.75rem;">
+            <div class="card-body text-center py-5">
+                <h1 class="display-4 fw-bold mb-3">
+                    <i class="bi bi-calculator me-3"></i>
+                    Professional Accounting System
+                </h1>
+                <p class="lead mb-4">Complete financial management solution for your business</p>
+                <div class="d-flex justify-content-center gap-3">
+                    <a href="/reconciliation/" class="btn btn-light btn-lg">
+                        <i class="bi bi-arrow-repeat me-2"></i>
+                        Start Reconciliation
+                    </a>
+                    <a href="/coa/" class="btn btn-outline-light btn-lg">
+                        <i class="bi bi-list-task me-2"></i>
+                        Chart of Accounts
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Setup Banner (when setup is incomplete) -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-warning border-0 shadow-sm" style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-left: 4px solid #f59e0b !important;">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 2rem;"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-1 fw-bold text-dark">
+                            <i class="bi bi-gear me-2"></i>Complete Your Accounting Setup
+                        </h5>
+                        <p class="mb-0 text-muted">Set up your financial year, chart of accounts, and opening balances to start using the system</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Setup Progress -->
+                    <div class="text-center">
+                        <div class="small text-muted mb-1">Setup Progress</div>
+                        <div class="progress" style="width: 100px; height: 8px;">
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="small text-muted mt-1">1 of 4 steps</div>
+                    </div>
+                    <!-- Setup Actions -->
+                    <div class="d-flex gap-2">
+                        <a href="/setup/company/" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-building me-1"></i>Company Details
+                        </a>
+                        <a href="/setup/financial-year/" class="btn btn-primary btn-sm">
+                            <i class="bi bi-calendar-range me-1"></i>Start Setup
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Setup Steps Preview -->
+            <div class="row g-2 mt-3">
+                <div class="col-3">
+                    <div class="card bg-white border-0 shadow-sm">
+                        <div class="card-body text-center py-2">
+                            <i class="bi bi-building text-muted mb-1"></i>
+                            <div class="small text-muted">Company</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="card bg-white border-0 shadow-sm">
+                        <div class="card-body text-center py-2">
+                            <i class="bi bi-calendar-range text-primary mb-1"></i>
+                            <div class="small text-primary fw-medium">Financial Year</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="card bg-white border-0 shadow-sm">
+                        <div class="card-body text-center py-2">
+                            <i class="bi bi-list-task text-muted mb-1"></i>
+                            <div class="small text-muted">Chart of Accounts</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="card bg-white border-0 shadow-sm">
+                        <div class="card-body text-center py-2">
+                            <i class="bi bi-calculator text-muted mb-1"></i>
+                            <div class="small text-muted">Opening Balances</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Dismiss Option -->
+            <div class="text-end mt-3">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="dismissSetupBanner()">
+                    <i class="bi bi-x me-1"></i>Remind me later
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Metrics Row -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card-professional">
+            <div class="card-body text-center">
+                <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle" 
+                     style="width: 60px; height: 60px; background-color: rgba(30, 58, 138, 0.1);">
+                    <i class="bi bi-bank text-primary fs-4"></i>
+                </div>
+                <h5 class="text-muted small mb-1">BANK ACCOUNTS</h5>
+                <h3 class="fw-bold text-dark">12</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card-professional">
+            <div class="card-body text-center">
+                <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle" 
+                     style="width: 60px; height: 60px; background-color: rgba(5, 150, 105, 0.1);">
+                    <i class="bi bi-check-circle text-success fs-4"></i>
+                </div>
+                <h5 class="text-muted small mb-1">RECONCILED</h5>
+                <h3 class="fw-bold text-dark">8</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card-professional">
+            <div class="card-body text-center">
+                <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle" 
+                     style="width: 60px; height: 60px; background-color: rgba(217, 119, 6, 0.1);">
+                    <i class="bi bi-clock text-warning fs-4"></i>
+                </div>
+                <h5 class="text-muted small mb-1">PENDING</h5>
+                <h3 class="fw-bold text-dark">4</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card-professional">
+            <div class="card-body text-center">
+                <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle" 
+                     style="width: 60px; height: 60px; background-color: rgba(2, 132, 199, 0.1);">
+                    <i class="bi bi-file-text text-info fs-4"></i>
+                </div>
+                <h5 class="text-muted small mb-1">TRANSACTIONS</h5>
+                <h3 class="fw-bold text-dark">1,247</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Row -->
+<div class="row g-4">
+    <!-- Quick Actions -->
+    <div class="col-lg-8">
+        <div class="card-professional h-100">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightning me-2"></i>
+                    Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <a href="/reconciliation/" class="card border border-primary border-opacity-25 text-decoration-none h-100 card-professional">
+                            <div class="card-body text-center">
+                                <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle" 
+                                     style="width: 50px; height: 50px; background-color: rgba(30, 58, 138, 0.1);">
+                                    <i class="bi bi-arrow-repeat text-primary fs-5"></i>
+                                </div>
+                                <h6 class="card-title text-dark">Bank Reconciliation</h6>
+                                <p class="card-text text-muted small">Match transactions with bank statements</p>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="/coa/" class="card border border-success border-opacity-25 text-decoration-none h-100 card-professional">
+                            <div class="card-body text-center">
+                                <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle" 
+                                     style="width: 50px; height: 50px; background-color: rgba(5, 150, 105, 0.1);">
+                                    <i class="bi bi-list-task text-success fs-5"></i>
+                                </div>
+                                <h6 class="card-title text-dark">Chart of Accounts</h6>
+                                <p class="card-text text-muted small">Manage your account structure</p>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="/users/" class="card border border-info border-opacity-25 text-decoration-none h-100 card-professional">
+                            <div class="card-body text-center">
+                                <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle" 
+                                     style="width: 50px; height: 50px; background-color: rgba(2, 132, 199, 0.1);">
+                                    <i class="bi bi-people text-info fs-5"></i>
+                                </div>
+                                <h6 class="card-title text-dark">User Management</h6>
+                                <p class="card-text text-muted small">Manage system users and permissions</p>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="/api/" class="card border border-warning border-opacity-25 text-decoration-none h-100 card-professional">
+                            <div class="card-body text-center">
+                                <div class="d-inline-flex align-items-center justify-content-center mb-3 rounded-circle" 
+                                     style="width: 50px; height: 50px; background-color: rgba(217, 119, 6, 0.1);">
+                                    <i class="bi bi-gear text-warning fs-5"></i>
+                                </div>
+                                <h6 class="card-title text-dark">API Integration</h6>
+                                <p class="card-text text-muted small">Connect with external systems</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="col-lg-4">
+        <div class="card-professional h-100">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock-history me-2"></i>
+                    Recent Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline position-relative">
+                    <div class="timeline-item mb-3">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <div class="d-flex align-items-center justify-content-center rounded-circle" 
+                                     style="width: 32px; height: 32px; background-color: rgba(5, 150, 105, 0.1);">
+                                    <i class="bi bi-check text-success small"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <p class="small mb-1 text-dark">Bank reconciliation completed</p>
+                                <p class="small text-muted mb-0">Chase Business - 2 hours ago</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="timeline-item mb-3">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <div class="d-flex align-items-center justify-content-center rounded-circle" 
+                                     style="width: 32px; height: 32px; background-color: rgba(30, 58, 138, 0.1);">
+                                    <i class="bi bi-upload text-primary small"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <p class="small mb-1 text-dark">New statement uploaded</p>
+                                <p class="small text-muted mb-0">Wells Fargo - 4 hours ago</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="timeline-item mb-3">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <div class="d-flex align-items-center justify-content-center rounded-circle" 
+                                     style="width: 32px; height: 32px; background-color: rgba(2, 132, 199, 0.1);">
+                                    <i class="bi bi-person-plus text-info small"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <p class="small mb-1 text-dark">New user added</p>
+                                <p class="small text-muted mb-0">Sarah Johnson - Yesterday</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <a href="#" class="btn btn-outline-primary btn-sm btn-professional">
+                        View All Activity
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

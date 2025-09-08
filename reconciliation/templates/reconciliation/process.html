@@ -1,0 +1,307 @@
+{% extends 'base.html' %}
+
+{% block title %}Process Bank Statement - {{ active_company.name|default:"Professional Accounting System" }}{% endblock %}
+
+{% block content %}
+<!-- Company Context Header -->
+{% if active_company %}
+<div class="company-context-header mb-3">
+    <div class="d-flex align-items-center">
+        <div class="company-logo-small me-3">
+            {% if active_company.logo %}
+                <img src="{{ active_company.logo.url }}" alt="{{ active_company.name }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
+            {% else %}
+                <div class="bg-primary rounded d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; color: white; font-weight: 600;">
+                    {{ active_company.name|first|upper }}
+                </div>
+            {% endif %}
+        </div>
+        <div>
+            <h6 class="text-muted mb-0">
+                <i class="bi bi-building me-1"></i>
+                {{ active_company.name }}
+            </h6>
+            <small class="text-muted">Process Bank Statement</small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Breadcrumb Navigation -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        {% if active_company %}
+            <li class="breadcrumb-item">{{ active_company.name }}</li>
+        {% endif %}
+        <li class="breadcrumb-item">Banking</li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'reconciliation:file_list' %}" class="text-decoration-none">Bank Reconciliation</a>
+        </li>
+        <li class="breadcrumb-item active">Process Statement</li>
+    </ol>
+</nav>
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="h3 mb-1 fw-bold text-dark">
+            <i class="bi bi-gear text-primary me-2"></i>Process Bank Statement
+        </h2>
+        <p class="text-muted mb-0">Review and process your uploaded bank statement file</p>
+    </div>
+    <div>
+        <a href="{% url 'reconciliation:file_list' %}" class="btn btn-outline-secondary btn-professional">
+            <i class="bi bi-arrow-left me-2"></i>Back to Files
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- File Information Card -->
+        <div class="card card-professional border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-0 pb-2">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>
+                        {{ uploaded_file.file_name }}
+                    </h5>
+                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">
+                        <i class="bi bi-clock me-1"></i>Pending Processing
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="bg-light rounded p-3">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-bank text-muted me-3 fs-4"></i>
+                                <div>
+                                    <div class="small text-muted">Bank Account</div>
+                                    <div class="fw-medium">{{ uploaded_file.bank_account_name|default:"Not specified" }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="bg-light rounded p-3">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-calendar-range text-muted me-3 fs-4"></i>
+                                <div>
+                                    <div class="small text-muted">Statement Period</div>
+                                    <div class="fw-medium">{{ uploaded_file.statement_period|default:"Not specified" }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="bg-light rounded p-3">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-file-text text-muted me-3 fs-4"></i>
+                                <div>
+                                    <div class="small text-muted">File Size</div>
+                                    <div class="fw-medium">{{ uploaded_file.file_size|filesizeformat }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="bg-light rounded p-3">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-calendar3 text-muted me-3 fs-4"></i>
+                                <div>
+                                    <div class="small text-muted">Uploaded</div>
+                                    <div class="fw-medium">{{ uploaded_file.created_at|date:"M d, Y H:i" }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Processing Instructions Card -->
+        <div class="card card-professional border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-0 pb-2">
+                <h5 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-info-circle text-info me-2"></i>What happens during processing?
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="bg-primary bg-opacity-10 rounded-3 p-2">
+                                    <i class="bi bi-1-circle-fill text-primary"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-1">File Validation</h6>
+                                <p class="text-muted small mb-0">We'll validate your CSV file format and check for required columns like Date, Amount, and Description.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="bg-primary bg-opacity-10 rounded-3 p-2">
+                                    <i class="bi bi-2-circle-fill text-primary"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-1">Data Extraction</h6>
+                                <p class="text-muted small mb-0">We'll extract transaction data from your file, parsing dates, amounts, and transaction descriptions.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="bg-primary bg-opacity-10 rounded-3 p-2">
+                                    <i class="bi bi-3-circle-fill text-primary"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-1">Transaction Import</h6>
+                                <p class="text-muted small mb-0">Valid transactions will be imported into your system and made available for reconciliation.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="bg-primary bg-opacity-10 rounded-3 p-2">
+                                    <i class="bi bi-4-circle-fill text-primary"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-1">Review & Match</h6>
+                                <p class="text-muted small mb-0">After processing, you'll be able to review transactions and match them with your accounting records.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Process Button Card -->
+        <div class="card card-professional border-0 shadow-sm">
+            <div class="card-body p-4 text-center">
+                <div class="mb-4">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="bi bi-play-fill text-success" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+                
+                <h4 class="fw-bold text-dark mb-2">Ready to Process</h4>
+                <p class="text-muted mb-4">
+                    Your file is ready for processing. This may take a few moments depending on the file size.
+                </p>
+                
+                <form method="post" id="processForm">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-lg btn-professional" id="processBtn">
+                        <span class="spinner-border spinner-border-sm me-2 d-none" id="processSpinner"></span>
+                        <i class="bi bi-play-fill me-2" id="processIcon"></i>
+                        <span id="processText">Start Processing</span>
+                    </button>
+                </form>
+                
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-clock me-1"></i>
+                        Processing typically takes 10-30 seconds for most files
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Progress Card (Hidden by default) -->
+        <div class="card card-professional border-0 shadow-sm mt-4 d-none" id="progressCard">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <h5 class="text-center fw-bold text-dark mb-2">Processing Your File...</h5>
+                <p class="text-center text-muted mb-4">
+                    Please wait while we extract and import your bank transactions.
+                </p>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 100%"></div>
+                </div>
+                <div class="text-center mt-3">
+                    <small class="text-muted">Do not close this page while processing</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Professional card styling */
+.card-professional {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+/* Professional button styling */
+.btn-professional {
+    font-weight: 500;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.btn-professional:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Badge enhancements */
+.badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.4rem 0.8rem;
+}
+
+/* Progress bar styling */
+.progress {
+    border-radius: 0.5rem;
+    background-color: #f1f5f9;
+}
+
+.progress-bar {
+    border-radius: 0.5rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const processForm = document.getElementById('processForm');
+    const processBtn = document.getElementById('processBtn');
+    const processSpinner = document.getElementById('processSpinner');
+    const processIcon = document.getElementById('processIcon');
+    const processText = document.getElementById('processText');
+    const progressCard = document.getElementById('progressCard');
+    
+    processForm.addEventListener('submit', function(e) {
+        // Show loading state
+        processBtn.disabled = true;
+        processSpinner.classList.remove('d-none');
+        processIcon.classList.add('d-none');
+        processText.textContent = 'Processing...';
+        
+        // Show progress card
+        progressCard.classList.remove('d-none');
+        
+        // Scroll to progress card
+        progressCard.scrollIntoView({ behavior: 'smooth' });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,541 @@
+{% extends 'base.html' %}
+
+{% block title %}Financial Year Setup - Professional Accounting System{% endblock %}
+
+{% block content %}
+<!-- Progress Header -->
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-10">
+        <div class="text-center mb-4">
+            <h1 class="h3 mb-1 fw-bold text-dark">Set Up Your Financial Year</h1>
+            <p class="text-muted mb-0">This determines how your financial reports are organized and calculated</p>
+        </div>
+        
+        <!-- Progress Steps (matching your stats cards style) -->
+        <div class="row g-2 mb-4">
+            <div class="col-3">
+                <div class="card card-professional border-0 bg-success bg-opacity-10">
+                    <div class="card-body text-center py-2">
+                        <i class="bi bi-check-circle-fill text-success mb-1"></i>
+                        <div class="small fw-medium text-success">Company Details</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="card card-professional border-2 border-primary bg-primary bg-opacity-5">
+                    <div class="card-body text-center py-2">
+                        <i class="bi bi-arrow-right-circle-fill text-primary mb-1"></i>
+                        <div class="small fw-medium text-primary">Financial Year</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="card card-professional border-0 bg-light">
+                    <div class="card-body text-center py-2">
+                        <i class="bi bi-circle text-muted mb-1"></i>
+                        <div class="small text-muted">Chart of Accounts</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="card card-professional border-0 bg-light">
+                    <div class="card-body text-center py-2">
+                        <i class="bi bi-circle text-muted mb-1"></i>
+                        <div class="small text-muted">Opening Balances</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Wizard Content -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Financial Year Selection Card (matching your COA card style) -->
+        <div class="card card-professional">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <div class="mb-3">
+                        <i class="bi bi-calendar-range text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h3 class="h4 fw-bold text-dark mb-2">When does your financial year start?</h3>
+                    <p class="text-muted">Choose the date range that matches your business requirements</p>
+                </div>
+
+                <form id="financialYearForm" method="post">
+                    {% csrf_token %}
+                    
+                    <!-- Popular Financial Year Options (matching your account selection style) -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="financial-year-option active" data-start="2024-01-01" data-end="2024-12-31" data-type="calendar">
+                                <div class="card card-professional border-2 border-primary bg-primary bg-opacity-5 h-100">
+                                    <div class="card-body text-center p-3">
+                                        <i class="bi bi-calendar-check text-primary fs-1 mb-2"></i>
+                                        <h5 class="fw-bold text-primary mb-1">Calendar Year</h5>
+                                        <p class="text-primary mb-2">January 1 - December 31</p>
+                                        <small class="text-muted">Most common for businesses</small>
+                                        <div class="mt-2">
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">
+                                                <i class="bi bi-check-circle me-1"></i>Recommended
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="financial-year-option" data-start="2024-04-01" data-end="2025-03-31" data-type="uk">
+                                <div class="card card-professional border h-100 hover-card">
+                                    <div class="card-body text-center p-3">
+                                        <i class="bi bi-calendar-week text-info fs-1 mb-2"></i>
+                                        <h5 class="fw-bold text-dark mb-1">UK Tax Year</h5>
+                                        <p class="text-muted mb-2">April 1 - March 31</p>
+                                        <small class="text-muted">Aligned with UK tax calendar</small>
+                                        <div class="mt-2">
+                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">
+                                                <i class="bi bi-geo-alt me-1"></i>UK Standard
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="financial-year-option" data-start="2024-07-01" data-end="2025-06-30" data-type="australia">
+                                <div class="card card-professional border h-100 hover-card">
+                                    <div class="card-body text-center p-3">
+                                        <i class="bi bi-calendar-range text-warning fs-1 mb-2"></i>
+                                        <h5 class="fw-bold text-dark mb-1">Australian FY</h5>
+                                        <p class="text-muted mb-2">July 1 - June 30</p>
+                                        <small class="text-muted">Australian financial year</small>
+                                        <div class="mt-2">
+                                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">
+                                                <i class="bi bi-geo-alt me-1"></i>AU Standard
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="financial-year-option custom" data-type="custom">
+                                <div class="card card-professional border h-100 hover-card">
+                                    <div class="card-body text-center p-3">
+                                        <i class="bi bi-calendar-plus text-secondary fs-1 mb-2"></i>
+                                        <h5 class="fw-bold text-dark mb-1">Custom Dates</h5>
+                                        <p class="text-muted mb-2">Choose your own dates</p>
+                                        <small class="text-muted">For unique business needs</small>
+                                        <div class="mt-2">
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25">
+                                                <i class="bi bi-gear me-1"></i>Custom
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Date Selection (Hidden by default, matching your form styling) -->
+                    <div id="customDateRange" class="custom-dates d-none">
+                        <div class="card bg-light border-0 p-4 mb-4">
+                            <h5 class="fw-bold mb-3">
+                                <i class="bi bi-calendar-plus me-2"></i>Custom Financial Year Dates
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="fyStart" class="form-label fw-medium">Financial Year Starts</label>
+                                    <input type="date" class="form-control form-control-lg" id="fyStart" name="fy_start">
+                                    <div class="form-text">Choose the first day of your financial year</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="fyEnd" class="form-label fw-medium">Financial Year Ends</label>
+                                    <input type="date" class="form-control form-control-lg" id="fyEnd" name="fy_end">
+                                    <div class="form-text">Choose the last day of your financial year</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Current Selection Preview (matching your stats cards) -->
+                    <div id="selectionPreview" class="selection-preview mb-4">
+                        <div class="card card-professional border-0 bg-primary bg-opacity-5">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <h6 class="fw-bold text-primary mb-1">
+                                            <i class="bi bi-calendar-check me-2"></i>Your Financial Year
+                                        </h6>
+                                        <div class="d-flex align-items-center">
+                                            <span id="selectedPeriod" class="fw-medium text-dark">January 1, 2024 - December 31, 2024</span>
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 ms-3">
+                                                <i class="bi bi-check-circle me-1"></i>Selected
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="small text-muted">Duration</div>
+                                        <div id="periodDuration" class="fw-bold text-primary">12 months</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reporting Frequency Selection -->
+                    <div class="mb-4">
+                        <h5 class="fw-bold mb-3">
+                            <i class="bi bi-graph-up me-2"></i>How often do you want to prepare reports?
+                        </h5>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <div class="form-check form-check-card">
+                                    <input class="form-check-input" type="radio" name="reporting_frequency" id="monthly" value="monthly" checked>
+                                    <label class="form-check-label" for="monthly">
+                                        <div class="card card-professional border h-100">
+                                            <div class="card-body text-center p-3">
+                                                <i class="bi bi-calendar-month text-success fs-2 mb-2"></i>
+                                                <h6 class="fw-bold mb-1">Monthly</h6>
+                                                <small class="text-muted">Recommended for most businesses</small>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-check-card">
+                                    <input class="form-check-input" type="radio" name="reporting_frequency" id="quarterly" value="quarterly">
+                                    <label class="form-check-label" for="quarterly">
+                                        <div class="card card-professional border h-100">
+                                            <div class="card-body text-center p-3">
+                                                <i class="bi bi-calendar3 text-info fs-2 mb-2"></i>
+                                                <h6 class="fw-bold mb-1">Quarterly</h6>
+                                                <small class="text-muted">Every 3 months</small>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-check-card">
+                                    <input class="form-check-input" type="radio" name="reporting_frequency" id="annually" value="annually">
+                                    <label class="form-check-label" for="annually">
+                                        <div class="card card-professional border h-100">
+                                            <div class="card-body text-center p-3">
+                                                <i class="bi bi-calendar-year text-warning fs-2 mb-2"></i>
+                                                <h6 class="fw-bold mb-1">Annually</h6>
+                                                <small class="text-muted">Once per year</small>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons (matching your button styling) -->
+                    <div class="d-flex justify-content-between pt-3 border-top">
+                        <a href="{% url 'home' %}" class="btn btn-outline-secondary btn-professional">
+                            <i class="bi bi-arrow-left me-2"></i>
+                            Back to Dashboard
+                        </a>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-primary btn-professional" id="previewBtn">
+                                <i class="bi bi-eye me-2"></i>
+                                Preview Setup
+                            </button>
+                            <button type="submit" class="btn btn-primary btn-professional">
+                                Continue to Chart of Accounts
+                                <i class="bi bi-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Hidden inputs -->
+                    <input type="hidden" id="selectedStartDate" name="start_date" value="2024-01-01">
+                    <input type="hidden" id="selectedEndDate" name="end_date" value="2024-12-31">
+                    <input type="hidden" id="selectedType" name="fy_type" value="calendar">
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Sidebar (matching your COA help section) -->
+    <div class="col-lg-4">
+        <div class="card card-professional border-0 bg-light">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Financial Year Guide
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2">Why This Matters:</h6>
+                    <ul class="small mb-0">
+                        <li>Determines how your reports are organized</li>
+                        <li>Affects tax calculation periods</li>
+                        <li>Sets up proper accounting cycles</li>
+                        <li>Aligns with business planning periods</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2">Popular Choices:</h6>
+                    <div class="small">
+                        <div class="mb-2">
+                            <span class="badge bg-success bg-opacity-10 text-success me-2">Calendar</span>
+                            Most businesses worldwide
+                        </div>
+                        <div class="mb-2">
+                            <span class="badge bg-info bg-opacity-10 text-info me-2">UK Tax</span>
+                            UK businesses and contractors
+                        </div>
+                        <div class="mb-2">
+                            <span class="badge bg-warning bg-opacity-10 text-warning me-2">Australian</span>
+                            Australian businesses
+                        </div>
+                        <div class="mb-2">
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary me-2">Custom</span>
+                            Unique business requirements
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h6 class="fw-bold mb-2">Can I Change This Later?</h6>
+                    <p class="small text-muted mb-0">
+                        Yes, but it's best to set it correctly now. Changing later requires 
+                        adjusting existing transactions and reports.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Stats Preview -->
+        <div class="card card-professional mt-3">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-graph-up me-2"></i>
+                    Your Setup Preview
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="text-center p-2 rounded bg-light">
+                            <div class="small text-muted">Reporting Periods</div>
+                            <div id="periodsCount" class="fw-bold text-primary">12</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-2 rounded bg-light">
+                            <div class="small text-muted">Next Period Ends</div>
+                            <div id="nextPeriodEnd" class="fw-bold text-info">Jan 31</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Professional JavaScript for interactions -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const options = document.querySelectorAll('.financial-year-option');
+    const customDateRange = document.getElementById('customDateRange');
+    const selectedPeriod = document.getElementById('selectedPeriod');
+    const periodDuration = document.getElementById('periodDuration');
+    const periodsCount = document.getElementById('periodsCount');
+    const nextPeriodEnd = document.getElementById('nextPeriodEnd');
+    
+    // Handle financial year option selection
+    options.forEach(option => {
+        option.addEventListener('click', function() {
+            // Remove active class from all options
+            options.forEach(opt => {
+                opt.classList.remove('active');
+                const card = opt.querySelector('.card');
+                card.classList.remove('border-primary', 'bg-primary', 'bg-opacity-5');
+                card.classList.add('border', 'hover-card');
+            });
+            
+            // Add active class to selected option
+            this.classList.add('active');
+            const selectedCard = this.querySelector('.card');
+            selectedCard.classList.add('border-primary', 'bg-primary', 'bg-opacity-5');
+            selectedCard.classList.remove('border', 'hover-card');
+            
+            // Handle custom date selection
+            if (this.classList.contains('custom')) {
+                customDateRange.classList.remove('d-none');
+            } else {
+                customDateRange.classList.add('d-none');
+                
+                // Update hidden inputs and preview
+                const startDate = this.dataset.start;
+                const endDate = this.dataset.end;
+                const type = this.dataset.type;
+                
+                document.getElementById('selectedStartDate').value = startDate;
+                document.getElementById('selectedEndDate').value = endDate;
+                document.getElementById('selectedType').value = type;
+                
+                updatePreview(startDate, endDate);
+            }
+        });
+    });
+    
+    // Handle custom date changes
+    document.getElementById('fyStart').addEventListener('change', updateCustomDates);
+    document.getElementById('fyEnd').addEventListener('change', updateCustomDates);
+    
+    function updateCustomDates() {
+        const startDate = document.getElementById('fyStart').value;
+        const endDate = document.getElementById('fyEnd').value;
+        
+        if (startDate && endDate) {
+            document.getElementById('selectedStartDate').value = startDate;
+            document.getElementById('selectedEndDate').value = endDate;
+            document.getElementById('selectedType').value = 'custom';
+            
+            updatePreview(startDate, endDate);
+        }
+    }
+    
+    function updatePreview(startDate, endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        // Format dates nicely
+        const formatter = new Intl.DateTimeFormat('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        
+        selectedPeriod.textContent = `${formatter.format(start)} - ${formatter.format(end)}`;
+        
+        // Calculate duration
+        const months = (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth() + 1;
+        periodDuration.textContent = `${months} months`;
+        
+        // Update reporting frequency
+        const frequency = document.querySelector('input[name="reporting_frequency"]:checked').value;
+        let periods = 12;
+        if (frequency === 'quarterly') periods = 4;
+        if (frequency === 'annually') periods = 1;
+        
+        periodsCount.textContent = periods;
+        
+        // Next period end (simplified)
+        const nextMonth = new Date(start);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        nextPeriodEnd.textContent = nextMonth.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    
+    // Handle reporting frequency changes
+    document.querySelectorAll('input[name="reporting_frequency"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            // Update periods count
+            let periods = 12;
+            if (this.value === 'quarterly') periods = 4;
+            if (this.value === 'annually') periods = 1;
+            
+            periodsCount.textContent = periods;
+            
+            // Update form check styling
+            document.querySelectorAll('.form-check-card .card').forEach(card => {
+                card.classList.remove('border-primary', 'bg-primary', 'bg-opacity-5');
+                card.classList.add('border');
+            });
+            
+            const selectedCard = this.closest('.form-check-card').querySelector('.card');
+            selectedCard.classList.add('border-primary', 'bg-primary', 'bg-opacity-5');
+            selectedCard.classList.remove('border');
+        });
+    });
+    
+    // Preview button
+    document.getElementById('previewBtn').addEventListener('click', function() {
+        // Could open a modal with setup preview
+        alert('Preview functionality would show a summary of your setup choices');
+    });
+    
+    // Form submission
+    document.getElementById('financialYearForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Setting up...';
+        submitBtn.disabled = true;
+        
+        // Simulate processing
+        setTimeout(() => {
+            // In real implementation, this would submit to backend
+            alert('Financial year setup complete! Redirecting to Chart of Accounts...');
+            // window.location.href = '/coa/';
+        }, 2000);
+    });
+});
+</script>
+
+<style>
+/* Professional hover effects matching your COA template */
+.hover-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+.financial-year-option {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.financial-year-option:hover .card {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+/* Form check cards styling */
+.form-check-card {
+    position: relative;
+}
+
+.form-check-card .form-check-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.form-check-card .form-check-label {
+    cursor: pointer;
+    width: 100%;
+}
+
+.form-check-card:hover .card {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+/* Professional input styling matching your forms */
+.form-control:focus, .form-select:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.1);
+}
+
+.form-control-lg {
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends 'auth_base.html' %}
+{% load static %}
+
+{% block title %}Sign In - Professional Accounting System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1>TEST LOGIN FORM</h1>
+        <p>This is a simplified version of the login template.</p>
+    </div>
+</div>
+{% endblock %}

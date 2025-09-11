@@ -1,0 +1,577 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Reconciliation Dashboard - {{ block.super }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Reconciliation specific styles aligned with main design system */
+    .reconciliation-container {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        min-height: calc(100vh - var(--navbar-height));
+    }
+
+    .card-reconciliation {
+        border: none;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border-radius: 1rem;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        margin-bottom: 2rem;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(59, 130, 246, 0.1);
+    }
+
+    .card-reconciliation:hover {
+        box-shadow: 0 8px 35px rgba(59, 130, 246, 0.15);
+        transform: translateY(-4px);
+    }
+
+    .transaction-item {
+        padding: 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.375rem;
+        background: #ffffff;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .transaction-item:hover {
+        border-color: var(--primary-color);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+    }
+
+    .amount-debit {
+        color: #dc2626;
+        font-weight: 600;
+    }
+
+    .amount-credit {
+        color: #059669;
+        font-weight: 600;
+    }
+
+    .btn-reconcile {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        border: none;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        min-width: 100px;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .btn-reconcile:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+        color: white;
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    }
+
+    .btn-reconcile:disabled {
+        background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+        transform: none;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .match-form {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-top: 1rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    .form-control {
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        padding: 0.625rem;
+        transition: all 0.2s ease;
+        font-size: 0.875rem;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .status-unreconciled {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-reconciled {
+        background: #d1fae5;
+        color: #065f46;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .stats-card {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        transition: all 0.2s ease;
+    }
+
+    .stats-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .stats-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .stats-label {
+        color: #6b7280;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    /* Toast notification styles */
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1050;
+    }
+
+    .toast {
+        min-width: 300px;
+        background: white;
+        border: none;
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .toast-success .toast-header {
+        background: #d1fae5;
+        color: #065f46;
+        border-bottom: 1px solid #a7f3d0;
+    }
+
+    /* Help section styles */
+    .help-section {
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+
+    .help-title {
+        color: #0369a1;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .help-text {
+        color: #0c4a6e;
+        font-size: 0.8rem;
+        line-height: 1.4;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Progress indicator */
+    .progress-container {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 0.375rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    .progress-step {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .progress-step.completed {
+        color: #059669;
+    }
+
+    .progress-step.active {
+        color: var(--primary-color);
+        font-weight: 500;
+    }
+
+    .progress-step i {
+        margin-right: 0.5rem;
+        width: 16px;
+    }
+
+    /* Bank Account Item Styles */
+    .bank-account-item {
+        padding: 1.5rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        background: #ffffff;
+        transition: all 0.3s ease;
+        margin-bottom: 1rem;
+    }
+
+    .bank-account-item:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .account-info h6 {
+        color: #1f2937;
+        font-weight: 600;
+    }
+
+    .account-balance strong {
+        font-size: 1.1rem;
+    }
+
+    .progress {
+        border-radius: 10px;
+        background-color: #e5e7eb;
+    }
+
+    .progress-bar {
+        border-radius: 10px;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reconciliation-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <h1 class="mb-2">
+                        <i class="bi bi-check-circle me-3"></i>
+                        Bank Reconciliation
+                    </h1>
+                    <p class="mb-0 opacity-90">Match and reconcile bank transactions with your accounting records</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Bank Accounts List -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card-reconciliation">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-bank me-2"></i>
+                            Bank Accounts - Reconciliation Status
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- ANZ Business Account -->
+                        <div class="bank-account-item mb-4" data-account="anz-business">
+                            <div class="row align-items-center">
+                                <div class="col-md-3">
+                                    <div class="account-info">
+                                        <h6 class="mb-1"><i class="bi bi-bank2 me-2 text-primary"></i>ANZ Business Account</h6>
+                                        <small class="text-muted">Account: ***1234</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="account-balance">
+                                        <small class="text-muted">Balance</small><br>
+                                        <strong class="amount-credit">$15,750.00</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="unreconciled-count">
+                                        <small class="text-muted">Unreconciled</small><br>
+                                        <span class="badge bg-warning">8 transactions</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="progress-info">
+                                        <small class="text-muted">Progress</small>
+                                        <div class="progress mt-1" style="height: 8px;">
+                                            <div class="progress-bar bg-success" style="width: 75%"></div>
+                                        </div>
+                                        <small class="text-success">75% Complete</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <button class="btn btn-reconcile" onclick="openAccountReconciliation('anz-business')">
+                                        <i class="bi bi-play-fill me-1"></i>Reconcile
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Commonwealth Bank Account -->
+                        <div class="bank-account-item mb-4" data-account="cba-savings">
+                            <div class="row align-items-center">
+                                <div class="col-md-3">
+                                    <div class="account-info">
+                                        <h6 class="mb-1"><i class="bi bi-bank2 me-2 text-primary"></i>CBA Savings Account</h6>
+                                        <small class="text-muted">Account: ***5678</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="account-balance">
+                                        <small class="text-muted">Balance</small><br>
+                                        <strong class="amount-credit">$8,920.00</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="unreconciled-count">
+                                        <small class="text-muted">Unreconciled</small><br>
+                                        <span class="badge bg-warning">4 transactions</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="progress-info">
+                                        <small class="text-muted">Progress</small>
+                                        <div class="progress mt-1" style="height: 8px;">
+                                            <div class="progress-bar bg-success" style="width: 60%"></div>
+                                        </div>
+                                        <small class="text-warning">60% Complete</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <button class="btn btn-reconcile" onclick="openAccountReconciliation('cba-savings')">
+                                        <i class="bi bi-play-fill me-1"></i>Reconcile
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Westpac Credit Card -->
+                        <div class="bank-account-item mb-4" data-account="westpac-credit">
+                            <div class="row align-items-center">
+                                <div class="col-md-3">
+                                    <div class="account-info">
+                                        <h6 class="mb-1"><i class="bi bi-credit-card me-2 text-primary"></i>Westpac Credit Card</h6>
+                                        <small class="text-muted">Card: ***9012</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="account-balance">
+                                        <small class="text-muted">Balance</small><br>
+                                        <strong class="amount-debit">-$2,340.00</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="unreconciled-count">
+                                        <small class="text-muted">Unreconciled</small><br>
+                                        <span class="badge bg-warning">3 transactions</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="progress-info">
+                                        <small class="text-muted">Progress</small>
+                                        <div class="progress mt-1" style="height: 8px;">
+                                            <div class="progress-bar bg-success" style="width: 45%"></div>
+                                        </div>
+                                        <small class="text-warning">45% Complete</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <button class="btn btn-reconcile" onclick="openAccountReconciliation('westpac-credit')">
+                                        <i class="bi bi-play-fill me-1"></i>Reconcile
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- NAB Term Deposit -->
+                        <div class="bank-account-item mb-3" data-account="nab-term">
+                            <div class="row align-items-center">
+                                <div class="col-md-3">
+                                    <div class="account-info">
+                                        <h6 class="mb-1"><i class="bi bi-safe me-2 text-primary"></i>NAB Term Deposit</h6>
+                                        <small class="text-muted">Account: ***3456</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="account-balance">
+                                        <small class="text-muted">Balance</small><br>
+                                        <strong class="amount-credit">$50,000.00</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="unreconciled-count">
+                                        <small class="text-muted">Unreconciled</small><br>
+                                        <span class="badge bg-success">0 transactions</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="progress-info">
+                                        <small class="text-muted">Progress</small>
+                                        <div class="progress mt-1" style="height: 8px;">
+                                            <div class="progress-bar bg-success" style="width: 100%"></div>
+                                        </div>
+                                        <small class="text-success">100% Complete</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <button class="btn btn-success" disabled>
+                                        <i class="bi bi-check-circle me-1"></i>Complete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container"></div>
+
+<script>
+// Open specific account reconciliation
+function openAccountReconciliation(accountId) {
+    // Show progress/loading state
+    const button = document.querySelector(`[data-account="${accountId}"] .btn-reconcile`);
+    const originalContent = button.innerHTML;
+    
+    button.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Loading...';
+    button.disabled = true;
+    
+    showToast('Starting Process', `Opening reconciliation for ${getAccountName(accountId)}`, 'info');
+    
+    // Simulate real process delay
+    setTimeout(() => {
+        // Redirect to the reconciliation process page
+        window.location.href = `/reconciliation/account/${accountId}/`;
+    }, 1500);
+}
+
+// Get account name by ID
+function getAccountName(accountId) {
+    const accountNames = {
+        'anz-business': 'ANZ Business Account',
+        'cba-savings': 'CBA Savings Account',
+        'westpac-credit': 'Westpac Credit Card',
+        'nab-term': 'NAB Term Deposit'
+    };
+    return accountNames[accountId] || 'Unknown Account';
+}
+
+// Update progress for an account
+function updateAccountProgress(accountId, progress) {
+    const accountItem = document.querySelector(`[data-account="${accountId}"]`);
+    if (accountItem) {
+        const progressBar = accountItem.querySelector('.progress-bar');
+        const progressText = accountItem.querySelector('.progress-info small:last-child');
+        
+        progressBar.style.width = `${progress}%`;
+        progressText.textContent = `${progress}% Complete`;
+        
+        if (progress === 100) {
+            progressText.className = 'text-success';
+            const button = accountItem.querySelector('.btn-reconcile');
+            button.className = 'btn btn-success';
+            button.innerHTML = '<i class="bi bi-check-circle me-1"></i>Complete';
+            button.disabled = true;
+        }
+    }
+}
+
+// Toast notification function
+function showToast(title, message, type = 'success') {
+    const toastContainer = document.querySelector('.toast-container');
+    
+    const iconClass = type === 'success' ? 'bi-check-circle-fill' : 
+                     type === 'info' ? 'bi-info-circle-fill' : 'bi-exclamation-circle-fill';
+    
+    const toastElement = document.createElement('div');
+    toastElement.className = `toast toast-${type} show`;
+    toastElement.innerHTML = `
+        <div class="toast-header">
+            <i class="${iconClass} me-2"></i>
+            <strong class="me-auto">${title}</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+            ${message}
+        </div>
+    `;
+    
+    toastContainer.appendChild(toastElement);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        toastElement.remove();
+    }, 5000);
+}
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Bank Reconciliation Dashboard loaded successfully');
+    
+    // Add hover effects to account items
+    const accountItems = document.querySelectorAll('.bank-account-item');
+    accountItems.forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-3px)';
+        });
+        item.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+
+    // Add hover effects to stats cards
+    const statsCards = document.querySelectorAll('.stats-card');
+    statsCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+        });
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+});
+</script>
+{% endblock %}

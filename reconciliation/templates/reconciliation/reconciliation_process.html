@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title|default:"Bank Reconciliation" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* —— Layout polish to resemble Xero —— */
+  .balance-banner { background:#f6f7f8; border:1px solid #e5e7eb; border-radius:.5rem; }
+  .balance-metric .label { font-size:.8rem; color:#6b7280; }
+  .balance-metric .value { font-weight:700; font-size:1rem; }
+  .diff-badge { font-size:.75rem; }
+
+  .x-tabs .nav-link { font-weight:600; }
+  .x-tabs .nav-link.active { border-bottom:3px solid #2563eb; color:#111827; }
+
+  .transaction-item { transition: background .15s ease, border-color .15s ease; }
+  .transaction-item:hover { background:#f8fafc; }
+  .border-credit { border-left:4px solid #16a34a !important; }
+  .border-debit  { border-left:4px solid #ef4444 !important; }
+  .amount-pos { color:#16a34a; font-weight:600; }
+  .amount-neg { color:#ef4444; font-weight:600; }
+
+  .pillar-label { font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; font-weight:700; }
+  .form-control-sm, .form-select-sm { font-size:.85rem; }
+
+  .ok-btn { min-width:96px; }
+
+  /* Compact mode */
+  .compact .transaction-item { padding:.5rem .75rem !important; }
+  .compact .txn-title { font-size:.9rem; }
+  .compact .txn-meta { display:none; }
+  .compact .matching-form { display:none; }
+
+  .matching-form { background:#f8fafc; border-radius:.5rem; padding:1rem; margin-top:.5rem; }
+
+  .sticky-side { position:sticky; top:1rem; }
+
+  .badge-soft { background:#eaf2ff; color:#2563eb; border:1px solid #cfe0ff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" id="reconRoot">
+  <!-- ======= Top banner: balances ======= -->
+  <div class="balance-banner p-3 mb-3">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <i class="bi bi-bank2" style="font-size: 28px; color: #2563eb;"></i>
+        <div class="fw-bold">Match transactions from your bank with your books</div>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <div class="balance-metric text-end">
+          <div class="label">Statement Balance</div>
+          <div class="value" id="statementBalance">{{ statement_balance|default:12450.75|floatformat:2 }}</div>
+        </div>
+        <div class="vr"></div>
+        <div class="balance-metric text-end">
+          <div class="label">Balance in System</div>
+          <div class="value" id="systemBalance">{{ system_balance|default:11200.75|floatformat:2 }}</div>
+        </div>
+        <span id="diffBadge" class="badge diff-badge ms-2"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= Tabs (Reconcile only) ======= -->
+  <ul class="nav nav-tabs x-tabs mb-3" role="tablist">
+    <li class="nav-item" role="presentation">
+      <span class="nav-link active" role="tab">Reconcile ({{ transactions|length|default:25 }})</span>
+    </li>
+    <li class="ms-auto nav-item d-flex align-items-center gap-2">
+      <span class="text-muted small">Compact view</span>
+      <div class="form-check form-switch m-0">
+        <input class="form-check-input" type="checkbox" id="compactToggle">
+      </div>
+    </li>
+  </ul>
+
+  <div class="row g-3">
+    <!-- ======= Bank transactions with embedded forms ======= -->
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white border-0 pt-3 pb-2 d-flex justify-content-between align-items-center">
+          <div class="fw-bold">Bank transactions ({{ transactions|length|default:25 }})</div>
+          <div class="small text-muted">Review your bank statement lines</div>
+        </div>
+        <div class="card-body p-0">
+          <div class="transaction-list" style="max-height:70vh; overflow-y:auto;">
+            {% for t in transactions %}
+            <div class="transaction-item p-3 border-bottom {% if t.amount > 0 %}border-credit{% else %}border-debit{% endif %}" data-transaction-id="{{ t.id }}">
+              <div class="row align-items-center">
+                <!-- Left: Transaction Info -->
+                <div class="col-md-5">
+                  <div class="d-flex align-items-start justify-content-between">
+                    <div class="flex-grow-1" style="min-width:0;">
+                      <div class="small text-primary fw-semibold txn-date"><i class="bi bi-calendar me-1"></i>{{ t.date|date:"d M Y" }}</div>
+                      <div class="txn-title fw-semibold">{{ t.description|default:"(no description)" }}</div>
+                      <div class="txn-meta text-muted small">Ref: {{ t.reference|default:"—" }} · Memo: {{ t.memo|default:"—" }}</div>
+                    </div>
+                    <div class="text-end ms-3">
+                      <div class="{% if t.amount > 0 %}amount-pos{% else %}amount-neg{% endif %}">{% if t.amount > 0 %}+{% endif %}${{ t.amount|floatformat:2 }}</div>
+                      <div class="small text-muted">{% if t.amount > 0 %}Received{% else %}Spent{% endif %}</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Middle: OK Button -->
+                <div class="col-md-2 text-center">
+                  <button type="button" class="btn btn-primary btn-lg ok-btn{% if t.id != 1 %} d-none{% endif %}" id="ok{{ t.id }}" onclick="okMatch({{ t.id }})">
+                    <i class="bi bi-check me-1"></i>OK
+                  </button>
+                </div>
+                
+                <!-- Right: WHO/WHAT/WHY Form -->
+                <div class="col-md-5">
+                  <div class="matching-form p-3 bg-light rounded">
+                    <div class="row mb-2">
+                      <div class="col-6">
+                        <label class="pillar-label text-info mb-1"><i class="bi bi-person me-1"></i>Who</label>
+                        <input class="form-control form-control-sm" 
+                               name="who_{{ t.id }}" 
+                               placeholder="Name of the contact…" 
+                               list="contactSuggestions"
+                               value="{% if t.id == 1 %}Acme Corporation{% endif %}"/>
+                        <datalist id="contactSuggestions">
+                          {% for c in contacts %}
+                          <option value="{{ c.name }}">{{ c.name }}</option>
+                          {% endfor %}
+                        </datalist>
+                      </div>
+                      <div class="col-6">
+                        <label class="pillar-label text-warning mb-1"><i class="bi bi-graph-up me-1"></i>What *</label>
+                        <select class="form-select form-select-sm" name="what_{{ t.id }}" required onchange="checkOK({{ t.id }})">
+                          <option value="">Choose the account…</option>
+                          {% for group, accounts in coa_groups.items %}
+                            <optgroup label="{{ group }}">
+                              {% for acc in accounts %}
+                              <option value="{{ acc.code }}"{% if t.id == 1 and acc.code == '4100' %} selected{% endif %}>{{ acc.code }} — {{ acc.name }}</option>
+                              {% endfor %}
+                            </optgroup>
+                          {% endfor %}
+                        </select>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-6">
+                        <label class="pillar-label text-success mb-1"><i class="bi bi-chat-text me-1"></i>Why</label>
+                        <input class="form-control form-control-sm" name="why_{{ t.id }}" placeholder="Enter a description…" value="{% if t.id == 1 %}Monthly web development services{% else %}{{ t.memo|default:'' }}{% endif %}"/>
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label small mb-1">Tax</label>
+                        <select class="form-select form-select-sm" name="tax_{{ t.id }}">
+                          <option value=""{% if t.id == 1 %} selected{% endif %}>Tax Exempt (0%)</option>
+                          {% for tx in tax_rates %}
+                          <option value="{{ tx.id }}">{{ tx.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% empty %}
+            <div class="text-center text-muted py-5"><i class="bi bi-inbox fa-2x mb-2"></i><div>No transactions</div></div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ——— Balances diff badge ———
+  function updateDiffBadge() {
+    const s = parseFloat((document.getElementById('statementBalance')?.textContent||'0').replace(/[,\s$]/g,'')) || 0;
+    const b = parseFloat((document.getElementById('systemBalance')?.textContent||'0').replace(/[,\s$]/g,'')) || 0;
+    const diff = (s - b).toFixed(2);
+    const badge = document.getElementById('diffBadge');
+    if (!badge) return;
+    if (diff == 0 || diff === '0.00') {
+      badge.className = 'badge bg-success diff-badge';
+      badge.textContent = 'Balanced';
+    } else {
+      badge.className = 'badge bg-warning text-dark diff-badge';
+      badge.textContent = 'Diff $' + diff;
+    }
+  }
+
+  // ——— Compact toggle ———
+  const root = document.getElementById('reconRoot');
+  const compactToggle = document.getElementById('compactToggle');
+  if (compactToggle) {
+    compactToggle.addEventListener('change', (e) => {
+      if (e.target.checked) root.classList.add('compact');
+      else root.classList.remove('compact');
+    });
+  }
+
+  // ——— Matching logic ———
+  let matched = [];
+
+  function checkOK(id) {
+    const sel = document.querySelector(`[name="what_${id}"]`);
+    const btn = document.getElementById('ok'+id);
+    if (!sel || !btn) return;
+    if (sel.value) btn.classList.remove('d-none');
+    else btn.classList.add('d-none');
+  }
+
+  function okMatch(id) {
+    const row = document.querySelector(`[data-transaction-id="${id}"]`);
+    const what = row.querySelector(`[name="what_${id}"]`)?.value;
+    if (!what) { alert('Please choose an account (What)'); return; }
+
+    // Freeze fields
+    row.querySelectorAll('select, input').forEach(el => el.disabled = true);
+
+    // Visual confirmation
+    const okBtn = document.getElementById('ok'+id);
+    okBtn.innerHTML = '<i class="bi bi-check me-1"></i>Matched';
+    okBtn.classList.add('btn-outline-success');
+    okBtn.classList.remove('btn-primary');
+    okBtn.disabled = true;
+
+    // Add to matched array
+    matched.push(id);
+
+    // Cool disappearing effect
+    setTimeout(() => {
+      row.style.transition = 'all 0.8s ease-out';
+      row.style.transform = 'translateX(20px)';
+      row.style.opacity = '0';
+      row.style.maxHeight = row.offsetHeight + 'px';
+      
+      setTimeout(() => {
+        row.style.maxHeight = '0';
+        row.style.padding = '0';
+        row.style.marginBottom = '0';
+        row.style.borderBottom = 'none';
+        
+        setTimeout(() => {
+          row.remove();
+          
+          // Update transaction count in tab
+          const remainingCount = document.querySelectorAll('.transaction-item').length;
+          const tabElement = document.querySelector('.nav-link.active');
+          if (tabElement) {
+            tabElement.textContent = `Reconcile (${remainingCount})`;
+          }
+        }, 400);
+      }, 400);
+    }, 1000);
+  }
+
+  function autoMatch(){
+    alert('Auto-match will learn from your past matches and suggest accounts. (Feature coming soon)');
+  }
+
+  function clearMatches(){
+    if(!confirm('Clear all matches?')) return;
+    
+    // Since matched transactions are removed, we need to reload the page
+    // or recreate the transactions to restore them
+    alert('Page will reload to restore all transactions');
+    window.location.reload();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    updateDiffBadge();
+  });
+</script>
+{% endblock %}

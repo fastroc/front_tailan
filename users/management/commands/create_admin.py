@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from users.models import CustomUser
+from django.contrib.auth.models import User
 
 
 class Command(BaseCommand):
@@ -10,8 +10,8 @@ class Command(BaseCommand):
         username = 'admin'
         password = 'admin123'
         
-        if not CustomUser.objects.filter(email=email).exists():
-            user = CustomUser.objects.create_superuser(
+        if not User.objects.filter(email=email).exists():
+            user = User.objects.create_superuser(
                 email=email,
                 password=password,
                 username=username,

@@ -1,0 +1,467 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Import bank transactions{% endblock %}
+
+{% block extra_css %}
+<style>
+  .step { display:flex; align-items:center; gap:.5rem; color:#6b7280; }
+  .step.active { color:#111827; font-weight:600; }
+  .dropzone { 
+    border:2px dashed #cbd5e1; 
+    border-radius:.75rem; 
+    padding:3rem 2rem; 
+    text-align:center; 
+    color:#6b7280;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #fafbfc;
+  }
+  .dropzone:hover {
+    border-color: #3b82f6;
+    background: #f0f9ff;
+  }
+  .dropzone.file-selected {
+    border-color: #16a34a;
+    background: #f0fdf4;
+    border-style: solid;
+  }
+  .dropzone-content {
+    pointer-events: none;
+  }
+  .dropzone-content .btn {
+    pointer-events: all;
+  }
+  .file-preview {
+    display: none;
+  }
+  .file-preview.show {
+    display: block;
+  }
+  .upload-history-item {
+    transition: all 0.2s ease;
+  }
+  .upload-history-item:hover {
+    background-color: #f8fafc;
+  }
+  .file-name-display {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h5 class="mb-3">{{ account.name }} — Import transactions</h5>
+
+  <!-- Steps -->
+  <div class="d-flex align-items-center gap-4 mb-4">
+    <div class="step active"><span class="badge bg-primary">1</span> Upload</div>
+    <div class="step"><span class="badge bg-secondary">2</span> Review</div>
+    <div class="step"><span class="badge bg-secondary">3</span> Complete</div>
+  </div>
+
+  <div class="card" style="max-width:900px;">
+    <div class="card-body">
+      <h6 class="mb-3">
+        <i class="fas fa-upload me-2 text-primary"></i>Upload bank statement
+      </h6>
+      <p class="text-muted small mb-3">
+        Upload your bank statement as CSV file. Expected format: <strong>Date, Amount, Payee, Description, Reference</strong>
+      </p>
+      
+      <!-- Current File Display -->
+      <div id="currentFileDisplay" class="alert alert-info d-none mb-3">
+        <div class="d-flex align-items-center">
+          <i class="fas fa-file-csv fa-2x text-info me-3"></i>
+          <div class="flex-grow-1">
+            <div class="fw-bold">Selected File:</div>
+            <div id="selectedFileName" class="text-primary"></div>
+            <small class="text-muted" id="selectedFileSize"></small>
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearSelectedFile()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Format Example -->
+      <div class="alert alert-info mb-3">
+        <strong>📋 Expected CSV Format:</strong><br>
+        <code>Date,Amount,Payee,Description,Reference</code><br>
+        <code>01/01/2025,520000,,Cash deposit,REF15695</code><br>
+        <small class="text-muted">• Date: DD/MM/YYYY or MM/DD/YYYY format<br>
+        • Amount: Numbers only (negative for debits, positive for credits)<br>
+        • Description: Transaction description<br>
+        • Reference: Transaction reference number</small>
+      </div>
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="dropzone mb-2" id="dropzone">
+          <div class="dropzone-content">
+            <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
+            <div>Drag and drop your CSV file here</div>
+            <div class="mt-2">
+              <button class="btn btn-outline-primary btn-sm" type="button" id="selectFileBtn">
+                <i class="fas fa-folder-open me-1"></i>Select File
+              </button>
+            </div>
+          </div>
+          <input type="file" id="file" name="statement_file" class="d-none" accept=".csv"/>
+        </div>
+        <div class="small text-muted mb-3">File should be CSV format</div>
+
+        <div class="d-flex justify-content-end">
+          <a href="{% url 'bank_accounts:dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary ms-2" id="uploadBtn">Upload & Process</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  {% if recent_uploads %}
+  <div class="card mt-4" style="max-width:900px;">
+    <div class="card-header bg-light">
+      <h6 class="mb-0">
+        <i class="fas fa-history me-2 text-primary"></i>Previously Uploaded Files
+      </h6>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3">
+                <i class="fas fa-file-csv me-1 text-success"></i>File Name
+              </th>
+              <th>
+                <i class="fas fa-calendar me-1 text-info"></i>Upload Date
+              </th>
+              <th>
+                <i class="fas fa-chart-bar me-1 text-warning"></i>Results
+              </th>
+              <th class="text-center">
+                <i class="fas fa-check-circle me-1 text-success"></i>Status
+              </th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for upload in recent_uploads %}
+            <tr>
+              <td class="ps-3">
+                <div class="d-flex align-items-center">
+                  <div class="bg-success bg-opacity-10 rounded p-2 me-3">
+                    <i class="fas fa-file-csv text-success"></i>
+                  </div>
+                  <div>
+                    <div class="fw-semibold text-primary">{{ upload.original_filename }}</div>
+                    <div class="small text-muted">
+                      <i class="fas fa-weight me-1"></i>{{ upload.file_size|filesizeformat }}
+                      <span class="mx-2">•</span>
+                      <i class="fas fa-rows me-1"></i>{{ upload.total_rows }} rows
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="fw-medium">{{ upload.uploaded_at|date:"M j, Y" }}</div>
+                <div class="small text-muted">{{ upload.uploaded_at|time:"g:i A" }}</div>
+              </td>
+              <td>
+                <div class="d-flex flex-wrap gap-1">
+                  {% if upload.imported_count > 0 %}
+                  <span class="badge bg-success">
+                    <i class="fas fa-check me-1"></i>{{ upload.imported_count }} imported
+                  </span>
+                  {% endif %}
+                  {% if upload.duplicate_count > 0 %}
+                  <span class="badge bg-warning">
+                    <i class="fas fa-copy me-1"></i>{{ upload.duplicate_count }} duplicates
+                  </span>
+                  {% endif %}
+                  {% if upload.error_count > 0 %}
+                  <span class="badge bg-danger">
+                    <i class="fas fa-exclamation me-1"></i>{{ upload.error_count }} errors
+                  </span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="text-center">
+                {% if upload.imported_count > 0 %}
+                  {% if upload.error_count == 0 %}
+                    <span class="badge bg-success">
+                      <i class="fas fa-check-circle me-1"></i>Complete
+                    </span>
+                  {% else %}
+                    <span class="badge bg-warning">
+                      <i class="fas fa-exclamation-triangle me-1"></i>Partial
+                    </span>
+                  {% endif %}
+                {% else %}
+                  <span class="badge bg-danger">
+                    <i class="fas fa-times-circle me-1"></i>Failed
+                  </span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <div class="btn-group" role="group">
+                  <button class="btn btn-outline-info btn-sm" title="View Details">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="btn btn-outline-danger btn-sm" 
+                          onclick="confirmDelete('{{ upload.id }}', '{{ upload.original_filename }}', {{ upload.imported_count }})"
+                          title="Delete Upload">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-footer bg-light text-muted">
+      <small>
+        <i class="fas fa-info-circle me-1"></i>
+        Showing {{ recent_uploads|length }} most recent upload{{ recent_uploads|length|pluralize }}. 
+        Deleting an upload will remove all its associated transactions.
+      </small>
+    </div>
+  </div>
+  {% else %}
+  <!-- No uploads yet message -->
+  <div class="card mt-4" style="max-width:900px;">
+    <div class="card-body text-center py-4">
+      <i class="fas fa-upload fa-3x text-muted mb-3"></i>
+      <h6 class="text-muted">No Files Uploaded Yet</h6>
+      <p class="text-muted small mb-0">
+        Upload your first CSV file to see it listed here with processing results and management options.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file');
+  const selectBtn = document.getElementById('selectFileBtn');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const form = document.querySelector('form');
+  
+  // File select button click
+  selectBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    fileInput.click();
+  });
+  
+  // Dropzone click (but not button)
+  dropzone.addEventListener('click', function(e) {
+    if (e.target !== selectBtn && !selectBtn.contains(e.target)) {
+      fileInput.click();
+    }
+  });
+  
+  // Form submission validation
+  form.addEventListener('submit', function(e) {
+    if (!fileInput.files || fileInput.files.length === 0) {
+      e.preventDefault();
+      alert('Please select a CSV file to upload.');
+      return false;
+    }
+    
+    const file = fileInput.files[0];
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      e.preventDefault();
+      alert('Please select a CSV file.');
+      return false;
+    }
+    
+    // Show loading state
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+  });
+  
+  // Drag and drop functionality
+  dropzone.addEventListener('dragover', function(e) { 
+    e.preventDefault(); 
+    dropzone.style.background = '#f8fafc';
+    dropzone.style.borderColor = '#3b82f6';
+  });
+  
+  dropzone.addEventListener('dragleave', function(e) { 
+    e.preventDefault();
+    dropzone.style.background = ''; 
+    dropzone.style.borderColor = '#cbd5e1';
+  });
+  
+  dropzone.addEventListener('drop', function(e) { 
+    e.preventDefault(); 
+    dropzone.style.background = ''; 
+    dropzone.style.borderColor = '#cbd5e1';
+    
+    if (e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        fileInput.files = e.dataTransfer.files; 
+        updateDropzoneContent(file);
+      } else {
+        alert('Please drop a CSV file.');
+      }
+    }
+  });
+  
+  // File input change
+  fileInput.addEventListener('change', function(e) {
+    if (fileInput.files.length > 0) {
+      const file = fileInput.files[0];
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        updateDropzoneContent(file);
+      } else {
+        alert('Please select a CSV file.');
+        fileInput.value = ''; // Clear the invalid file
+      }
+    }
+  });
+  
+  // Update dropzone content when file is selected
+  function updateDropzoneContent(file) {
+    const fileSize = (file.size / 1024).toFixed(1) + ' KB';
+    const fileType = file.name.toLowerCase().endsWith('.csv') ? 'CSV' : 'Unknown';
+    
+    // Show current file display at top
+    const currentFileDisplay = document.getElementById('currentFileDisplay');
+    const selectedFileName = document.getElementById('selectedFileName');
+    const selectedFileSize = document.getElementById('selectedFileSize');
+    
+    selectedFileName.textContent = file.name;
+    selectedFileSize.textContent = `${fileSize} • ${fileType} File`;
+    currentFileDisplay.classList.remove('d-none');
+    
+    // Update dropzone
+    dropzone.classList.add('file-selected');
+    dropzone.innerHTML = `
+      <div class="text-success">
+        <div class="d-flex justify-content-center mb-3">
+          <div class="bg-success bg-opacity-10 rounded-circle p-3">
+            <i class="fas fa-file-csv fa-3x text-success"></i>
+          </div>
+        </div>
+        <div class="fw-bold fs-5 mb-2 file-name-display">${file.name}</div>
+        <div class="row justify-content-center mb-3">
+          <div class="col-auto">
+            <small class="badge bg-light text-dark">
+              <i class="fas fa-weight me-1"></i>${fileSize}
+            </small>
+          </div>
+          <div class="col-auto">
+            <small class="badge bg-light text-dark">
+              <i class="fas fa-file-alt me-1"></i>${fileType}
+            </small>
+          </div>
+        </div>
+        <div class="alert alert-success py-2 mb-3" role="alert">
+          <i class="fas fa-check-circle me-2"></i>
+          <strong>File ready for upload!</strong> Click "Upload & Process" to continue.
+        </div>
+        <div class="d-flex gap-2 justify-content-center">
+          <button class="btn btn-outline-secondary btn-sm" type="button" onclick="clearSelectedFile()">
+            <i class="fas fa-times me-1"></i>Remove File
+          </button>
+          <button class="btn btn-success btn-sm" type="button" onclick="document.getElementById('uploadBtn').click()">
+            <i class="fas fa-upload me-1"></i>Upload Now
+          </button>
+        </div>
+      </div>
+      <input type="file" id="file" name="statement_file" class="d-none" accept=".csv"/>
+    `;
+    
+    // Re-attach the file to the new input
+    const newFileInput = document.getElementById('file');
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    newFileInput.files = dt.files;
+    
+    // Update upload button text
+    const uploadBtnEl = document.getElementById('uploadBtn');
+    uploadBtnEl.innerHTML = '<i class="fas fa-upload me-2"></i>Upload "' + (file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name) + '"';
+    uploadBtnEl.classList.remove('btn-primary');
+    uploadBtnEl.classList.add('btn-success');
+  }
+  
+  // Global function to reset file input
+  window.resetFileInput = function() {
+    location.reload(); // Simple way to reset the form
+  };
+  
+  // Global function to clear selected file
+  window.clearSelectedFile = function() {
+    const currentFileDisplay = document.getElementById('currentFileDisplay');
+    const uploadBtn = document.getElementById('uploadBtn');
+    
+    // Hide current file display
+    currentFileDisplay.classList.add('d-none');
+    
+    // Reset upload button
+    uploadBtn.innerHTML = '<i class="fas fa-upload me-2"></i>Upload & Process';
+    uploadBtn.classList.remove('btn-success');
+    uploadBtn.classList.add('btn-primary');
+    
+    // Reset file input
+    fileInput.value = '';
+    
+    // Reset dropzone
+    dropzone.classList.remove('file-selected');
+    dropzone.innerHTML = `
+      <div class="dropzone-content">
+        <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
+        <div>Drag and drop your CSV file here</div>
+        <div class="mt-2">
+          <button class="btn btn-outline-primary btn-sm" type="button" id="selectFileBtn">
+            <i class="fas fa-folder-open me-1"></i>Select File
+          </button>
+        </div>
+      </div>
+      <input type="file" id="file" name="statement_file" class="d-none" accept=".csv"/>
+    `;
+    
+    // Re-attach event listeners
+    document.getElementById('selectFileBtn').addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('file').click();
+    });
+  };
+  
+  // Global function to confirm and delete upload
+  window.confirmDelete = function(uploadId, filename, transactionCount) {
+    const message = `Are you sure you want to delete "${filename}"?\n\nThis will remove ${transactionCount} transactions from this account.`;
+    if (confirm(message)) {
+      // Create a form to submit the delete request
+      const form = document.createElement('form');
+      form.method = 'post';
+      form.action = '{% url "bank_accounts:delete_upload" account.id 0 %}'.replace('0', uploadId);
+      
+      // Add CSRF token
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      const csrfInput = document.createElement('input');
+      csrfInput.type = 'hidden';
+      csrfInput.name = 'csrfmiddlewaretoken';
+      csrfInput.value = csrfToken;
+      form.appendChild(csrfInput);
+      
+      document.body.appendChild(form);
+      form.submit();
+    }
+  };
+});
+</script>
+{% endblock %}

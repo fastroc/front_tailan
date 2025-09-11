@@ -1,185 +1,185 @@
 from django.db import models
-from django.contrib.auth import get_user_model
-from django.core.validators import RegexValidator
-import uuid
+from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
-User = get_user_model()
 
 class Company(models.Model):
-    """
-    Company model for multi-tenant accounting system
-    """
-    # Unique identifier
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    
-    # Basic Company Information
-    name = models.CharField(max_length=200, help_text="Official company name")
-    legal_name = models.CharField(max_length=200, blank=True, help_text="Legal registered name if different")
-    
-    # Business Registration
-    registration_number = models.CharField(
-        max_length=50, 
-        blank=True, 
-        help_text="Business registration/license number"
+    """Enhanced Company model with setup integration"""
+
+    name = models.CharField(max_length=100, help_text="Company name")
+    owner = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="owned_companies"
     )
-    tax_id = models.CharField(
-        max_length=50, 
-        blank=True, 
-        help_text="Tax identification number (EIN, ABN, etc.)"
+    description = models.TextField(blank=True, help_text="Brief company description")
+    logo = models.ImageField(upload_to="company_logos/", blank=True, null=True)
+
+    # Extended company information for setup
+    legal_name = models.CharField(
+        max_length=200, blank=True, help_text="Legal business name"
     )
-    
-    # Contact Information
-    email = models.EmailField(blank=True, help_text="Primary company email")
-    phone = models.CharField(
-        max_length=20, 
-        blank=True,
-        validators=[RegexValidator(r'^\+?1?\d{9,15}$', 'Enter a valid phone number.')],
-        help_text="Primary phone number"
-    )
-    website = models.URLField(blank=True, help_text="Company website")
-    
-    # Address Information
-    address_line_1 = models.CharField(max_length=200, blank=True)
-    address_line_2 = models.CharField(max_length=200, blank=True)
-    city = models.CharField(max_length=100, blank=True)
-    state_province = models.CharField(max_length=100, blank=True)
-    postal_code = models.CharField(max_length=20, blank=True)
-    country = models.CharField(max_length=100, blank=True, default="United States")
-    
-    # Financial Settings
-    base_currency = models.CharField(
-        max_length=3, 
-        default="USD",
-        help_text="Base currency code (USD, EUR, GBP, etc.)"
-    )
-    financial_year_start = models.DateField(
-        null=True, 
-        blank=True,
-        help_text="Start date of financial year"
-    )
-    
-    # Industry & Business Type
-    BUSINESS_TYPES = [
-        ('sole_proprietorship', 'Sole Proprietorship'),
-        ('partnership', 'Partnership'),
-        ('llc', 'Limited Liability Company (LLC)'),
-        ('corporation', 'Corporation'),
-        ('s_corp', 'S Corporation'),
-        ('nonprofit', 'Non-Profit'),
-        ('other', 'Other'),
-    ]
     business_type = models.CharField(
-        max_length=50, 
-        choices=BUSINESS_TYPES, 
+        max_length=50,
         blank=True,
-        help_text="Legal business structure"
+        choices=[
+            ("sole_proprietorship", "Sole Proprietorship"),
+            ("partnership", "Partnership"),
+            ("corporation", "Corporation"),
+            ("llc", "Limited Liability Company"),
+            ("nonprofit", "Non-Profit Organization"),
+        ],
+        help_text="Type of business entity",
     )
-    
     industry = models.CharField(
-        max_length=100, 
-        blank=True,
-        help_text="Primary industry or sector"
+        max_length=100, blank=True, help_text="Industry or business sector"
     )
-    
-    # System Settings
+    tax_id = models.CharField(max_length=50, blank=True, help_text="Tax ID / EIN / ABN")
+
+    # Address information
+    address = models.TextField(blank=True, help_text="Street address")
+    city = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=100, blank=True, help_text="State/Province")
+    postal_code = models.CharField(max_length=20, blank=True)
+    country = models.CharField(max_length=100, default="United States")
+
+    # Contact information
+    phone = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(blank=True, help_text="Business email")
+    website = models.URLField(blank=True)
+
+    # Financial settings
+    fiscal_year_start = models.DateField(
+        null=True, blank=True, help_text="Start of fiscal year"
+    )
+    base_currency = models.CharField(
+        max_length=3,
+        default="USD",
+        choices=[
+            ("USD", "US Dollar"),
+            ("EUR", "Euro"),
+            ("GBP", "British Pound"),
+            ("CAD", "Canadian Dollar"),
+            ("AUD", "Australian Dollar"),
+        ],
+        help_text="Base currency for financial reporting",
+    )
+
+    # Setup status
+    setup_complete = models.BooleanField(
+        default=False, help_text="Company setup completed"
+    )
+
+    # Basic settings
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    # Company Logo/Branding
-    logo = models.ImageField(upload_to='company_logos/', blank=True, null=True)
-    
+
     class Meta:
         verbose_name = "Company"
         verbose_name_plural = "Companies"
-        ordering = ['name']
-    
+        ordering = ["-created_at"]
+
     def __str__(self):
         return self.name
-    
-    @property
-    def full_address(self):
-        """Return formatted full address"""
-        address_parts = [
-            self.address_line_1,
-            self.address_line_2,
-            self.city,
-            self.state_province,
-            self.postal_code,
-            self.country
-        ]
-        return ", ".join([part for part in address_parts if part])
-    
+
     @property
     def display_name(self):
-        """Return display name (legal name if available, otherwise name)"""
-        return self.legal_name if self.legal_name else self.name
+        """Return display name"""
+        return self.legal_name or self.name
+
+    @property
+    def is_setup_complete(self):
+        """Check if company setup is complete"""
+        try:
+            from setup.models import CompanySetupStatus
+
+            setup_status = CompanySetupStatus.objects.get(company=self)
+            return setup_status.completion_percentage >= 100
+        except Exception:
+            return False
+
+    @property
+    def setup_completion_percentage(self):
+        """Get setup completion percentage"""
+        try:
+            from setup.models import CompanySetupStatus
+
+            setup_status = CompanySetupStatus.objects.get(company=self)
+            return setup_status.completion_percentage
+        except Exception:
+            return 0
+
+    def get_essential_accounts(self):
+        """Get essential accounts created during setup"""
+        return self.account_set.filter(is_essential=True)
+
+    def get_setup_tax_rates(self):
+        """Get tax rates created during setup"""
+        return self.taxrate_set.filter(setup_created=True)
 
 
-class UserCompanyRole(models.Model):
-    """
-    User-Company relationship with role-based access
-    """
+class UserCompanyAccess(models.Model):
+    """Simple User-Company access management"""
+
     ROLE_CHOICES = [
-        ('owner', 'Owner'),
-        ('admin', 'Administrator'),
-        ('accountant', 'Accountant'),
-        ('bookkeeper', 'Bookkeeper'),
-        ('viewer', 'Viewer'),
+        ("owner", "Owner"),
+        ("admin", "Admin"),
+        ("user", "User"),
     ]
-    
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='company_roles')
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='user_roles')
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='viewer')
-    
-    # Access permissions
-    is_active = models.BooleanField(default=True)
-    can_edit_settings = models.BooleanField(default=False)
-    can_manage_users = models.BooleanField(default=False)
-    can_view_reports = models.BooleanField(default=True)
-    
-    # Timestamps
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="company_access"
+    )
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, related_name="user_access"
+    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="user")
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
-        unique_together = ['user', 'company']
-        verbose_name = "User Company Role"
-        verbose_name_plural = "User Company Roles"
-    
+        unique_together = ["user", "company"]
+        verbose_name = "User Company Access"
+        verbose_name_plural = "User Company Access"
+        ordering = ["-created_at"]
+
     def __str__(self):
         return f"{self.user.username} - {self.company.name} ({self.get_role_display()})"
 
 
 class UserCompanyPreference(models.Model):
-    """
-    User preferences for company interaction
-    """
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='company_preferences')
+    """Simple user preferences for active company"""
+
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="company_preference"
+    )
     active_company = models.ForeignKey(
-        Company, 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        Company,
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        help_text="Currently selected company"
+        help_text="Currently active company",
     )
-    
-    # UI Preferences
-    default_company = models.ForeignKey(
-        Company, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True,
-        related_name='default_for_users',
-        help_text="Default company on login"
-    )
-    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = "User Company Preference"
         verbose_name_plural = "User Company Preferences"
-    
+
     def __str__(self):
-        return f"{self.user.username} preferences"
+        return f"{self.user.username} - Active: {self.active_company}"
+
+
+# Auto-create preference when user is created
+@receiver(post_save, sender=User)
+def create_user_company_preference(sender, instance, created, **kwargs):
+    if created:
+        UserCompanyPreference.objects.create(user=instance)
+
+
+@receiver(post_save, sender=User)
+def save_user_company_preference(sender, instance, **kwargs):
+    try:
+        instance.company_preference.save()
+    except UserCompanyPreference.DoesNotExist:
+        UserCompanyPreference.objects.create(user=instance)

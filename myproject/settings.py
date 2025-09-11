@@ -25,84 +25,105 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-k&+yat-s^2qaercj6$q+@p^hcwkd8-mldwy_wu1bbim%0(tl38')
+SECRET_KEY = os.getenv(
+    "SECRET_KEY", "django-insecure-k&+yat-s^2qaercj6$q+@p^hcwkd8-mldwy_wu1bbim%0(tl38"
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
+ALLOWED_HOSTS = (
+    os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    if os.getenv("ALLOWED_HOSTS")
+    else ["localhost", "127.0.0.1", "testserver"]
+)
 
-
-# Custom User Model
-AUTH_USER_MODEL = 'users.CustomUser'
 
 # Login/Logout URLs
-LOGIN_URL = '/users/login/'
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/'
+LOGIN_URL = "/users/login/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "django.contrib.humanize",  # For humanize template tags
     # Custom apps
-    'core',
-    'users',
-    'company',  # Multi-company management
-    'api',
-    'coa',
-    'reconciliation',
-    'journal',
-    'assets',  # Fixed Assets management
-    'reports',  # New modular reports app
+    "core",
+    "users",
+    "company",  # Multi-company management
+    "setup",  # Modular setup system
+    "api",
+    "coa",
+    "bank_accounts",
+    "reconciliation",
+    "journal",
+    "assets",  # Fixed Assets management
+    "reports",  # New modular reports app
 ]
+
+# Add debug toolbar only in development
+if DEBUG:
+    INSTALLED_APPS += ["debug_toolbar"]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Custom middleware for setup flow management
+    "setup.middleware.SetupFlowMiddleware",
+    "setup.middleware.SetupCompletionMiddleware",
 ]
 
-ROOT_URLCONF = 'myproject.urls'
+# Add debug toolbar and template error detection middleware only in development
+if DEBUG:
+    MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]
+    MIDDLEWARE += [
+        "core.template_error_middleware.SilentTemplateErrorDetectionMiddleware"
+    ]
+
+ROOT_URLCONF = "myproject.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-                'core.context_processors.company_context',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+                "core.context_processors.company_context",
             ],
+            "debug": DEBUG,  # Use DEBUG setting for template debugging
+            "string_if_invalid": "**MISSING_%s**",  # Shows missing variables clearly
         },
     },
 ]
 
-WSGI_APPLICATION = 'myproject.wsgi.application'
+WSGI_APPLICATION = "myproject.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 
@@ -112,16 +133,16 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -129,9 +150,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -141,14 +162,63 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Media files (uploaded files)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Debug Toolbar Configuration (Development Only)
+if DEBUG:
+    # Debug toolbar settings
+    INTERNAL_IPS = ["127.0.0.1", "localhost"]
+
+    DEBUG_TOOLBAR_CONFIG = {
+        "SHOW_TEMPLATE_CONTEXT": True,  # Shows template variables
+        "SHOW_TOOLBAR_CALLBACK": lambda request: DEBUG,
+        "RENDER_PANELS": True,  # Show template rendering details
+    }
+
+# Enhanced Admin Configuration for Development
+if DEBUG:
+    # Better admin interface
+    ADMIN_SITE_HEADER = "🏢 Multi-Company Accounting System - Development"
+    ADMIN_SITE_TITLE = "Accounting Admin"
+    ADMIN_INDEX_TITLE = "Database Management & Structure Viewer"
+
+    # Enhanced admin performance
+    DATA_UPLOAD_MAX_NUMBER_FIELDS = 10240  # Handle large forms
+    ADMIN_PAGINATOR_PAGE_SIZE = 50  # Limit admin list views for performance
+
+    # Show SQL queries in debug mode
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+            },
+            "file": {
+                "class": "logging.FileHandler",
+                "filename": BASE_DIR / "debug_admin.log",
+            },
+        },
+        "loggers": {
+            "django.db.backends": {
+                "handlers": ["console", "file"],
+                "level": "INFO",  # Show SQL queries
+                "propagate": False,
+            },
+            "django.request": {
+                "handlers": ["console", "file"],
+                "level": "ERROR",
+                "propagate": True,
+            },
+        },
+    }

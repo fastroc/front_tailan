@@ -134,7 +134,7 @@
           <div class="card border-0 bg-light">
             <div class="card-body text-center py-2">
               <div class="small text-muted">Total Journals</div>
-              <div class="fw-bold">{{ journals.count|default:0 }}</div>
+              <div class="fw-bold">{{ total_count|default:0 }}</div>
             </div>
           </div>
         </div>
@@ -165,7 +165,7 @@
         <h5 class="mb-0">Journal Entries</h5>
         <div class="text-muted small">
           {% if journals %}
-            Showing {{ journals.count }} journal{{ journals.count|pluralize }}
+            Showing {{ journals|length }} journal{{ journals|length|pluralize }} of {{ total_count }}
           {% else %}
             No journals found
           {% endif %}

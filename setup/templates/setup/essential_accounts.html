@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Essential Accounts Setup - {{ active_company.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            
+            <!-- Back Button -->
+            <div class="mb-3">
+                <a href="{% url 'setup:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Setup
+                </a>
+            </div>
+
+            <!-- Setup Step Card -->
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-bank me-2 fs-5"></i>
+                        <div>
+                            <h5 class="mb-0">{{ step_instance.name }} <span class="badge bg-white text-danger ms-2">Required</span></h5>
+                            <small class="opacity-75">{{ step_instance.description }}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    {% if is_complete %}
+                        <div class="alert alert-success" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            Essential accounts are already set up! Your system is ready for basic transactions.
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>Required Step:</strong> You need at least these 3 account types to record transactions.
+                        </div>
+                    {% endif %}
+
+                    <!-- Current Accounts Status -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card border-{% if cash_accounts %}success{% else %}danger{% endif %}">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-cash-stack fs-2 mb-2 text-{% if cash_accounts %}success{% else %}danger{% endif %}"></i>
+                                    <h6>Cash/Asset Accounts</h6>
+                                    <p class="mb-0">
+                                        {% if cash_accounts %}
+                                            <span class="text-success">{{ cash_accounts|length }} account(s)</span>
+                                        {% else %}
+                                            <span class="text-danger">None found</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-{% if income_accounts %}success{% else %}danger{% endif %}">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-arrow-up-circle fs-2 mb-2 text-{% if income_accounts %}success{% else %}danger{% endif %}"></i>
+                                    <h6>Income Accounts</h6>
+                                    <p class="mb-0">
+                                        {% if income_accounts %}
+                                            <span class="text-success">{{ income_accounts|length }} account(s)</span>
+                                        {% else %}
+                                            <span class="text-danger">None found</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-{% if expense_accounts %}success{% else %}danger{% endif %}">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-arrow-down-circle fs-2 mb-2 text-{% if expense_accounts %}success{% else %}danger{% endif %}"></i>
+                                    <h6>Expense Accounts</h6>
+                                    <p class="mb-0">
+                                        {% if expense_accounts %}
+                                            <span class="text-success">{{ expense_accounts|length }} account(s)</span>
+                                        {% else %}
+                                            <span class="text-danger">None found</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Auto-create Option -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <div class="form-check">
+                                    {{ form.create_defaults }}
+                                    <label class="form-check-label" for="{{ form.create_defaults.id_for_label }}">
+                                        <strong>{{ form.create_defaults.label }}</strong>
+                                    </label>
+                                </div>
+                                <small class="text-muted">
+                                    This will create the basic accounts needed for recording transactions. 
+                                    You can customize the names below.
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Account Name Customization -->
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.cash_account_name.id_for_label }}" class="form-label">
+                                    <i class="bi bi-cash me-1"></i>{{ form.cash_account_name.label }}
+                                </label>
+                                {{ form.cash_account_name }}
+                                <small class="form-text text-muted">Code: 1001</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.income_account_name.id_for_label }}" class="form-label">
+                                    <i class="bi bi-graph-up-arrow me-1"></i>{{ form.income_account_name.label }}
+                                </label>
+                                {{ form.income_account_name }}
+                                <small class="form-text text-muted">Code: 4001</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.expense_account_name.id_for_label }}" class="form-label">
+                                    <i class="bi bi-receipt me-1"></i>{{ form.expense_account_name.label }}
+                                </label>
+                                {{ form.expense_account_name }}
+                                <small class="form-text text-muted">Code: 6001</small>
+                            </div>
+                        </div>
+
+                        <!-- Existing Accounts Display -->
+                        {% if accounts_count > 0 %}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Existing Accounts ({{ accounts_count }})</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {% if cash_accounts %}
+                                    <div class="col-md-4">
+                                        <strong>Cash/Asset:</strong>
+                                        <ul class="list-unstyled small">
+                                            {% for account in cash_accounts %}
+                                                <li class="text-success">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    {{ account.code }} - {{ account.name }}
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    {% if income_accounts %}
+                                    <div class="col-md-4">
+                                        <strong>Income:</strong>
+                                        <ul class="list-unstyled small">
+                                            {% for account in income_accounts %}
+                                                <li class="text-success">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    {{ account.code }} - {{ account.name }}
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    {% if expense_accounts %}
+                                    <div class="col-md-4">
+                                        <strong>Expenses:</strong>
+                                        <ul class="list-unstyled small">
+                                            {% for account in expense_accounts %}
+                                                <li class="text-success">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    {{ account.code }} - {{ account.name }}
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-plus-circle me-1"></i>Create Essential Accounts
+                            </button>
+                            <a href="{% url 'setup:dashboard' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Cancel
+                            </a>
+                            <a href="/admin/coa/account/add/" class="btn btn-outline-info ms-auto">
+                                <i class="bi bi-tools me-1"></i>Manual Setup
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Text -->
+            <div class="card mt-3">
+                <div class="card-body bg-light">
+                    <h6><i class="bi bi-question-circle me-2"></i>Why are these accounts essential?</h6>
+                    <ul class="mb-0 small text-muted">
+                        <li><strong>Cash Account:</strong> Track money coming in and going out</li>
+                        <li><strong>Income Account:</strong> Record sales and revenue</li>
+                        <li><strong>Expense Account:</strong> Track business costs and spending</li>
+                    </ul>
+                    <p class="mt-2 mb-0 small text-muted">
+                        These 3 account types form the foundation of double-entry bookkeeping. 
+                        You can add more specific accounts later as your business grows.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

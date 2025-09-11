@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Bank accounts{% endblock %}
+
+{% block extra_css %}
+<style>
+  .promo { background:#f6f7f8; border:1px solid #e5e7eb; border-radius:.5rem; }
+  .bank-card:hover { background:#f9fafb; }
+  .badge-soft { background:#eaf2ff; color:#2563eb; border:1px solid #cfe0ff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <h5 class="mb-3">Bank accounts</h5>
+
+  <!-- Actions -->
+  <div class="d-flex gap-2 mb-3">
+    <a href="{% url 'bank_accounts:add' %}" class="btn btn-outline-primary btn-sm">
+      <i class="fa fa-plus me-1"></i>Add Bank Account
+    </a>
+  </div>
+
+  <!-- Account cards -->
+  {% if accounts %}
+  <div class="card">
+    <div class="list-group list-group-flush">
+      {% for account in accounts %}
+      <div class="list-group-item bank-card">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width:36px;height:36px">
+              <i class="fa fa-university"></i>
+            </div>
+            <div>
+              <div class="fw-semibold">{{ account.code|default:"" }} - {{ account.name }}</div>
+              <div class="small text-muted">{{ account.account_type }} • {{ account.tax_rate.name|default:"Tax Exempt (0%)" }}</div>
+            </div>
+          </div>
+          <div class="text-end">
+            <div class="fw-semibold">${{ account.current_balance|default:0|floatformat:2 }}</div>
+            <div class="small text-muted">YTD Balance</div>
+          </div>
+          <div>
+            <div class="dropdown">
+              <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                Manage Account
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <a class="dropdown-item" href="{% url 'bank_accounts:upload_transactions' account.id %}">>
+                    <i class="fa fa-upload me-2"></i>Import bank statement
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item" href="{% url 'reconciliation:dashboard' %}">
+                    <i class="fa fa-check me-2"></i>Reconcile
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <a class="dropdown-item" href="{% url 'coa:edit' account.id %}">
+                    <i class="fa fa-edit me-2"></i>Edit Account
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="mt-2 small text-muted">
+          Code: {{ account.code|default:"Not set" }} | 
+          Tax Rate: {{ account.tax_rate.name|default:"Tax Exempt (0%)" }} |
+          YTD: ${{ account.current_balance|default:0|floatformat:2 }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div class="text-center text-muted py-5">
+    <i class="fa fa-university fa-3x mb-3 d-block"></i>
+    No bank accounts yet. 
+    <a href="{% url 'bank_accounts:add' %}">Add Bank Account</a> to create one.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

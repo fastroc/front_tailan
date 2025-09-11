@@ -1,0 +1,457 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Bank Accounts{% endblock %}
+
+{% block extra_css %}
+<style>
+  .dashboard-header { 
+    background: linear-gradient(135deg, #1e40af 0%, #3730a3 100%); 
+    color: white; 
+    border-radius: 0 0 2rem 2rem;
+    margin: -1rem -15px 0 -15px;
+    padding: 2rem 15px;
+  }
+  .account-card { 
+    border: none; 
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); 
+    transition: all 0.3s ease;
+    border-radius: 1rem;
+    overflow: hidden;
+  }
+  .account-card:hover { 
+    transform: translateY(-8px); 
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+  .balance-positive { color: #16a34a; }
+  .balance-negative { color: #dc2626; }
+  .balance-zero { color: #6b7280; }
+  .quick-action { 
+    background: white; 
+    border: 2px solid #e5e7eb; 
+    transition: all 0.3s ease;
+    border-radius: 1rem;
+  }
+  .quick-action:hover { 
+    border-color: #3b82f6; 
+    background: #f0f9ff;
+    transform: translateY(-2px);
+  }
+  .stats-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+    gap: 1.5rem; 
+    margin: 2rem 0;
+  }
+  .stat-item { 
+    background: white; 
+    padding: 1.5rem; 
+    border-radius: 1rem; 
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f3f4f6;
+  }
+  .empty-state { 
+    background: #fafbfc; 
+    border: 2px dashed #d1d5db; 
+    border-radius: 1rem; 
+    padding: 4rem 2rem; 
+    text-align: center;
+  }
+  .company-badge {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .upload-delete-btn {
+    opacity: 0.6;
+    transition: all 0.2s ease;
+  }
+  .upload-delete-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  .recent-upload-item {
+    transition: all 0.2s ease;
+  }
+  .recent-upload-item:hover {
+    background-color: #f1f5f9 !important;
+  }
+  .recent-upload-item:hover .upload-delete-btn {
+    opacity: 1;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Dashboard Header -->
+<div class="dashboard-header">
+  <div class="row align-items-center">
+    <div class="col-md-8">
+      <h1 class="h2 mb-2">
+        <i class="fas fa-university me-3"></i>Bank Account Management
+      </h1>
+      {% if company %}
+        <div class="company-badge">
+          <i class="fas fa-building"></i>
+          {{ company.name }}
+        </div>
+      {% endif %}
+    </div>
+    <div class="col-md-4 text-end">
+      {% if not no_company %}
+        <a href="{% url 'bank_accounts:add' %}" class="btn btn-light btn-lg">
+          <i class="fas fa-plus me-2"></i>Add Account
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Content Area -->
+<div class="container-fluid py-4">
+  {% if no_company %}
+    <!-- No Company State -->
+    <div class="empty-state">
+      <i class="fas fa-building fa-4x text-warning mb-4"></i>
+      <h3 class="h4 mb-3">Select a Company First</h3>
+      <p class="text-muted mb-4">
+        You need to select a company before you can manage bank accounts. 
+        Please go to your dashboard and choose the company you want to work with.
+      </p>
+      <a href="{% url 'dashboard' %}" class="btn btn-warning btn-lg">
+        <i class="fas fa-arrow-left me-2"></i>Go to Dashboard
+      </a>
+    </div>
+
+  {% elif not accounts %}
+    <!-- No Accounts State -->
+    <div class="empty-state">
+      <i class="fas fa-university fa-4x text-primary mb-4"></i>
+      <h3 class="h4 mb-3">No Bank Accounts Yet</h3>
+      <p class="text-muted mb-4">
+        Ready to start managing your finances? Add your first bank account to upload statements, 
+        track transactions, and keep your books balanced.
+      </p>
+      <a href="{% url 'bank_accounts:add' %}" class="btn btn-primary btn-lg">
+        <i class="fas fa-plus me-2"></i>Add Your First Bank Account
+      </a>
+    </div>
+
+  {% else %}
+    <!-- Stats Overview -->
+    <div class="stats-grid">
+      <div class="stat-item">
+        <i class="fas fa-university fa-2x text-primary mb-3"></i>
+        <div class="h3 mb-1">{{ accounts.count }}</div>
+        <div class="text-muted">Bank Accounts</div>
+      </div>
+      <div class="stat-item">
+        <i class="fas fa-dollar-sign fa-2x text-success mb-3"></i>
+        <div class="h3 mb-1 {% if total_balance > 0 %}balance-positive{% elif total_balance < 0 %}balance-negative{% else %}balance-zero{% endif %}">
+          ${{ total_balance|default:0|floatformat:2 }}
+        </div>
+        <div class="text-muted">Total Balance</div>
+      </div>
+      <div class="stat-item">
+        <i class="fas fa-exchange-alt fa-2x text-info mb-3"></i>
+        <div class="h3 mb-1">{{ total_transactions|default:0 }}</div>
+        <div class="text-muted">Total Transactions</div>
+      </div>
+      <div class="stat-item">
+        <i class="fas fa-file-csv fa-2x text-warning mb-3"></i>
+        <div class="h3 mb-1">{{ total_upload_files|default:0 }}</div>
+        <div class="text-muted">Uploaded Files</div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <h5 class="mb-3">
+          <i class="fas fa-bolt me-2 text-warning"></i>Quick Actions
+        </h5>
+        <div class="row g-3">
+          <div class="col-md-3 col-6">
+            <a href="{% url 'bank_accounts:add' %}" class="quick-action p-3 d-block text-decoration-none text-center">
+              <i class="fas fa-plus fa-2x text-primary mb-2"></i>
+              <div class="fw-semibold">Add Account</div>
+              <small class="text-muted">New bank account</small>
+            </a>
+          </div>
+          <div class="col-md-3 col-6">
+            <a href="#" class="quick-action p-3 d-block text-decoration-none text-center">
+              <i class="fas fa-upload fa-2x text-success mb-2"></i>
+              <div class="fw-semibold">Upload Statements</div>
+              <small class="text-muted">Bulk import</small>
+            </a>
+          </div>
+          <div class="col-md-3 col-6">
+            <a href="#" class="quick-action p-3 d-block text-decoration-none text-center">
+              <i class="fas fa-balance-scale fa-2x text-info mb-2"></i>
+              <div class="fw-semibold">Reconcile</div>
+              <small class="text-muted">Match transactions</small>
+            </a>
+          </div>
+          <div class="col-md-3 col-6">
+            <a href="#" class="quick-action p-3 d-block text-decoration-none text-center">
+              <i class="fas fa-chart-bar fa-2x text-warning mb-2"></i>
+              <div class="fw-semibold">Reports</div>
+              <small class="text-muted">View analytics</small>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bank Accounts Grid -->
+    <div class="row">
+      <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5>
+            <i class="fas fa-university me-2 text-primary"></i>Your Bank Accounts
+          </h5>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-th me-1"></i>Grid
+            </button>
+            <button class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-list me-1"></i>List
+            </button>
+          </div>
+        </div>
+        
+        <div class="row g-4">
+          {% for account_data in accounts_data %}
+          <div class="col-lg-6 col-xl-4">
+            <div class="account-card card h-100">
+              <!-- Account Header -->
+              <div class="card-header bg-white border-0 pb-0">
+                <div class="d-flex align-items-center">
+                  <div class="bg-primary bg-opacity-10 rounded-circle p-3 me-3">
+                    <i class="fas fa-university fa-lg text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="card-title mb-1 fw-bold">{{ account_data.account.name }}</h6>
+                    <small class="text-muted">{{ account_data.account.code|default:"No code set" }}</small>
+                  </div>
+                  <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                      <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li><a class="dropdown-item" href="#"><i class="fas fa-edit me-2"></i>Edit Account</a></li>
+                      <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                      <li><hr class="dropdown-divider"></li>
+                      <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash me-2"></i>Delete</a></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Account Body -->
+              <div class="card-body">
+                <!-- Balance Display -->
+                <div class="text-center py-3 mb-3" style="background: #f8fafc; border-radius: 0.75rem;">
+                  <div class="h4 mb-1 {% if account_data.account.current_balance > 0 %}balance-positive{% elif account_data.account.current_balance < 0 %}balance-negative{% else %}balance-zero{% endif %}">
+                    ${{ account_data.account.current_balance|default:0|floatformat:2 }}
+                  </div>
+                  <small class="text-muted">Current Balance</small>
+                </div>
+
+                <!-- Account Stats -->
+                <div class="row text-center mb-3">
+                  <div class="col-4">
+                    <div class="border-end">
+                      <div class="fw-bold text-primary">{{ account_data.transaction_count }}</div>
+                      <small class="text-muted">Transactions</small>
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <div class="border-end">
+                      <div class="fw-bold text-success">{{ account_data.total_uploads }}</div>
+                      <small class="text-muted">Uploads</small>
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <div class="fw-bold text-warning">0</div>
+                    <small class="text-muted">Pending</small>
+                  </div>
+                </div>
+
+                <!-- Recent Uploads Info -->
+                {% if account_data.recent_uploads %}
+                <div class="mb-3">
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <small class="fw-semibold text-muted">
+                      <i class="fas fa-file-csv me-1"></i>Recent Files
+                    </small>
+                    {% if account_data.last_upload %}
+                    <small class="text-muted">{{ account_data.last_upload.uploaded_at|timesince }} ago</small>
+                    {% endif %}
+                  </div>
+                  <div class="recent-uploads" style="max-height: 120px; overflow-y: auto;">
+                    {% for upload in account_data.recent_uploads %}
+                    <div class="d-flex align-items-center mb-2 p-2 recent-upload-item" style="background: #f8fafc; border-radius: 0.5rem; font-size: 0.875rem;">
+                      <div class="bg-success bg-opacity-10 rounded p-1 me-2">
+                        <i class="fas fa-file-csv text-success" style="font-size: 0.75rem;"></i>
+                      </div>
+                      <div class="flex-grow-1 min-w-0">
+                        <div class="fw-medium text-truncate" style="max-width: 100px;" title="{{ upload.original_filename }}">
+                          {{ upload.original_filename }}
+                        </div>
+                        <div class="d-flex gap-1">
+                          {% if upload.imported_count > 0 %}
+                          <span class="badge bg-success" style="font-size: 0.6rem;">{{ upload.imported_count }}</span>
+                          {% endif %}
+                          {% if upload.duplicate_count > 0 %}
+                          <span class="badge bg-warning" style="font-size: 0.6rem;">{{ upload.duplicate_count }} dup</span>
+                          {% endif %}
+                          {% if upload.error_count > 0 %}
+                          <span class="badge bg-danger" style="font-size: 0.6rem;">{{ upload.error_count }} err</span>
+                          {% endif %}
+                        </div>
+                      </div>
+                      <div class="ms-1">
+                        <button class="btn btn-danger btn-sm upload-delete-btn" 
+                                style="font-size: 0.75rem; padding: 4px 6px; min-width: 28px;"
+                                onclick="confirmDelete({{ account_data.account.id }}, {{ upload.id }}, '{{ upload.original_filename|escapejs }}', {{ upload.imported_count }})"
+                                title="Delete '{{ upload.original_filename }}' and {{ upload.imported_count }} transactions">
+                          <i class="fas fa-trash" style="font-size: 0.65rem;"></i>
+                        </button>
+                      </div>
+                    </div>
+                    {% endfor %}
+                    {% if account_data.total_uploads > 3 %}
+                    <div class="text-center">
+                      <small class="text-muted">
+                        <i class="fas fa-ellipsis-h me-1"></i>{{ account_data.total_uploads|add:"-3" }} more files
+                      </small>
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+                {% else %}
+                <div class="text-center py-2 mb-3" style="background: #f8fafc; border-radius: 0.5rem;">
+                  <small class="text-muted">
+                    <i class="fas fa-upload me-1"></i>No files uploaded yet
+                  </small>
+                </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="d-grid gap-2">
+                  <a href="{% url 'bank_accounts:upload_transactions' account_data.account.id %}" class="btn btn-primary">
+                    <i class="fas fa-upload me-2"></i>Upload Statements
+                  </a>
+                  <div class="row g-2">
+                    <div class="col-6">
+                      <a href="#" class="btn btn-outline-success btn-sm w-100">
+                        <i class="fas fa-eye me-1"></i>View
+                      </a>
+                    </div>
+                    <div class="col-6">
+                      <a href="#" class="btn btn-outline-info btn-sm w-100">
+                        <i class="fas fa-balance-scale me-1"></i>Reconcile
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Account Footer -->
+              <div class="card-footer bg-light border-0 pt-0">
+                <small class="text-muted">
+                  <i class="fas fa-clock me-1"></i>
+                  {% if account_data.last_upload %}
+                    Last upload: {{ account_data.last_upload.uploaded_at|date:"M j" }}
+                  {% else %}
+                    No uploads yet
+                  {% endif %}
+                </small>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+// Global function to confirm and delete upload
+function confirmDelete(accountId, uploadId, filename, transactionCount) {
+  console.log('Delete function called:', {accountId, uploadId, filename, transactionCount});
+  
+  // Better confirmation dialog
+  const confirmed = confirm(
+    `🗑️ DELETE FILE CONFIRMATION\n\n` +
+    `File: "${filename}"\n` +
+    `Transactions to remove: ${transactionCount}\n\n` +
+    `⚠️ This action cannot be undone!\n\n` +
+    `Click OK to delete, Cancel to keep the file.`
+  );
+  
+  if (confirmed) {
+    console.log('User confirmed delete');
+    
+    // Show loading feedback immediately
+    const deleteBtn = event.target.closest('button');
+    if (deleteBtn) {
+      deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+      deleteBtn.disabled = true;
+      deleteBtn.style.opacity = '1';
+    }
+    
+    // Create and submit form
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/bank_accounts/upload/${accountId}/delete/${uploadId}/`;
+    form.style.display = 'none';
+    
+    console.log('Form action:', form.action);
+    
+    // Add CSRF token
+    const csrfToken = getCookie('csrftoken');
+    console.log('CSRF token:', csrfToken ? 'Found' : 'Not found');
+    
+    if (csrfToken) {
+      const csrfInput = document.createElement('input');
+      csrfInput.type = 'hidden';
+      csrfInput.name = 'csrfmiddlewaretoken';
+      csrfInput.value = csrfToken;
+      form.appendChild(csrfInput);
+    }
+    
+    // Add to page and submit
+    document.body.appendChild(form);
+    console.log('Submitting form...');
+    form.submit();
+  } else {
+    console.log('User cancelled delete');
+  }
+}
+
+// Helper function to get cookie value
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+</script>
+{% endblock %}

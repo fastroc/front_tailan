@@ -1,136 +1,69 @@
 from django.db import models
-from django.contrib.auth import get_user_model
-from core.models import TimeStampedModel
+from django.contrib.auth.models import User
+from coa.models import Account
+from bank_accounts.models import BankTransaction
+from journal.models import Journal
 
-User = get_user_model()
 
-
-class UploadedFile(TimeStampedModel):
-    """Track uploaded bank statement files"""
-    file_name = models.CharField(max_length=255, verbose_name="File Name")
-    file = models.FileField(
-        upload_to='reconciliation/uploads/%Y/%m/%d/',
-        verbose_name="Uploaded File"
-    )
-    file_size = models.IntegerField(verbose_name="File Size (bytes)")
-    uploaded_by = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='uploaded_files',
-        verbose_name="Uploaded By"
-    )
-    
-    # Bank account information
-    bank_account_name = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        verbose_name="Bank Account Name"
-    )
-    statement_period = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        verbose_name="Statement Period"
-    )
-    
-    # Processing status
-    is_processed = models.BooleanField(
-        default=False,
-        verbose_name="Processed"
-    )
-    processed_at = models.DateTimeField(
-        blank=True,
-        null=True,
-        verbose_name="Processed At"
-    )
+class ReconciliationSession(models.Model):
+    """Tracks each reconciliation session for a bank account"""
+    account = models.ForeignKey(Account, on_delete=models.CASCADE, limit_choices_to={'account_type': 'Bank'})
+    session_name = models.CharField(max_length=200, help_text="Name or description of this reconciliation")
+    statement_date = models.DateField(help_text="Statement ending date")
+    statement_balance = models.DecimalField(max_digits=15, decimal_places=2, help_text="Statement ending balance")
+    reconciled_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Reconciled balance")
+    difference = models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Difference between statement and reconciled")
+    status = models.CharField(max_length=20, choices=[
+        ('in_progress', 'In Progress'),
+        ('balanced', 'Balanced'),
+        ('unbalanced', 'Unbalanced'),
+        ('completed', 'Completed')
+    ], default='in_progress')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
-        verbose_name = "Uploaded File"
-        verbose_name_plural = "Uploaded Files"
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.file_name} - {self.bank_account_name}"
-
-
-class BankTransaction(TimeStampedModel):
-    """Bank Statement Table - Stores individual bank transactions"""
-    uploaded_file = models.ForeignKey(
-        UploadedFile,
-        on_delete=models.CASCADE,
-        related_name='transactions',
-        verbose_name="Source File"
-    )
-    row_number = models.IntegerField(verbose_name="Row Number")
-    
-    # CSV Bank Statement Columns
-    date = models.DateField(verbose_name="Transaction Date")
-    amount = models.DecimalField(
-        max_digits=15,
-        decimal_places=2,
-        verbose_name="Amount"
-    )
-    payee = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name="Payee"
-    )
-    description = models.TextField(verbose_name="Description")
-    reference = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        verbose_name="Reference"
-    )
-    
-    # Enhancement Columns for User Input
-    who = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name="Who (Contact Name)"
-    )
-    what = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name="What (Account Code)"
-    )
-    why = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name="Why (Reason)"
-    )
-    
-    class Meta:
-        verbose_name = "Bank Transaction"
-        verbose_name_plural = "Bank Transactions"
-        ordering = ['-date', 'row_number']
-        
-    def __str__(self):
-        return f"{self.date} - ${self.amount} - {self.description[:50]}"
-
-
-class ProcessingLog(TimeStampedModel):
-    """Track file processing attempts"""
-    uploaded_file = models.ForeignKey(
-        UploadedFile,
-        on_delete=models.CASCADE,
-        related_name='processing_logs',
-        verbose_name="Uploaded File"
-    )
-    success = models.BooleanField(verbose_name="Success")
-    error_message = models.TextField(blank=True, null=True)
-    transactions_extracted = models.IntegerField(default=0)
-    transactions_imported = models.IntegerField(default=0)
-    
-    class Meta:
-        verbose_name = "Processing Log"
-        verbose_name_plural = "Processing Logs"
         ordering = ['-created_at']
         
     def __str__(self):
-        status = "Success" if self.success else "Failed"
-        return f"{self.uploaded_file.file_name} - {status}"
+        return f"{self.account.name} - {self.session_name} ({self.statement_date})"
+
+
+class TransactionMatch(models.Model):
+    """Links bank transactions to journal entries during reconciliation"""
+    reconciliation_session = models.ForeignKey(ReconciliationSession, on_delete=models.CASCADE)
+    bank_transaction = models.ForeignKey(BankTransaction, on_delete=models.CASCADE)
+    journal_entry = models.ForeignKey(Journal, on_delete=models.CASCADE, null=True, blank=True)
+    match_confidence = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="Auto-match confidence %")
+    is_manual_match = models.BooleanField(default=False, help_text="Was this match done manually?")
+    is_reconciled = models.BooleanField(default=False)
+    reconciled_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    reconciled_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, help_text="Reconciliation notes")
+    
+    class Meta:
+        unique_together = ['bank_transaction', 'reconciliation_session']
+        
+    def __str__(self):
+        return f"Match: {self.bank_transaction} -> {self.journal_entry}"
+
+
+class ReconciliationReport(models.Model):
+    """Stores reconciliation reports and summaries"""
+    reconciliation_session = models.OneToOneField(ReconciliationSession, on_delete=models.CASCADE)
+    total_bank_transactions = models.IntegerField(default=0)
+    total_reconciled = models.IntegerField(default=0)
+    total_unreconciled = models.IntegerField(default=0)
+    auto_matched = models.IntegerField(default=0)
+    manual_matched = models.IntegerField(default=0)
+    report_data = models.JSONField(default=dict, help_text="Detailed report data")
+    generated_at = models.DateTimeField(auto_now_add=True)
+    
+    def reconciliation_percentage(self):
+        if self.total_bank_transactions > 0:
+            return round((self.total_reconciled / self.total_bank_transactions) * 100, 1)
+        return 0
+        
+    def __str__(self):
+        return f"Report for {self.reconciliation_session}"

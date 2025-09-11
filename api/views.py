@@ -3,10 +3,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
-from django.utils.decorators import method_decorator
-from django.views import View
+from django.contrib.auth.models import User
 import json
-from users.models import CustomUser, UserProfile
+from users.models import UserProfile
 
 
 @csrf_exempt
@@ -74,12 +73,12 @@ def api_register(request):
                 'error': 'Email and password required'
             }, status=400)
         
-        if CustomUser.objects.filter(email=email).exists():
+        if User.objects.filter(email=email).exists():
             return JsonResponse({
                 'error': 'Email already exists'
             }, status=400)
         
-        user = CustomUser.objects.create_user(
+        user = User.objects.create_user(
             username=email,
             email=email,
             password=password,
@@ -141,7 +140,7 @@ def api_user_profile(request):
 @require_http_methods(["GET"])
 def api_users_list(request):
     """API endpoint to list all users (public info only)."""
-    users = CustomUser.objects.filter(is_active=True)[:20]  # Limit to 20 users
+    users = User.objects.filter(is_active=True)[:20]  # Limit to 20 users
     
     users_data = []
     for user in users:

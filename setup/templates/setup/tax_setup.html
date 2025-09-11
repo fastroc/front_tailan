@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Tax Configuration - {{ active_company.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            
+            <!-- Back Button -->
+            <div class="mb-3">
+                <a href="{% url 'setup:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Setup
+                </a>
+            </div>
+
+            <!-- Setup Step Card -->
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-percent me-2 fs-5"></i>
+                        <div>
+                            <h5 class="mb-0">{{ step_instance.name }} <span class="badge bg-dark text-warning ms-2">Optional</span></h5>
+                            <small class="opacity-75">{{ step_instance.description }}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    {% if is_complete %}
+                        <div class="alert alert-success" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            Tax rates are configured! You have {{ tax_count }} tax rate(s) set up.
+                        </div>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Auto-create Option -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <div class="form-check">
+                                    {{ form.create_default_tax }}
+                                    <label class="form-check-label" for="{{ form.create_default_tax.id_for_label }}">
+                                        <strong>{{ form.create_default_tax.label }}</strong>
+                                    </label>
+                                </div>
+                                <small class="text-muted">
+                                    Creates a basic tax rate that you can customize. 
+                                    You can set it to 0% if no tax applies.
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Tax Configuration -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.tax_name.id_for_label }}" class="form-label">
+                                    <i class="bi bi-tag me-1"></i>{{ form.tax_name.label }}
+                                </label>
+                                {{ form.tax_name }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.tax_percentage.id_for_label }}" class="form-label">
+                                    <i class="bi bi-percent me-1"></i>{{ form.tax_percentage.label }}
+                                </label>
+                                <div class="input-group">
+                                    {{ form.tax_percentage }}
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                {% if form.tax_percentage.help_text %}
+                                    <div class="form-text">{{ form.tax_percentage.help_text }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Common Tax Rates Helper -->
+                        <div class="card bg-info bg-opacity-10 mb-4">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Common Tax Rates</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <small><strong>No Tax:</strong> 0.000</small><br>
+                                        <small><strong>5% GST/VAT:</strong> 0.050</small><br>
+                                        <small><strong>7.5% Sales Tax:</strong> 0.075</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small><strong>10% GST:</strong> 0.100</small><br>
+                                        <small><strong>13% HST:</strong> 0.130</small><br>
+                                        <small><strong>20% VAT:</strong> 0.200</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Existing Tax Rates -->
+                        {% if tax_rates %}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Current Tax Rates ({{ tax_count }})</h6>
+                            </div>
+                            <div class="card-body">
+                                {% for tax_rate in tax_rates %}
+                                <div class="d-flex justify-content-between align-items-center {% if not forloop.last %}border-bottom pb-2 mb-2{% endif %}">
+                                    <div>
+                                        <strong>{{ tax_rate.name }}</strong>
+                                        <small class="d-block text-muted">{{ tax_rate.description }}</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-primary">
+                                            {{ tax_rate.rate|floatformat:3 }}%
+                                        </span>
+                                        {% if tax_rate.is_active %}
+                                            <small class="d-block text-success">Active</small>
+                                        {% else %}
+                                            <small class="d-block text-muted">Inactive</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-warning text-dark">
+                                <i class="bi bi-plus-circle me-1"></i>Create Tax Rate
+                            </button>
+                            <a href="{% url 'setup:dashboard' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i>Cancel
+                            </a>
+                            <a href="{% url 'setup:skip_step' 'tax_setup' %}" class="btn btn-outline-warning ms-auto">
+                                <i class="bi bi-skip-forward me-1"></i>Skip for Now
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Text -->
+            <div class="card mt-3">
+                <div class="card-body bg-light">
+                    <h6><i class="bi bi-question-circle me-2"></i>About Tax Configuration</h6>
+                    <ul class="mb-0 small text-muted">
+                        <li><strong>Optional Setup:</strong> You can skip this and set up taxes later</li>
+                        <li><strong>Start Simple:</strong> Create one default rate, add more as needed</li>
+                        <li><strong>Zero Tax:</strong> Set to 0.000 if your business doesn't charge tax</li>
+                        <li><strong>Multiple Rates:</strong> You can add more tax rates later from the admin</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

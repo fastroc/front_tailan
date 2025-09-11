@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Reconciliation - {{ account.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h2 class="mb-1">
+            <i class="fas fa-balance-scale text-primary"></i>
+            Reconciliation - {{ account.name }}
+          </h2>
+          <p class="text-muted mb-0">{{ company.name }}</p>
+        </div>
+        <div>
+          <a href="{% url 'reconciliation:dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="fas fa-university"></i>
+            Account Information
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <table class="table table-borderless">
+                <tr>
+                  <td><strong>Account Name:</strong></td>
+                  <td>{{ account.name }}</td>
+                </tr>
+                <tr>
+                  <td><strong>Account Code:</strong></td>
+                  <td>{{ account.code|default:"-" }}</td>
+                </tr>
+                <tr>
+                  <td><strong>Account Type:</strong></td>
+                  <td>{{ account.account_type }}</td>
+                </tr>
+                <tr>
+                  <td><strong>Current Balance:</strong></td>
+                  <td><strong class="text-success">${{ account.current_balance|floatformat:2|intcomma }}</strong></td>
+                </tr>
+              </table>
+            </div>
+            <div class="col-md-6">
+              <div class="alert alert-info">
+                <h6><i class="fas fa-info-circle"></i> Coming Soon!</h6>
+                <p class="mb-0">
+                  The detailed reconciliation interface is under development. 
+                  This will include transaction matching, statement upload, and reconciliation reporting.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="fas fa-list"></i>
+            Available Actions
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4">
+              <div class="d-grid">
+                <a href="{% url 'bank_accounts:upload_transactions' account.id %}" class="btn btn-primary btn-lg">
+                  <i class="fas fa-upload"></i>
+                  Upload Bank Statement
+                </a>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="d-grid">
+                <button class="btn btn-success btn-lg" disabled>
+                  <i class="fas fa-balance-scale"></i>
+                  Start Reconciliation
+                  <small class="d-block">Coming Soon</small>
+                </button>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="d-grid">
+                <button class="btn btn-info btn-lg" disabled>
+                  <i class="fas fa-chart-line"></i>
+                  View Reports
+                  <small class="d-block">Coming Soon</small>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

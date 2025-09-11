@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}System Setup - {{ active_company.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Setup Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-body text-white">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h1 class="h3 mb-1">
+                                <i class="bi bi-gear-fill me-2"></i>System Setup
+                            </h1>
+                            <p class="mb-0 opacity-75">{{ active_company.name }}</p>
+                        </div>
+                        <div class="col-auto">
+                            <div class="text-center">
+                                <div class="progress mb-2" style="width: 120px; height: 8px;">
+                                    <div class="progress-bar bg-white" style="width: {{ completion_percentage }}%"></div>
+                                </div>
+                                <small class="d-block">{{ completion_percentage }}% Complete</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup Steps -->
+    <div class="row">
+        {% for step in setup_steps %}
+        <div class="col-lg-6 col-md-12 mb-4">
+            <div class="card h-100 {% if step.required and not step.complete %}border-danger{% elif step.complete %}border-success{% else %}border-light{% endif %}">
+                <div class="card-body">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="me-3 pt-1">
+                            <i class="{{ step.status_icon }} fs-2"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5 class="card-title mb-1">
+                                {{ step.name }}
+                                {% if step.required %}
+                                    <span class="badge bg-danger ms-1">Required</span>
+                                {% endif %}
+                            </h5>
+                            <p class="text-muted small mb-2">{{ step.description }}</p>
+                            
+                            {% if step.complete %}
+                                <small class="text-success">
+                                    <i class="bi bi-check-circle-fill me-1"></i>Completed
+                                </small>
+                            {% elif step.required %}
+                                <small class="text-danger">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Required
+                                </small>
+                            {% else %}
+                                <small class="text-warning">
+                                    <i class="bi bi-clock me-1"></i>Optional
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        {% if step.complete %}
+                            <a href="{{ step.url }}" class="btn btn-outline-success btn-sm">
+                                <i class="bi bi-pencil me-1"></i>Modify
+                            </a>
+                        {% elif step.can_start %}
+                            <a href="{{ step.url }}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-arrow-right me-1"></i>Configure
+                            </a>
+                            {% if not step.required %}
+                                <a href="{% url 'setup:skip_step' step.key %}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-skip-forward me-1"></i>Skip for Now
+                                </a>
+                            {% endif %}
+                        {% else %}
+                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                <i class="bi bi-lock me-1"></i>Locked
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Next Steps Alert -->
+    {% if next_step %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">Next Step: {{ next_step.name }}</h6>
+                    <p class="mb-0">{{ next_step.description }}</p>
+                </div>
+                <div class="ms-3">
+                    <a href="{{ next_step.url }}" class="btn btn-warning">
+                        Continue <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Completion Status -->
+    {% if required_complete %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-success text-center" role="alert">
+                <i class="bi bi-check-circle-fill fs-1 text-success mb-3"></i>
+                <h4 class="alert-heading">Essential Setup Complete!</h4>
+                <p>All required setup steps are finished. Your accounting system is ready to use.</p>
+                <hr>
+                <div class="d-flex gap-2 justify-content-center">
+                    <a href="{% url 'setup:complete' %}" class="btn btn-success">
+                        <i class="bi bi-check-circle me-1"></i>Finish Setup
+                    </a>
+                    <a href="{% url 'dashboard' %}" class="btn btn-outline-success">
+                        <i class="bi bi-house me-1"></i>Go to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% elif completion_percentage >= 50 %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-info text-center" role="alert">
+                <i class="bi bi-info-circle-fill fs-1 text-info mb-3"></i>
+                <h5>Great Progress!</h5>
+                <p>You've completed {{ completion_percentage }}% of the setup. You can start using the system now.</p>
+                <a href="{% url 'setup:complete' %}" class="btn btn-info">
+                    <i class="bi bi-play-circle me-1"></i>Start Using System
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-lightning-charge me-2"></i>Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <a href="{% url 'company:company_settings' active_company.id %}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="bi bi-building me-2"></i>Company Settings
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="/admin/coa/account/" class="btn btn-outline-info w-100 mb-2">
+                                <i class="bi bi-list-ul me-2"></i>Manage Accounts
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{% url 'dashboard' %}" class="btn btn-outline-success w-100 mb-2">
+                                <i class="bi bi-speedometer2 me-2"></i>Main Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

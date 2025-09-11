@@ -1,59 +1,64 @@
 from django.core.management.base import BaseCommand
 from coa.models import TaxRate
+from company.models import Company
 
 
 class Command(BaseCommand):
-    help = 'Create default tax rates for the COA system'
+    help = "Create default system tax rates for all companies"
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--company-id",
+            type=int,
+            help="Create tax rates for specific company ID only",
+        )
 
     def handle(self, *args, **options):
-        tax_rates = [
-            {
-                'name': 'Sales Tax on Imports',
-                'rate': 0.0000,
-                'description': 'Sales Tax on Imports (0%)',
-            },
-            {
-                'name': 'Tax Exempt',
-                'rate': 0.0000,
-                'description': 'Tax Exempt (0%)',
-            },
-            {
-                'name': 'Tax on Purchases',
-                'rate': 0.0000,
-                'description': 'Tax on Purchases (0%)',
-            },
-            {
-                'name': 'Tax on Sales',
-                'rate': 0.0000,
-                'description': 'Tax on Sales (0%)',
-            },
-        ]
+        company_id = options.get("company_id")
 
-        created_count = 0
-        for tax_data in tax_rates:
-            tax_rate, created = TaxRate.objects.get_or_create(
-                name=tax_data['name'],
-                defaults={
-                    'rate': tax_data['rate'],
-                    'description': tax_data['description'],
-                    'is_active': True,
-                }
-            )
-            if created:
-                created_count += 1
+        if company_id:
+            try:
+                companies = [Company.objects.get(id=company_id)]
                 self.stdout.write(
-                    self.style.SUCCESS(f'Created tax rate: {tax_rate.name}')
+                    f"Creating tax rates for company: {companies[0].name}"
                 )
+            except Company.DoesNotExist:
+                self.stdout.write(
+                    self.style.ERROR(f"Company with ID {company_id} does not exist")
+                )
+                return
+        else:
+            companies = Company.objects.filter(is_active=True)
+            self.stdout.write(
+                f"Creating tax rates for {companies.count()} active companies"
+            )
+
+        total_created = 0
+
+        for company in companies:
+            self.stdout.write(f"\n--- Processing company: {company.name} ---")
+            created_rates = TaxRate.create_default_tax_rates(company)
+
+            if created_rates:
+                total_created += len(created_rates)
+                for tax_rate in created_rates:
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"Created: {tax_rate.name} ({tax_rate.rate * 100}%)"
+                        )
+                    )
             else:
                 self.stdout.write(
-                    self.style.WARNING(f'Tax rate already exists: {tax_rate.name}')
+                    self.style.WARNING(
+                        "Default tax rates already exist for this company"
+                    )
                 )
 
-        if created_count > 0:
+        if total_created > 0:
             self.stdout.write(
-                self.style.SUCCESS(f'Successfully created {created_count} tax rates')
+                self.style.SUCCESS(
+                    f"\nSuccessfully created {total_created} system tax rates"
+                )
             )
         else:
-            self.stdout.write(
-                self.style.WARNING('No new tax rates were created')
-            )
+            self.stdout.write(self.style.WARNING("\nNo new tax rates were created"))

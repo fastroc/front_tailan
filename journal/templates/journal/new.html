@@ -57,6 +57,9 @@
 {% endif %}
 
 <div class="container py-4" id="mjRoot">
+  <!-- CSRF Token for AJAX requests -->
+  {% csrf_token %}
+  
   <!-- Breadcrumb -->
   <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb">
@@ -128,10 +131,10 @@
         <div class="col-md-2">
           <label class="form-label fw-semibold">Amounts are</label>
           <select class="form-select" id="amountMode">
-            <option>No Tax</option>
-            <option>GST (5%)</option>
-            <option>VAT (10%)</option>
-            <option>Tax (15%)</option>
+            <option value="">No Tax</option>
+            {% for tax_rate in tax_rates %}
+            <option value="{{ tax_rate.id }}">{{ tax_rate.name }} ({{ tax_rate.rate|floatformat:2 }}%)</option>
+            {% endfor %}
           </select>
         </div>
       </div>
@@ -225,30 +228,18 @@
 </div>
 
 <script>
-  // Sample accounts data - replace with server-side data
+  // Dynamic accounts data from server
   const accounts = [
-    { code: '1001', name: 'Cash in Hand' },
-    { code: '1100', name: 'Business Checking' },
-    { code: '1200', name: 'Accounts Receivable' },
-    { code: '1300', name: 'Inventory' },
-    { code: '1400', name: 'Prepaid Expenses' },
-    { code: '2001', name: 'Accounts Payable' },
-    { code: '2100', name: 'Accrued Expenses' },
-    { code: '2200', name: 'Short-term Loans' },
-    { code: '4000', name: 'Sales Revenue' },
-    { code: '4100', name: 'Service Income' },
-    { code: '4200', name: 'Consulting Income' },
-    { code: '5000', name: 'Office Expenses' },
-    { code: '5100', name: 'Travel Expenses' },
-    { code: '5200', name: 'Marketing' },
-    { code: '5300', name: 'Utilities' },
-    { code: '5400', name: 'Professional Services' }
+    {% for account in accounts %}
+    { code: '{{ account.code }}', name: '{{ account.name|escapejs }}' }{% if not forloop.last %},{% endif %}
+    {% endfor %}
   ];
 
+  // Dynamic tax rates data from server  
   const taxRates = [
-    { id: 'gst', name: 'GST (5%)' },
-    { id: 'vat', name: 'VAT (10%)' },
-    { id: 'tax', name: 'Tax (15%)' }
+    {% for tax_rate in tax_rates %}
+    { id: '{{ tax_rate.id }}', name: '{{ tax_rate.name|escapejs }} ({{ tax_rate.rate|floatformat:2 }}%)' }{% if not forloop.last %},{% endif %}
+    {% endfor %}
   ];
 
   function fmt(n) { 
@@ -399,13 +390,46 @@
       reversing_date: document.getElementById('reversingDate').value || null,
       cash_basis: document.getElementById('cashBasis').checked,
       amount_mode: document.getElementById('amountMode').value,
-      status: mode,
+      status: mode === 'draft' ? 'draft' : 'draft', // Only draft and template for now
       lines: lines,
     };
     
     console.log('Saving journal as ' + mode, payload);
-    alert(`Ready to save journal as ${mode}. Check console for payload data.`);
-    // TODO: Implement API call to save journal
+    
+    // Show loading state
+    const saveBtn = document.querySelector('.dropdown-toggle');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Saving...';
+    saveBtn.disabled = true;
+    
+    // Make API call to save journal
+    fetch('{% url "journal:new_journal" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert(data.message || `Journal saved as ${mode} successfully!`);
+        window.location.href = '{% url "journal:manual_journal" %}';
+      } else {
+        alert('Error: ' + (data.error || `Failed to save journal as ${mode}`));
+        // Restore button
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert(`Network error occurred while saving journal as ${mode}`);
+      // Restore button
+      saveBtn.innerHTML = originalText;
+      saveBtn.disabled = false;
+    });
   }
 
   function postJournal() {
@@ -436,9 +460,40 @@
     console.log('Posting journal', payload);
     
     if (confirm('Are you sure you want to post this journal? Posted journals cannot be edited.')) {
-      alert('Ready to POST journal to server. Check console for payload data.');
-      // TODO: Implement API call to post journal
-      // window.location.href = '{% url "journal:manual_journal" %}';
+      // Show loading state
+      const postBtn = document.querySelector('.btn-post');
+      const originalText = postBtn.innerHTML;
+      postBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Posting...';
+      postBtn.disabled = true;
+      
+      // Make API call to create journal
+      fetch('{% url "journal:new_journal" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message || 'Journal created successfully!');
+          window.location.href = '{% url "journal:manual_journal" %}';
+        } else {
+          alert('Error: ' + (data.error || 'Failed to create journal'));
+          // Restore button
+          postBtn.innerHTML = originalText;
+          postBtn.disabled = false;
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Network error occurred while creating journal');
+        // Restore button
+        postBtn.innerHTML = originalText;
+        postBtn.disabled = false;
+      });
     }
   }
 

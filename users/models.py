@@ -1,53 +1,35 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
-from core.models import BaseModel
-from core.validators import validate_phone_number
-from .managers import CustomUserManager
+from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
-class CustomUser(AbstractUser):
-    """Extended user model with additional fields."""
-    email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=20, blank=True, validators=[validate_phone_number])
-    date_of_birth = models.DateField(null=True, blank=True)
-    bio = models.TextField(max_length=500, blank=True)
-    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
-    is_verified = models.BooleanField(default=False)
+class UserProfile(models.Model):
+    """Simple profile for basic user info - KISS principle!"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    login_count = models.IntegerField(default=0)
+    last_login_ip = models.GenericIPAddressField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    objects = CustomUserManager()
-
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = []  # No additional required fields besides email and password
-
-    class Meta:
-        db_table = 'users_customuser'
-        verbose_name = 'User'
-        verbose_name_plural = 'Users'
-
+    
+    def get_initials(self):
+        """Get user initials for avatar display."""
+        name = self.user.get_full_name() or self.user.username
+        return ''.join([part[0].upper() for part in name.split()[:2]])
+    
     def __str__(self):
-        return f"{self.first_name} {self.last_name} ({self.email})"
-
-    @property
-    def full_name(self):
-        return f"{self.first_name} {self.last_name}".strip()
+        return f"Profile for {self.user.username}"
 
 
-class UserProfile(BaseModel):
-    """Additional user profile information."""
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='profile')
-    address = models.TextField(blank=True)
-    city = models.CharField(max_length=100, blank=True)
-    country = models.CharField(max_length=100, blank=True)
-    postal_code = models.CharField(max_length=20, blank=True)
-    website = models.URLField(blank=True)
-    company = models.CharField(max_length=200, blank=True)
-    job_title = models.CharField(max_length=200, blank=True)
+# Auto-create profile when user is created
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
 
-    class Meta:
-        verbose_name = 'User Profile'
-        verbose_name_plural = 'User Profiles'
 
-    def __str__(self):
-        return f"{self.user.full_name}'s Profile"
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    try:
+        instance.userprofile.save()
+    except UserProfile.DoesNotExist:
+        UserProfile.objects.create(user=instance)

@@ -20,7 +20,7 @@
         box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         padding: 3rem;
         width: 100%;
-        max-width: 600px;
+        max-width: 500px;
     }
     
     .creation-header {
@@ -39,64 +39,6 @@
         margin-bottom: 0;
     }
     
-    .step-indicator {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 2rem;
-        position: relative;
-    }
-    
-    .step-indicator::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: #e5e7eb;
-        z-index: 0;
-    }
-    
-    .step {
-        background: white;
-        border: 3px solid #e5e7eb;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        color: #9ca3af;
-        position: relative;
-        z-index: 1;
-        transition: all 0.3s ease;
-    }
-    
-    .step.active {
-        background: var(--bs-primary);
-        border-color: var(--bs-primary);
-        color: white;
-    }
-    
-    .step.completed {
-        background: #10b981;
-        border-color: #10b981;
-        color: white;
-    }
-    
-    .form-section {
-        margin-bottom: 2rem;
-    }
-    
-    .form-section h4 {
-        color: #1f2937;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid #f3f4f6;
-    }
-    
     .form-group {
         margin-bottom: 1.5rem;
     }
@@ -105,6 +47,7 @@
         font-weight: 500;
         color: #374151;
         margin-bottom: 0.5rem;
+        display: block;
     }
     
     .required::after {
@@ -130,8 +73,8 @@
     }
     
     .logo-preview {
-        width: 80px;
-        height: 80px;
+        width: 100px;
+        height: 100px;
         border: 2px dashed #d1d5db;
         border-radius: 12px;
         display: flex;
@@ -140,6 +83,7 @@
         background: #f9fafb;
         margin-bottom: 1rem;
         transition: all 0.3s ease;
+        margin: 0 auto 1rem auto;
     }
     
     .logo-preview:hover {
@@ -158,23 +102,6 @@
         color: #6b7280;
         margin-top: 0.25rem;
     }
-    
-    .input-group-icon {
-        position: relative;
-    }
-    
-    .input-group-icon .form-control {
-        padding-left: 2.5rem;
-    }
-    
-    .input-group-icon .icon {
-        position: absolute;
-        left: 0.75rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #9ca3af;
-        z-index: 5;
-    }
 </style>
 {% endblock %}
 
@@ -184,13 +111,6 @@
         <div class="creation-header">
             <h2>Create Your Company</h2>
             <p>Set up your business profile to get started with professional accounting</p>
-        </div>
-        
-        <!-- Step Indicator -->
-        <div class="step-indicator">
-            <div class="step active" data-step="1">1</div>
-            <div class="step" data-step="2">2</div>
-            <div class="step" data-step="3">3</div>
         </div>
         
         <!-- Form -->
@@ -209,214 +129,42 @@
             </div>
             {% endif %}
             
-            <!-- Step 1: Basic Information -->
-            <div class="form-step" data-step="1">
-                <div class="form-section">
-                    <h4><i class="bi bi-building me-2"></i>Basic Information</h4>
-                    
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="form-group">
-                                <label for="{{ form.name.id_for_label }}" class="form-label required">{{ form.name.label }}</label>
-                                {{ form.name }}
-                                {% if form.name.help_text %}
-                                    <div class="help-text">{{ form.name.help_text }}</div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="{{ form.legal_name.id_for_label }}" class="form-label">{{ form.legal_name.label }}</label>
-                                {{ form.legal_name }}
-                                {% if form.legal_name.help_text %}
-                                    <div class="help-text">{{ form.legal_name.help_text }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <label class="form-label">Company Logo</label>
-                            <div class="logo-preview" id="logoPreview">
-                                <i class="bi bi-image text-muted" style="font-size: 2rem;"></i>
-                            </div>
-                            {{ form.logo }}
-                            {% if form.logo.help_text %}
-                                <div class="help-text">{{ form.logo.help_text }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="{{ form.business_type.id_for_label }}" class="form-label">{{ form.business_type.label }}</label>
-                                {{ form.business_type }}
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="{{ form.industry.id_for_label }}" class="form-label">{{ form.industry.label }}</label>
-                                {{ form.industry }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Company Name -->
+            <div class="form-group">
+                <label for="{{ form.name.id_for_label }}" class="form-label required">{{ form.name.label }}</label>
+                {{ form.name }}
+                {% if form.name.help_text %}
+                    <div class="help-text">{{ form.name.help_text }}</div>
+                {% endif %}
             </div>
             
-            <!-- Step 2: Contact & Location -->
-            <div class="form-step d-none" data-step="2">
-                <div class="form-section">
-                    <h4><i class="bi bi-geo-alt me-2"></i>Contact & Location</h4>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="{{ form.email.id_for_label }}" class="form-label">{{ form.email.label }}</label>
-                                <div class="input-group-icon">
-                                    <i class="bi bi-envelope icon"></i>
-                                    {{ form.email }}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="{{ form.phone.id_for_label }}" class="form-label">{{ form.phone.label }}</label>
-                                <div class="input-group-icon">
-                                    <i class="bi bi-telephone icon"></i>
-                                    {{ form.phone }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="{{ form.website.id_for_label }}" class="form-label">{{ form.website.label }}</label>
-                        <div class="input-group-icon">
-                            <i class="bi bi-globe icon"></i>
-                            {{ form.website }}
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="{{ form.address_line_1.id_for_label }}" class="form-label">{{ form.address_line_1.label }}</label>
-                        {{ form.address_line_1 }}
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="{{ form.address_line_2.id_for_label }}" class="form-label">{{ form.address_line_2.label }}</label>
-                        {{ form.address_line_2 }}
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="{{ form.city.id_for_label }}" class="form-label">{{ form.city.label }}</label>
-                                {{ form.city }}
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="{{ form.state_province.id_for_label }}" class="form-label">{{ form.state_province.label }}</label>
-                                {{ form.state_province }}
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="{{ form.postal_code.id_for_label }}" class="form-label">{{ form.postal_code.label }}</label>
-                                {{ form.postal_code }}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="{{ form.country.id_for_label }}" class="form-label">{{ form.country.label }}</label>
-                        {{ form.country }}
-                    </div>
+            <!-- Company Logo -->
+            <div class="form-group text-center">
+                <label class="form-label">{{ form.logo.label }}</label>
+                <div class="logo-preview" id="logoPreview">
+                    <i class="bi bi-image text-muted" style="font-size: 2.5rem;"></i>
                 </div>
+                {{ form.logo }}
+                {% if form.logo.help_text %}
+                    <div class="help-text">{{ form.logo.help_text }}</div>
+                {% endif %}
             </div>
             
-            <!-- Step 3: Financial Settings -->
-            <div class="form-step d-none" data-step="3">
-                <div class="form-section">
-                    <h4><i class="bi bi-currency-exchange me-2"></i>Financial Settings</h4>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="{{ form.base_currency.id_for_label }}" class="form-label required">{{ form.base_currency.label }}</label>
-                                <div class="input-group-icon">
-                                    <i class="bi bi-currency-dollar icon"></i>
-                                    {{ form.base_currency }}
-                                </div>
-                                {% if form.base_currency.help_text %}
-                                    <div class="help-text">{{ form.base_currency.help_text }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="{{ form.financial_year_start.id_for_label }}" class="form-label">{{ form.financial_year_start.label }}</label>
-                                <div class="input-group-icon">
-                                    <i class="bi bi-calendar icon"></i>
-                                    {{ form.financial_year_start }}
-                                </div>
-                                {% if form.financial_year_start.help_text %}
-                                    <div class="help-text">{{ form.financial_year_start.help_text }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="{{ form.registration_number.id_for_label }}" class="form-label">{{ form.registration_number.label }}</label>
-                                {{ form.registration_number }}
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="{{ form.tax_id.id_for_label }}" class="form-label">{{ form.tax_id.label }}</label>
-                                {{ form.tax_id }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Company Description -->
+            <div class="form-group">
+                <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
+                {{ form.description }}
+                {% if form.description.help_text %}
+                    <div class="help-text">{{ form.description.help_text }}</div>
+                {% endif %}
             </div>
             
-            <!-- Navigation Buttons -->
-            <div class="d-flex justify-content-between align-items-center mt-4">
-                <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display: none;">
-                    <i class="bi bi-arrow-left me-1"></i>
-                    Previous
-                </button>
-                
-                <div class="flex-grow-1"></div>
-                
-                <button type="button" class="btn btn-primary" id="nextBtn">
-                    Next
-                    <i class="bi bi-arrow-right ms-1"></i>
-                </button>
-                
-                <button type="submit" class="btn btn-primary d-none" id="submitBtn">
+            <!-- Submit Button -->
+            <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
                     <i class="bi bi-check-lg me-1"></i>
                     Create Company
                 </button>
-            </div>
-            
-            <!-- Progress -->
-            <div class="mt-3">
-                <div class="progress" style="height: 4px;">
-                    <div class="progress-bar bg-primary" id="progressBar" style="width: 33.33%"></div>
-                </div>
-                <div class="text-center mt-2">
-                    <small class="text-muted">Step <span id="currentStep">1</span> of 3</small>
-                </div>
             </div>
         </form>
         
@@ -431,9 +179,6 @@
 </div>
 
 <script>
-let currentStep = 1;
-const totalSteps = 3;
-
 // Logo preview functionality
 document.getElementById('{{ form.logo.id_for_label }}').addEventListener('change', function(e) {
     const file = e.target.files[0];
@@ -446,85 +191,15 @@ document.getElementById('{{ form.logo.id_for_label }}').addEventListener('change
         };
         reader.readAsDataURL(file);
     } else {
-        preview.innerHTML = '<i class="bi bi-image text-muted" style="font-size: 2rem;"></i>';
+        preview.innerHTML = '<i class="bi bi-image text-muted" style="font-size: 2.5rem;"></i>';
     }
 });
 
-// Step navigation
-function showStep(step) {
-    // Hide all steps
-    document.querySelectorAll('.form-step').forEach(el => {
-        el.classList.add('d-none');
-    });
-    
-    // Show current step
-    document.querySelector(`[data-step="${step}"]`).classList.remove('d-none');
-    
-    // Update step indicators
-    document.querySelectorAll('.step').forEach((el, index) => {
-        const stepNum = index + 1;
-        el.classList.remove('active', 'completed');
-        
-        if (stepNum < step) {
-            el.classList.add('completed');
-            el.innerHTML = '<i class="bi bi-check"></i>';
-        } else if (stepNum === step) {
-            el.classList.add('active');
-            el.innerHTML = stepNum;
-        } else {
-            el.innerHTML = stepNum;
-        }
-    });
-    
-    // Update progress bar
-    const progress = (step / totalSteps) * 100;
-    document.getElementById('progressBar').style.width = progress + '%';
-    document.getElementById('currentStep').textContent = step;
-    
-    // Update buttons
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const submitBtn = document.getElementById('submitBtn');
-    
-    if (step === 1) {
-        prevBtn.style.display = 'none';
-        nextBtn.style.display = 'inline-block';
-        submitBtn.classList.add('d-none');
-    } else if (step === totalSteps) {
-        prevBtn.style.display = 'inline-block';
-        nextBtn.style.display = 'none';
-        submitBtn.classList.remove('d-none');
-    } else {
-        prevBtn.style.display = 'inline-block';
-        nextBtn.style.display = 'inline-block';
-        submitBtn.classList.add('d-none');
-    }
-}
-
-// Next button
-document.getElementById('nextBtn').addEventListener('click', function() {
-    if (currentStep < totalSteps) {
-        currentStep++;
-        showStep(currentStep);
-    }
-});
-
-// Previous button
-document.getElementById('prevBtn').addEventListener('click', function() {
-    if (currentStep > 1) {
-        currentStep--;
-        showStep(currentStep);
-    }
-});
-
-// Form submission
+// Form submission with loading state
 document.getElementById('companyForm').addEventListener('submit', function(e) {
     const submitBtn = document.getElementById('submitBtn');
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
     submitBtn.disabled = true;
 });
-
-// Initialize
-showStep(currentStep);
 </script>
 {% endblock %}

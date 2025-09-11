@@ -11,6 +11,51 @@
         border-radius: 0 0 1rem 1rem;
     }
     
+    /* Setup Status Styling */
+    .setup-status-card {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        border: none;
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
+        animation: pulse-glow 2s infinite;
+    }
+    
+    .setup-status-card.critical {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+    }
+    
+    .setup-status-card.ready {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+    }
+    
+    @keyframes pulse-glow {
+        0%, 100% {
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
+        }
+        50% {
+            box-shadow: 0 12px 40px rgba(245, 158, 11, 0.5);
+        }
+    }
+    
+    .setup-progress {
+        background: rgba(255, 255, 255, 0.2);
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 1rem 0;
+    }
+    
+    .setup-progress-bar {
+        background: rgba(255, 255, 255, 0.9);
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.8s ease;
+    }
+    
     .metric-card {
         background: white;
         border: none;
@@ -145,27 +190,136 @@
         color: #6b7280;
         font-size: 0.8rem;
     }
+    
+    .welcome-new-user {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
+{% if user.is_authenticated %}
+
+<!-- Setup Status Banner -->
+{% if dashboard_state != 'ready' %}
+<div class="card setup-status-card {% if dashboard_state == 'setup_critical' %}critical{% elif dashboard_state == 'setup_complete' %}ready{% endif %}">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h5 class="mb-2 fw-bold">
+                    {% if dashboard_state == 'no_company' %}
+                        🏢 Welcome to Professional Accounting!
+                    {% elif dashboard_state == 'setup_start' %}
+                        🚀 Let's Set Up Your Company
+                    {% elif dashboard_state == 'setup_critical' %}
+                        ⚙️ Complete Essential Setup
+                    {% elif dashboard_state == 'setup_optional' %}
+                        🎯 Almost Done!
+                    {% elif dashboard_state == 'setup_complete' %}
+                        ✅ Setup Complete!
+                    {% endif %}
+                </h5>
+                <p class="mb-3">{{ main_message }}</p>
+                
+                {% if setup_status and setup_status.completion_percentage > 0 %}
+                <div class="setup-progress">
+                    <div class="setup-progress-bar" style="width: {{ setup_status.completion_percentage }}%"></div>
+                </div>
+                <small>{{ setup_status.completion_percentage|floatformat:0 }}% Complete</small>
+                {% endif %}
+            </div>
+            <div class="col-lg-4 text-end">
+                {% if action_url %}
+                <a href="{{ action_url }}" class="btn btn-light btn-lg">
+                    <i class="bi bi-arrow-right-circle me-2"></i>{{ action_text }}
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Dashboard Header -->
 <div class="dashboard-header">
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="h3 mb-1 fw-bold">Welcome back, {{ user.first_name|default:user.username }}!</h1>
-                <p class="mb-0 opacity-75">Here's what's happening with your business today</p>
+                <p class="mb-0 opacity-75">
+                    {% if active_company %}
+                        Managing {{ active_company.name }}
+                    {% else %}
+                        Let's get your business set up
+                    {% endif %}
+                </p>
             </div>
             <div>
+                {% if dashboard_state == 'ready' %}
                 <button class="btn btn-light">
                     <i class="bi bi-upload me-2"></i>
                     Upload Bank Statement
                 </button>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
+<!-- Content based on dashboard state -->
+{% if dashboard_state == 'no_company' %}
+<!-- New User Welcome -->
+<div class="welcome-new-user">
+    <h2 class="mb-3">🎉 Welcome to Professional Accounting!</h2>
+    <p class="mb-4">You're just a few steps away from managing your business finances professionally.</p>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="row g-3 text-start">
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-white bg-opacity-20 rounded-circle p-2 me-3">
+                            <i class="bi bi-building fs-5"></i>
+                        </div>
+                        <div>
+                            <small class="fw-bold">Step 1</small>
+                            <div>Create Company</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-white bg-opacity-20 rounded-circle p-2 me-3">
+                            <i class="bi bi-gear fs-5"></i>
+                        </div>
+                        <div>
+                            <small class="fw-bold">Step 2</small>
+                            <div>Quick Setup</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-white bg-opacity-20 rounded-circle p-2 me-3">
+                            <i class="bi bi-graph-up fs-5"></i>
+                        </div>
+                        <div>
+                            <small class="fw-bold">Step 3</small>
+                            <div>Start Managing</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif dashboard_state == 'ready' %}
+<!-- Full Dashboard for Ready Companies -->
 
 <!-- Quick Actions -->
 <div class="quick-actions">
@@ -326,17 +480,6 @@
                 <div class="activity-time">1 day ago</div>
             </div>
             
-            <div class="activity-item">
-                <div class="activity-icon bg-info text-white">
-                    <i class="bi bi-file-text"></i>
-                </div>
-                <div class="activity-content">
-                    <div class="fw-semibold">Trial Balance Report</div>
-                    <small class="text-muted">Generated monthly trial balance report</small>
-                </div>
-                <div class="activity-time">2 days ago</div>
-            </div>
-            
             <div class="text-center mt-3">
                 <a href="#" class="btn btn-outline-primary btn-sm">View All Activity</a>
             </div>
@@ -371,300 +514,53 @@
                 </div>
             </div>
             
-            <div class="activity-item">
-                <div class="activity-icon bg-secondary text-white">
-                    <i class="bi bi-upload"></i>
-                </div>
-                <div class="activity-content">
-                    <div class="fw-semibold">Upload Bank Statements</div>
-                    <small class="text-muted">2 accounts pending</small>
-                </div>
-            </div>
-            
             <div class="text-center mt-3">
                 <a href="#" class="btn btn-outline-primary btn-sm">View All Tasks</a>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
-          <i class="fas fa-check-circle fa-2x"></i>
-        </div>
-        <h3 class="h4 mb-1 text-navy">1,247</h3>
-        <p class="text-muted mb-0 small">Transactions Assigned</p>
-        <p class="text-success mb-0 small">
-          <i class="fas fa-arrow-up me-1"></i>89% completion
-        </p>
-      </div>
-    </div>
-  </div>
 
-  <div class="col-md-3 mb-3">
-    <div class="card text-center">
-      <div class="card-body">
-        <div class="text-warning mb-2">
-          <i class="fas fa-clock fa-2x"></i>
+{% else %}
+<!-- Setup In Progress Dashboard -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <div class="mb-4">
+                    <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 5rem; height: 5rem;">
+                        <i class="bi bi-gear text-primary fs-1"></i>
+                    </div>
+                </div>
+                <h3 class="mb-3">{{ main_message }}</h3>
+                <p class="text-muted mb-4">Complete the setup process to unlock all accounting features.</p>
+                
+                {% if setup_status %}
+                <div class="row justify-content-center mb-4">
+                    <div class="col-md-8">
+                        <div class="progress" style="height: 12px;">
+                            <div class="progress-bar bg-primary" style="width: {{ setup_status.completion_percentage }}%"></div>
+                        </div>
+                        <small class="text-muted mt-2 d-block">{{ setup_status.completion_percentage|floatformat:0 }}% Complete</small>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="d-flex gap-3 justify-content-center">
+                    {% if action_url %}
+                    <a href="{{ action_url }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-arrow-right-circle me-2"></i>{{ action_text }}
+                    </a>
+                    {% endif %}
+                    <a href="/dashboard/" class="btn btn-outline-secondary">
+                        <i class="bi bi-house me-2"></i>Dashboard
+                    </a>
+                </div>
+            </div>
         </div>
-        <h3 class="h4 mb-1 text-navy">23</h3>
-        <p class="text-muted mb-0 small">Pending Assignment</p>
-        <p class="text-warning mb-0 small">
-          <i class="fas fa-exclamation-triangle me-1"></i>Needs attention
-        </p>
-      </div>
     </div>
-  </div>
-
-  <div class="col-md-3 mb-3">
-    <div class="card text-center">
-      <div class="card-body">
-        <div class="text-info mb-2">
-          <i class="fas fa-balance-scale fa-2x"></i>
-        </div>
-        <h3 class="h4 mb-1 text-navy amount">$124,567.89</h3>
-        <p class="text-muted mb-0 small">Current Balance</p>
-        <p class="text-success mb-0 small">
-          <i class="fas fa-check me-1"></i>Balanced
-        </p>
-      </div>
-    </div>
-  </div>
 </div>
-
-<!-- Main Action Cards -->
-<div class="row mb-4">
-  <!-- Reconciliation Module -->
-  <div class="col-md-4 mb-3">
-    <div class="card h-100">
-      <div class="card-header d-flex align-items-center">
-        <i class="fas fa-sync text-primary me-2"></i>
-        <h5 class="mb-0">Bank Reconciliation</h5>
-      </div>
-      <div class="card-body">
-        <p class="text-muted mb-3">
-          Upload bank statements and assign transactions to GL accounts.
-        </p>
-        <div class="mb-3">
-          <div class="d-flex justify-content-between mb-1">
-            <small>This Month Progress</small>
-            <small class="text-muted">89%</small>
-          </div>
-          <div class="progress" style="height: 6px">
-            <div class="progress-bar bg-success" style="width: 89%"></div>
-          </div>
-        </div>
-        <div class="d-grid gap-2">
-          <a
-            href="{% url 'reconciliation:upload' %}"
-            class="btn btn-primary btn-sm"
-          >
-            <i class="fas fa-upload me-1"></i> Upload Statement
-          </a>
-          <a
-            href="{% url 'reconciliation:file_list' %}"
-            class="btn btn-outline-secondary btn-sm"
-          >
-            <i class="fas fa-list me-1"></i> View Files
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Chart of Accounts -->
-  <div class="col-md-4 mb-3">
-    <div class="card h-100">
-      <div class="card-header d-flex align-items-center">
-        <i class="fas fa-list text-success me-2"></i>
-        <h5 class="mb-0">Chart of Accounts</h5>
-      </div>
-      <div class="card-body">
-        <p class="text-muted mb-3">
-          Manage your general ledger accounts and categories.
-        </p>
-        <div class="mb-3">
-          <div class="row text-center">
-            <div class="col-6">
-              <div class="text-navy fw-bold">156</div>
-              <small class="text-muted">Total Accounts</small>
-            </div>
-            <div class="col-6">
-              <div class="text-navy fw-bold">12</div>
-              <small class="text-muted">Bank Accounts</small>
-            </div>
-          </div>
-        </div>
-        <div class="d-grid gap-2">
-          <a href="{% url 'coa:chart_list' %}" class="btn btn-success btn-sm">
-            <i class="fas fa-eye me-1"></i> View Chart
-          </a>
-          <a
-            href="{% url 'coa:create_account' %}"
-            class="btn btn-outline-secondary btn-sm"
-          >
-            <i class="fas fa-plus me-1"></i> Add Account
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Manual Journal -->
-  <div class="col-md-4 mb-3">
-    <div class="card h-100">
-      <div class="card-header d-flex align-items-center">
-        <i class="fas fa-edit text-warning me-2"></i>
-        <h5 class="mb-0">Manual Journal</h5>
-      </div>
-      <div class="card-body">
-        <p class="text-muted mb-3">
-          Create and manage manual journal entries with approval workflow.
-        </p>
-        <div class="mb-3">
-          <div class="d-flex justify-content-between mb-2">
-            <span class="badge bg-info">5 Draft</span>
-            <span class="badge bg-warning">2 Pending</span>
-            <span class="badge bg-success">18 Posted</span>
-          </div>
-        </div>
-        <div class="d-grid gap-2">
-          <a href="#" class="btn btn-warning btn-sm">
-            <i class="fas fa-plus me-1"></i> Create Entry
-          </a>
-          <a href="#" class="btn btn-outline-secondary btn-sm">
-            <i class="fas fa-list me-1"></i> View Entries
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Reports Section -->
-<div class="row mb-4">
-  <div class="col-md-6">
-    <div class="card">
-      <div
-        class="card-header d-flex align-items-center justify-content-between"
-      >
-        <h5 class="mb-0">
-          <i class="fas fa-chart-bar me-2"></i>Financial Reports
-        </h5>
-        <a href="#" class="btn btn-outline-primary btn-sm">View All</a>
-      </div>
-      <div class="card-body">
-        <div class="list-group list-group-flush">
-          <a
-            href="#"
-            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-          >
-            <div>
-              <i class="fas fa-balance-scale me-2"></i>Trial Balance
-              <small class="text-muted d-block"
-                >Current period balance verification</small
-              >
-            </div>
-            <span class="badge bg-success">Updated</span>
-          </a>
-          <a
-            href="#"
-            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-          >
-            <div>
-              <i class="fas fa-chart-line me-2"></i>Profit & Loss
-              <small class="text-muted d-block"
-                >January 2025 P&L statement</small
-              >
-            </div>
-            <span class="badge bg-warning">Draft</span>
-          </a>
-          <a
-            href="#"
-            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-          >
-            <div>
-              <i class="fas fa-clipboard-list me-2"></i>Balance Sheet
-              <small class="text-muted d-block">As of January 31, 2025</small>
-            </div>
-            <span class="badge bg-info">Preview</span>
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Recent Activity -->
-  <div class="col-md-6">
-    <div class="card">
-      <div
-        class="card-header d-flex align-items-center justify-content-between"
-      >
-        <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Recent Activity</h5>
-        <small class="text-muted">Last 24 hours</small>
-      </div>
-      <div class="card-body">
-        <div class="timeline">
-          <div class="timeline-item mb-3">
-            <div class="d-flex">
-              <div class="flex-shrink-0 me-3">
-                <div
-                  class="bg-success rounded-circle d-flex align-items-center justify-content-center"
-                  style="width: 32px; height: 32px"
-                >
-                  <i class="fas fa-upload text-white small"></i>
-                </div>
-              </div>
-              <div class="flex-grow-1">
-                <div class="small fw-bold">Bank statement uploaded</div>
-                <div class="small text-muted">
-                  January_2025_Statement.csv - 156 transactions
-                </div>
-                <div class="small text-muted">2 hours ago</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="timeline-item mb-3">
-            <div class="d-flex">
-              <div class="flex-shrink-0 me-3">
-                <div
-                  class="bg-primary rounded-circle d-flex align-items-center justify-content-center"
-                  style="width: 32px; height: 32px"
-                >
-                  <i class="fas fa-check text-white small"></i>
-                </div>
-              </div>
-              <div class="flex-grow-1">
-                <div class="small fw-bold">45 transactions assigned</div>
-                <div class="small text-muted">
-                  Manual GL account assignment completed
-                </div>
-                <div class="small text-muted">4 hours ago</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="timeline-item">
-            <div class="d-flex">
-              <div class="flex-shrink-0 me-3">
-                <div
-                  class="bg-warning rounded-circle d-flex align-items-center justify-content-center"
-                  style="width: 32px; height: 32px"
-                >
-                  <i class="fas fa-edit text-white small"></i>
-                </div>
-              </div>
-              <div class="flex-grow-1">
-                <div class="small fw-bold">Journal entry created</div>
-                <div class="small text-muted">JE-2025-001 pending approval</div>
-                <div class="small text-muted">Yesterday</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+{% endif %}
 
 {% else %}
 <!-- Non-authenticated user content -->

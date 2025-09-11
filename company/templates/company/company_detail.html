@@ -273,6 +273,7 @@
         text-decoration: none;
         font-weight: 500;
         transition: all 0.3s ease;
+        cursor: pointer;
     }
     
     .switch-company-btn:hover {
@@ -313,10 +314,10 @@
             </div>
             <div class="col-md-4 text-end">
                 {% if company != active_company %}
-                    <a href="{% url 'company:company_switch' company.id %}" class="switch-company-btn">
+                    <button onclick="switchCompany('{{ company.id }}', '{{ company.name|escapejs }}')" class="switch-company-btn">
                         <i class="bi bi-arrow-right-square me-1"></i>
                         Switch to This Company
-                    </a>
+                    </button>
                 {% else %}
                     <span class="role-badge">
                         <i class="bi bi-check-circle me-1"></i>
@@ -644,4 +645,90 @@
         </div>
     </div>
 </div>
+
+<!-- Company Switch Modal -->
+<div class="modal fade" id="switchModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">Switch Company</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-arrow-repeat text-primary" style="font-size: 3rem;"></i>
+                </div>
+                <h6 class="mb-2">Switching to</h6>
+                <p class="h5 text-navy mb-3" id="switchCompanyName"></p>
+                <p class="text-muted small">All your accounting data will switch to this company context.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmSwitch">
+                    <i class="bi bi-check-lg me-1"></i>
+                    Switch Company
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let switchCompanyId = null;
+
+function switchCompany(companyId, companyName) {
+    switchCompanyId = companyId;
+    document.getElementById('switchCompanyName').textContent = companyName;
+    
+    const modal = new bootstrap.Modal(document.getElementById('switchModal'));
+    modal.show();
+}
+
+document.getElementById('confirmSwitch').addEventListener('click', function() {
+    if (!switchCompanyId) return;
+    
+    // Show loading state
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Switching...';
+    this.disabled = true;
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    fetch("{% url 'company:company_switch' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            'company_id': switchCompanyId
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Show success message briefly before reload
+            this.innerHTML = '<i class="bi bi-check-lg me-1"></i>Success!';
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            throw new Error(data.error || 'Unknown error');
+        }
+    })
+    .catch(error => {
+        console.error('Company switch error:', error);
+        alert('Error switching company: ' + error.message);
+        this.innerHTML = '<i class="bi bi-check-lg me-1"></i>Switch Company';
+        this.disabled = false;
+    });
+});
+</script>
+
+{% csrf_token %}
 {% endblock %}

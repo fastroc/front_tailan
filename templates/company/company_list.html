@@ -167,10 +167,12 @@
                 <div class="flex-grow-1">
                     <h5 class="mb-1 text-navy fw-semibold">{{ company.display_name }}</h5>
                     <p class="text-muted small mb-2">{{ company.business_type|default:"Business" }}</p>
-                    {% with company.user_roles.first as role %}
+                    {% with company.user_access.first as role %}
+                        {% if role %}
                         <span class="company-role-badge role-{{ role.role }}">
                             {{ role.get_role_display }}
                         </span>
+                        {% endif %}
                     {% endwith %}
                 </div>
                 {% if company == active_company %}
@@ -207,7 +209,7 @@
                 <div class="row g-2">
                     <div class="col-4">
                         <div class="stat-item">
-                            <div class="stat-value">{{ company.user_roles.count }}</div>
+                            <div class="stat-value">{{ company.user_access.count }}</div>
                             <div class="stat-label">Users</div>
                         </div>
                     </div>
@@ -335,7 +337,7 @@ document.getElementById('confirmSwitch').addEventListener('click', function() {
     this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Switching...';
     this.disabled = true;
     
-    fetch('/company/switch/demo/', {
+    fetch('/company/switch/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

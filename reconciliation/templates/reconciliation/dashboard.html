@@ -51,33 +51,89 @@
     }
 
     .btn-reconcile {
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        background: linear-gradient(135deg, var(--bs-primary) 0%, #1e40af 100%);
         border: none;
         color: white;
+        font-weight: 500;
         padding: 0.75rem 1.5rem;
-        border-radius: 0.5rem;
-        font-weight: 600;
-        font-size: 0.95rem;
-        transition: all 0.3s ease;
-        min-width: 100px;
-        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        min-width: 120px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .btn-reconcile:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
         color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
         background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
     }
 
     .btn-reconcile:disabled {
-        background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+        background: #9ca3af;
         transform: none;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         cursor: not-allowed;
         opacity: 0.6;
+    }
+
+    .btn-reconcile:focus {
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        outline: none;
+    }
+
+    /* Secondary button styling aligned with professional design */
+    .btn-secondary {
+        background: #6b7280;
+        border: none;
+        color: white;
+        font-weight: 500;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        min-width: 120px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-secondary:hover {
+        background: #374151;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(107, 114, 128, 0.25);
+    }
+
+    /* Success button styling */
+    .btn-success {
+        background: #059669;
+        border: none;
+        color: white;
+        font-weight: 500;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        min-width: 120px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-success:disabled {
+        opacity: 0.8;
+        cursor: not-allowed;
+        transform: none;
     }
 
     .match-form {
@@ -244,43 +300,57 @@
         border: 1px solid #e5e7eb;
         border-radius: 0.75rem;
         background: #ffffff;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
         margin-bottom: 1rem;
     }
 
     .bank-account-item:hover {
-        border-color: #3b82f6;
-        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1);
+        border-color: var(--bs-primary);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
         transform: translateY(-2px);
     }
 
     .account-info h6 {
         color: #1f2937;
         font-weight: 600;
+        font-size: 1rem;
     }
 
     .account-balance strong {
         font-size: 1.1rem;
+        font-weight: 600;
     }
 
     .progress {
-        border-radius: 10px;
+        border-radius: 6px;
         background-color: #e5e7eb;
+        height: 8px;
     }
 
     .progress-bar {
-        border-radius: 10px;
+        border-radius: 6px;
+        transition: width 0.6s ease;
     }
 
     .badge {
         font-size: 0.75rem;
+        font-weight: 500;
         padding: 0.375rem 0.75rem;
+        border-radius: 0.375rem;
+    }
+
+    /* Button alignment and spacing */
+    .col-md-2.text-end {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="reconciliation-container">
+    {% csrf_token %}
     <!-- Page Header -->
     <div class="page-header">
         <div class="container">
@@ -308,157 +378,96 @@
                         </h5>
                     </div>
                     <div class="card-body">
-                        <!-- ANZ Business Account -->
-                        <div class="bank-account-item mb-4" data-account="anz-business">
-                            <div class="row align-items-center">
-                                <div class="col-md-3">
-                                    <div class="account-info">
-                                        <h6 class="mb-1"><i class="bi bi-bank2 me-2 text-primary"></i>ANZ Business Account</h6>
-                                        <small class="text-muted">Account: ***1234</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="account-balance">
-                                        <small class="text-muted">Balance</small><br>
-                                        <strong class="amount-credit">$15,750.00</strong>
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="unreconciled-count">
-                                        <small class="text-muted">Unreconciled</small><br>
-                                        <span class="badge bg-warning">8 transactions</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="progress-info">
-                                        <small class="text-muted">Progress</small>
-                                        <div class="progress mt-1" style="height: 8px;">
-                                            <div class="progress-bar bg-success" style="width: 75%"></div>
+                        {% if accounts %}
+                            {% for account_data in accounts %}
+                                <!-- {{ account_data.account.name }} -->
+                                <div class="bank-account-item mb-4" data-account="{{ account_data.account_identifier }}">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-3">
+                                            <div class="account-info">
+                                                <h6 class="mb-1">
+                                                    <i class="bi bi-bank2 me-2 text-primary"></i>{{ account_data.account.name }}
+                                                </h6>
+                                                <small class="text-muted">Account: {{ account_data.account_number }}</small>
+                                            </div>
                                         </div>
-                                        <small class="text-success">75% Complete</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-2 text-end">
-                                    <button class="btn btn-reconcile" onclick="openAccountReconciliation('anz-business')">
-                                        <i class="bi bi-play-fill me-1"></i>Reconcile
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Commonwealth Bank Account -->
-                        <div class="bank-account-item mb-4" data-account="cba-savings">
-                            <div class="row align-items-center">
-                                <div class="col-md-3">
-                                    <div class="account-info">
-                                        <h6 class="mb-1"><i class="bi bi-bank2 me-2 text-primary"></i>CBA Savings Account</h6>
-                                        <small class="text-muted">Account: ***5678</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="account-balance">
-                                        <small class="text-muted">Balance</small><br>
-                                        <strong class="amount-credit">$8,920.00</strong>
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="unreconciled-count">
-                                        <small class="text-muted">Unreconciled</small><br>
-                                        <span class="badge bg-warning">4 transactions</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="progress-info">
-                                        <small class="text-muted">Progress</small>
-                                        <div class="progress mt-1" style="height: 8px;">
-                                            <div class="progress-bar bg-success" style="width: 60%"></div>
+                                        <div class="col-md-2">
+                                            <div class="account-balance">
+                                                <small class="text-muted">Balance</small><br>
+                                                {% if account_data.balance >= 0 %}
+                                                    <strong class="amount-credit">${{ account_data.balance|floatformat:2|intcomma }}</strong>
+                                                {% else %}
+                                                    <strong class="amount-debit">${{ account_data.balance|floatformat:2|intcomma }}</strong>
+                                                {% endif %}
+                                            </div>
                                         </div>
-                                        <small class="text-warning">60% Complete</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-2 text-end">
-                                    <button class="btn btn-reconcile" onclick="openAccountReconciliation('cba-savings')">
-                                        <i class="bi bi-play-fill me-1"></i>Reconcile
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Westpac Credit Card -->
-                        <div class="bank-account-item mb-4" data-account="westpac-credit">
-                            <div class="row align-items-center">
-                                <div class="col-md-3">
-                                    <div class="account-info">
-                                        <h6 class="mb-1"><i class="bi bi-credit-card me-2 text-primary"></i>Westpac Credit Card</h6>
-                                        <small class="text-muted">Card: ***9012</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="account-balance">
-                                        <small class="text-muted">Balance</small><br>
-                                        <strong class="amount-debit">-$2,340.00</strong>
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="unreconciled-count">
-                                        <small class="text-muted">Unreconciled</small><br>
-                                        <span class="badge bg-warning">3 transactions</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="progress-info">
-                                        <small class="text-muted">Progress</small>
-                                        <div class="progress mt-1" style="height: 8px;">
-                                            <div class="progress-bar bg-success" style="width: 45%"></div>
+                                        <div class="col-md-2">
+                                            <div class="unreconciled-count">
+                                                <small class="text-muted">Unreconciled</small><br>
+                                                {% if account_data.unreconciled_count > 0 %}
+                                                    <span class="badge bg-warning">{{ account_data.unreconciled_count }} transaction{{ account_data.unreconciled_count|pluralize }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">0 transactions</span>
+                                                {% endif %}
+                                            </div>
                                         </div>
-                                        <small class="text-warning">45% Complete</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-2 text-end">
-                                    <button class="btn btn-reconcile" onclick="openAccountReconciliation('westpac-credit')">
-                                        <i class="bi bi-play-fill me-1"></i>Reconcile
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- NAB Term Deposit -->
-                        <div class="bank-account-item mb-3" data-account="nab-term">
-                            <div class="row align-items-center">
-                                <div class="col-md-3">
-                                    <div class="account-info">
-                                        <h6 class="mb-1"><i class="bi bi-safe me-2 text-primary"></i>NAB Term Deposit</h6>
-                                        <small class="text-muted">Account: ***3456</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="account-balance">
-                                        <small class="text-muted">Balance</small><br>
-                                        <strong class="amount-credit">$50,000.00</strong>
-                                    </div>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="unreconciled-count">
-                                        <small class="text-muted">Unreconciled</small><br>
-                                        <span class="badge bg-success">0 transactions</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="progress-info">
-                                        <small class="text-muted">Progress</small>
-                                        <div class="progress mt-1" style="height: 8px;">
-                                            <div class="progress-bar bg-success" style="width: 100%"></div>
+                                        <div class="col-md-3">
+                                            <div class="progress-info">
+                                                <small class="text-muted">Progress</small>
+                                                <div class="progress mt-1" style="height: 8px;">
+                                                    <div class="progress-bar bg-success" style="width: {{ account_data.reconciliation_percentage }}%"></div>
+                                                </div>
+                                                {% if account_data.reconciliation_percentage == 100 %}
+                                                    <small class="text-success">{{ account_data.reconciliation_percentage }}% Complete</small>
+                                                {% elif account_data.reconciliation_percentage >= 50 %}
+                                                    <small class="text-success">{{ account_data.reconciliation_percentage }}% Complete</small>
+                                                {% else %}
+                                                    <small class="text-warning">{{ account_data.reconciliation_percentage }}% Complete</small>
+                                                {% endif %}
+                                            </div>
                                         </div>
-                                        <small class="text-success">100% Complete</small>
+                                        <div class="col-md-2 text-end">
+                                            <div class="btn-group" role="group">
+                                                {% if account_data.status == 'completed' %}
+                                                    <button class="btn btn-success" disabled>
+                                                        <i class="bi bi-check-circle me-1"></i>Complete
+                                                    </button>
+                                                    <button class="btn btn-outline-warning btn-sm" 
+                                                            onclick="restartReconciliation('{{ account_data.account_identifier }}', '{{ account_data.account.name }}', {{ account_data.reconciled_count|default:0 }})"
+                                                            title="Restart reconciliation for this account">
+                                                        <i class="bi bi-arrow-clockwise"></i>
+                                                    </button>
+                                                {% elif account_data.status == 'empty' %}
+                                                    <button class="btn btn-secondary" onclick="openAccountUpload('{{ account_data.account_identifier }}')">
+                                                        <i class="bi bi-upload me-1"></i>{{ account_data.action_text }}
+                                                    </button>
+                                                {% else %}
+                                                    <button class="btn btn-reconcile me-2" onclick="openAccountReconciliation('{{ account_data.account_identifier }}')">
+                                                        <i class="bi bi-play-fill me-1"></i>{{ account_data.action_text }}
+                                                    </button>
+                                                    {% if account_data.reconciled_count > 0 %}
+                                                    <button class="btn btn-outline-warning btn-sm" 
+                                                            onclick="restartReconciliation('{{ account_data.account_identifier }}', '{{ account_data.account.name }}', {{ account_data.reconciled_count }})"
+                                                            title="Restart reconciliation for this account">
+                                                        <i class="bi bi-arrow-clockwise"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-md-2 text-end">
-                                    <button class="btn btn-success" disabled>
-                                        <i class="bi bi-check-circle me-1"></i>Complete
-                                    </button>
-                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="bi bi-bank2 text-muted mb-3" style="font-size: 3rem;"></i>
+                                <h5 class="text-muted">No Bank Accounts Found</h5>
+                                <p class="text-muted">Please add bank accounts to start reconciliation.</p>
+                                <a href="/bank_accounts/" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i>Add Bank Account
+                                </a>
                             </div>
-                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -469,23 +478,230 @@
 <!-- Toast Container -->
 <div class="toast-container"></div>
 
+<!-- Restart Confirmation Modal -->
+<div class="modal fade" id="restartConfirmationModal" tabindex="-1" aria-labelledby="restartConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="restartConfirmationModalLabel">
+                    <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+                    Restart Reconciliation
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning border-0" role="alert">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>This action will permanently delete all reconciliation matches for this account.</strong>
+                </div>
+                
+                <p class="mb-3">You are about to restart reconciliation for:</p>
+                <div class="card bg-light border-0 mb-3">
+                    <div class="card-body py-2">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-bank2 text-primary me-2"></i>
+                            <strong id="restart-account-name">Account Name</strong>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <p class="mb-2"><strong>What will happen:</strong></p>
+                    <ul class="list-unstyled">
+                        <li><i class="bi bi-x-circle text-danger me-2"></i><span id="restart-matches-count">0</span> transaction matches will be deleted</li>
+                        <li><i class="bi bi-arrow-clockwise text-info me-2"></i>Reconciliation progress will be reset to 0%</li>
+                        <li><i class="bi bi-journal-text text-info me-2"></i>Associated journal entries will be preserved (recommended)</li>
+                    </ul>
+                </div>
+                
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="deleteJournalsCheck">
+                    <label class="form-check-label" for="deleteJournalsCheck">
+                        <strong class="text-danger">Also delete associated journal entries</strong>
+                        <small class="d-block text-muted">⚠️ Warning: This cannot be undone and may affect your accounting records</small>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmRestartBtn" onclick="confirmRestart()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Restart Reconciliation
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// Global variables for restart functionality
+let restartAccountId = '';
+let restartAccountName = '';
+let restartMatchesCount = 0;
+
 // Open specific account reconciliation
 function openAccountReconciliation(accountId) {
     // Show progress/loading state
     const button = document.querySelector(`[data-account="${accountId}"] .btn-reconcile`);
-    const originalContent = button.innerHTML;
+    if (button) {
+        const originalContent = button.innerHTML;
+        
+        button.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Loading...';
+        button.disabled = true;
+        
+        showToast('Starting Process', `Opening reconciliation for account ${accountId}`, 'info');
+        
+        // Simulate real process delay
+        setTimeout(() => {
+            // Redirect to the reconciliation process page
+            window.location.href = `/reconciliation/account/${accountId}/`;
+        }, 1500);
+    }
+}
+
+// Restart reconciliation with confirmation
+function restartReconciliation(accountId, accountName, matchesCount) {
+    restartAccountId = accountId;
+    restartAccountName = accountName;
+    restartMatchesCount = matchesCount;
     
-    button.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Loading...';
-    button.disabled = true;
+    // Update modal content
+    document.getElementById('restart-account-name').textContent = accountName;
+    document.getElementById('restart-matches-count').textContent = matchesCount;
     
-    showToast('Starting Process', `Opening reconciliation for ${getAccountName(accountId)}`, 'info');
+    // Show the confirmation modal
+    const modal = new bootstrap.Modal(document.getElementById('restartConfirmationModal'));
+    modal.show();
+}
+
+// Confirm restart action
+async function confirmRestart() {
+    const deleteJournals = document.getElementById('deleteJournalsCheck').checked;
+    const confirmBtn = document.getElementById('confirmRestartBtn');
+    const modal = bootstrap.Modal.getInstance(document.getElementById('restartConfirmationModal'));
     
-    // Simulate real process delay
-    setTimeout(() => {
-        // Redirect to the reconciliation process page
-        window.location.href = `/reconciliation/account/${accountId}/`;
-    }, 1500);
+    // Show loading state
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Restarting...';
+    
+    try {
+        const response = await fetch('{% url "reconciliation:restart_reconciliation" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value || getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                account_id: restartAccountId,
+                delete_journals: deleteJournals
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Hide modal
+            modal.hide();
+            
+            // Show success toast
+            showToast(
+                'Reconciliation Restarted', 
+                `Successfully restarted ${result.account_name}. ${result.matches_deleted} matches deleted.`, 
+                'success'
+            );
+            
+            // Update the UI
+            updateAccountAfterRestart(restartAccountId);
+            
+            // Auto-refresh page after 3 seconds
+            setTimeout(() => {
+                window.location.reload();
+            }, 3000);
+            
+        } else {
+            throw new Error(result.error || 'Failed to restart reconciliation');
+        }
+        
+    } catch (error) {
+        console.error('Error restarting reconciliation:', error);
+        showToast('Error', 'Failed to restart reconciliation: ' + error.message, 'error');
+        
+        // Reset button
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Restart Reconciliation';
+    }
+}
+
+// Update account display after restart
+function updateAccountAfterRestart(accountId) {
+    const accountItem = document.querySelector(`[data-account="${accountId}"]`);
+    if (accountItem) {
+        // Reset progress bar
+        const progressBar = accountItem.querySelector('.progress-bar');
+        const progressText = accountItem.querySelector('.progress-info small:last-child');
+        
+        if (progressBar) {
+            progressBar.style.width = '0%';
+        }
+        if (progressText) {
+            progressText.textContent = '0% Complete';
+            progressText.className = 'text-muted';
+        }
+        
+        // Update unreconciled count badge
+        const badge = accountItem.querySelector('.badge');
+        if (badge) {
+            badge.className = 'badge bg-warning';
+            badge.textContent = `${restartMatchesCount} transactions`;
+        }
+        
+        // Update button to show reconcile action
+        const buttonContainer = accountItem.querySelector('.col-md-2.text-end .btn-group');
+        if (buttonContainer) {
+            buttonContainer.innerHTML = `
+                <button class="btn btn-reconcile me-2" onclick="openAccountReconciliation('${accountId}')">
+                    <i class="bi bi-play-fill me-1"></i>Reconcile
+                </button>
+            `;
+        }
+    }
+}
+
+// Get CSRF token from cookies
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Open account file upload
+function openAccountUpload(accountId) {
+    // Show progress/loading state
+    const button = document.querySelector(`[data-account="${accountId}"] .btn-secondary`);
+    if (button) {
+        const originalContent = button.innerHTML;
+        
+        button.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Loading...';
+        button.disabled = true;
+        
+        showToast('Starting Upload', `Opening upload for account ${accountId}`, 'info');
+        
+        // Simulate real process delay
+        setTimeout(() => {
+            // Redirect to the bank account upload page
+            window.location.href = `/bank_accounts/`;
+        }, 1500);
+    }
 }
 
 // Get account name by ID

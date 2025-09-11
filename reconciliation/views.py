@@ -1,6 +1,8 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db.models import Sum
+from datetime import datetime
 
 from coa.models import Account
 from bank_accounts.models import BankTransaction, UploadedFile
@@ -10,25 +12,68 @@ from .models import ReconciliationSession, TransactionMatch
 
 @login_required
 def dashboard(request):
-    """Main reconciliation dashboard showing all accounts and their status"""
+    """Main reconciliation dashboard showing all accounts and their status from database"""
     company_id = request.session.get('active_company_id')
+    
+    # Debug: If no company in session, try to get the first company
     if not company_id:
-        messages.error(request, "Please select a company first.")
-        return redirect('dashboard')
+        first_company = Company.objects.first()
+        if first_company:
+            company_id = first_company.id
+            request.session['active_company_id'] = company_id
+            messages.info(request, f"Auto-selected company: {first_company.name}")
+        else:
+            messages.error(request, "No companies found. Please create a company first.")
+            # Create a minimal context to prevent template errors
+            context = {
+                'company': None,
+                'accounts': [],
+                'total_accounts': 0,
+                'total_uploaded_files': 0,
+                'total_transactions': 0,
+                'total_reconciled': 0,
+                'total_unreconciled': 0,
+                'total_balance': 0,
+                'overall_percentage': 0,
+                'recent_activity': [],
+                'current_date': datetime.now(),
+                'page_title': 'Bank Reconciliation Dashboard - No Companies'
+            }
+            return render(request, 'reconciliation/dashboard.html', context)
         
     try:
         company = Company.objects.get(id=company_id)
     except Company.DoesNotExist:
-        messages.error(request, "Please select a company first.")
-        return redirect('dashboard')
+        messages.error(request, "Company not found. Selecting first available company.")
+        first_company = Company.objects.first()
+        if first_company:
+            company = first_company
+            request.session['active_company_id'] = first_company.id
+        else:
+            # Create a minimal context to prevent template errors
+            context = {
+                'company': None,
+                'accounts': [],
+                'total_accounts': 0,
+                'total_uploaded_files': 0,
+                'total_transactions': 0,
+                'total_reconciled': 0,
+                'total_unreconciled': 0,
+                'total_balance': 0,
+                'overall_percentage': 0,
+                'recent_activity': [],
+                'current_date': datetime.now(),
+                'page_title': 'Bank Reconciliation Dashboard - No Companies'
+            }
+            return render(request, 'reconciliation/dashboard.html', context)
     
-    # Get all bank accounts for this company
+    # Get all bank accounts for this company from database
     bank_accounts = Account.objects.filter(
         company=company,
         account_type='Bank'
     ).order_by('name')
     
-    # Prepare data for each account
+    # Prepare real data for each account
     accounts_data = []
     total_uploaded_files = 0
     total_transactions = 0
@@ -50,7 +95,7 @@ def dashboard(request):
         )
         
         # Get latest reconciliation session
-        latest_session = ReconciliationSession.objects.filter(account=account).first()
+        latest_session = ReconciliationSession.objects.filter(account=account).order_by('-created_at').first()
         
         # Calculate reconciliation progress
         transaction_count = transactions.count()
@@ -58,6 +103,11 @@ def dashboard(request):
         reconciliation_percentage = 0
         if transaction_count > 0:
             reconciliation_percentage = round((reconciled_count / transaction_count) * 100, 1)
+        
+        # Calculate account balance
+        account_balance = transactions.aggregate(
+            total=Sum('amount')
+        )['total'] or 0
         
         # Determine status and action
         if transaction_count == 0:
@@ -81,8 +131,22 @@ def dashboard(request):
             status_class = 'success'
             action_text = 'View Reconciliation'
         
+        # Generate account identifier for URL
+        account_identifier = account.name.lower().replace(' ', '-').replace('(', '').replace(')', '')
+        if 'anz' in account_identifier:
+            account_identifier = 'anz-business'
+        elif 'cba' in account_identifier or 'commonwealth' in account_identifier:
+            account_identifier = 'cba-savings'
+        elif 'westpac' in account_identifier:
+            account_identifier = 'westpac-credit'
+        elif 'nab' in account_identifier:
+            account_identifier = 'nab-term'
+        
         account_data = {
             'account': account,
+            'account_identifier': account_identifier,
+            'account_number': f"***{str(account.id)[-4:]}",  # Mock account number from ID
+            'balance': account_balance,
             'uploaded_files': uploaded_files,
             'file_count': uploaded_files.count(),
             'transaction_count': transaction_count,
@@ -94,7 +158,8 @@ def dashboard(request):
             'action': action,
             'status_class': status_class,
             'action_text': action_text,
-            'recent_files': uploaded_files[:3]  # Show only recent 3 files
+            'recent_files': uploaded_files[:3],  # Show only recent 3 files
+            'last_reconciled': latest_session.created_at if latest_session else None
         }
         
         accounts_data.append(account_data)
@@ -114,16 +179,22 @@ def dashboard(request):
         account__company=company
     ).order_by('-created_at')[:10]
     
+    # Total balance calculation
+    total_balance = sum(acc['balance'] for acc in accounts_data)
+    
     context = {
         'company': company,
-        'accounts_data': accounts_data,
+        'accounts': accounts_data,
         'total_accounts': bank_accounts.count(),
         'total_uploaded_files': total_uploaded_files,
         'total_transactions': total_transactions,
         'total_reconciled': total_reconciled,
         'total_unreconciled': total_transactions - total_reconciled,
+        'total_balance': total_balance,
         'overall_percentage': overall_percentage,
         'recent_activity': recent_activity,
+        'current_date': datetime.now(),
+        'page_title': 'Bank Reconciliation Dashboard'
     }
     
     return render(request, 'reconciliation/dashboard.html', context)
@@ -131,37 +202,117 @@ def dashboard(request):
 
 @login_required
 def account_reconciliation(request, account_id):
-    """Reconciliation process page for a specific account"""
+    """Enhanced reconciliation process page for a specific account"""
     company_id = request.session.get('active_company_id')
     if not company_id:
-        messages.error(request, "Please select a company first.")
-        return redirect('dashboard')
+        # Auto-select first company
+        first_company = Company.objects.first()
+        if first_company:
+            company_id = first_company.id
+            request.session['active_company_id'] = company_id
+        else:
+            messages.error(request, "Please select a company first.")
+            return redirect('reconciliation:dashboard')
         
     try:
         company = Company.objects.get(id=company_id)
     except Company.DoesNotExist:
-        messages.error(request, "Please select a company first.")
-        return redirect('dashboard')
+        messages.error(request, "Company not found.")
+        return redirect('reconciliation:dashboard')
     
-    # Handle both string account IDs (like 'anz-business') and integer IDs
-    account_name_map = {
-        'anz-business': 'ANZ Business Account',
-        'cba-savings': 'CBA Savings Account', 
-        'westpac-credit': 'Westpac Credit Card',
-        'nab-term': 'NAB Term Deposit'
+    # Get the actual account from database
+    try:
+        if isinstance(account_id, str) and account_id.isdigit():
+            account_id = int(account_id)
+            account = get_object_or_404(Account, id=account_id, company=company, account_type='Bank')
+        else:
+            # Handle string account identifiers by finding the account
+            bank_accounts = Account.objects.filter(company=company, account_type='Bank')
+            
+            # Map common identifiers
+            account_map = {}
+            for acc in bank_accounts:
+                name_lower = acc.name.lower()
+                if 'khan' in name_lower:
+                    account_map['khanbank'] = acc
+                elif 'golomt' in name_lower:
+                    account_map['golomtbank'] = acc
+                elif 'golomt' in name_lower:
+                    account_map['golomt-bank'] = acc
+                    
+            account = account_map.get(str(account_id).lower())
+            if not account:
+                # Fallback to first bank account
+                account = bank_accounts.first()
+                
+            if not account:
+                messages.error(request, "Bank account not found.")
+                return redirect('reconciliation:dashboard')
+                
+    except Exception as e:
+        messages.error(request, f"Error finding account: {str(e)}")
+        return redirect('reconciliation:dashboard')
+    
+    # Import reconciliation service
+    from .reconciliation_service import ReconciliationService
+    
+    # Get or create reconciliation session
+    reconciliation_session = ReconciliationService.get_or_create_session(account, request.user)
+    
+    # Get unmatched transactions for this account  
+    unmatched_transactions = ReconciliationService.get_unmatched_transactions(account)
+    
+    # Get reconciliation progress
+    progress = ReconciliationService.get_reconciliation_progress(account)
+    
+    # Get Chart of Accounts for dropdown
+    coa_accounts = Account.objects.filter(company=company).exclude(account_type='Bank').order_by('code', 'name')
+    
+    # Group COA by account type for better UX
+    coa_groups = {}
+    for acc in coa_accounts:
+        account_type = acc.get_account_type_display() if hasattr(acc, 'get_account_type_display') else acc.account_type
+        if account_type not in coa_groups:
+            coa_groups[account_type] = []
+        coa_groups[account_type].append(acc)
+    
+    # Sample contacts for autocomplete (can be enhanced later)
+    sample_contacts = [
+        'TechCorp Consulting', 'Office Landlord', 'Telstra Business', 'ATO', 
+        'Staff Payroll', 'Equipment Supplier', 'Marketing Agency', 'Legal Services',
+        'Insurance Company', 'Bank Fees', 'Interest Payment', 'Loan Repayment'
+    ]
+    
+    # Tax rates
+    tax_rates = [
+        {'id': 'gst_10', 'name': 'GST 10%'},
+        {'id': 'gst_free', 'name': 'GST Free'},
+        {'id': 'input_taxed', 'name': 'Input Taxed'},
+        {'id': 'no_gst', 'name': 'No GST'}
+    ]
+    
+    context = {
+        'company': company,
+        'account': account,
+        'account_id': account_id,
+        'account_name': account.name,
+        'reconciliation_session': reconciliation_session,
+        'transactions': unmatched_transactions,
+        'progress': progress,
+        'coa_groups': coa_groups,
+        'contacts': sample_contacts,
+        'tax_rates': tax_rates,
+        'total_transactions': progress['total_transactions'],
+        'matched_transactions': progress['matched_transactions'],
+        'unmatched_transactions': progress['unmatched_transactions'],
+        'reconciliation_percentage': progress['percentage'],
+        'statement_balance': progress.get('statement_balance', 0.00),
+        'reconciled_balance': progress.get('reconciled_balance', 0.00),
+        'balance_difference': progress.get('difference', 0.00),
+        'title': f'Bank Reconciliation - {account.name}'
     }
     
-    if isinstance(account_id, str) and account_id in account_name_map:
-        account_name = account_name_map[account_id]
-    else:
-        # Try to get actual account from database
-        try:
-            if isinstance(account_id, str) and account_id.isdigit():
-                account_id = int(account_id)
-            account = get_object_or_404(Account, id=account_id, company=company, account_type='Bank')
-            account_name = account.name
-        except Exception:
-            account_name = "Unknown Account"
+    return render(request, 'reconciliation/reconciliation_process.html', context)
     
     # Sample transactions data for demo - 20+ realistic Australian business transactions
     sample_transactions = [
@@ -441,15 +592,22 @@ def account_reconciliation(request, account_id):
     
     context = {
         'company': company,
+        'account': account,
         'account_id': account_id,
-        'account_name': account_name,
-        'transactions': sample_transactions,
+        'account_name': account.name,
+        'reconciliation_session': reconciliation_session,
+        'transactions': unmatched_transactions,
+        'progress': progress,
+        'coa_groups': coa_groups,
         'contacts': sample_contacts,
-        'coa_groups': sample_coa_groups,
-        'tax_rates': sample_tax_rates,
-        'statement_balance': 12450.75,
-        'system_balance': 11200.75,
-        'title': f'Bank Reconciliation - {account_name}'
+        'tax_rates': tax_rates,
+        'total_transactions': progress['total_transactions'],
+        'matched_transactions': progress['matched_transactions'],
+        'unmatched_transactions': progress['unmatched_transactions'],
+        'reconciliation_percentage': progress['percentage'],
+        'statement_balance': progress.get('statement_balance', 0.00),
+        'system_balance': progress.get('system_balance', 0.00),
+        'title': f'Bank Reconciliation - {account.name}'
     }
     
     return render(request, 'reconciliation/reconciliation_process.html', context)

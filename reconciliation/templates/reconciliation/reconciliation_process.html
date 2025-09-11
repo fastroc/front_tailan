@@ -42,6 +42,7 @@
 
 {% block content %}
 <div class="container-fluid py-4" id="reconRoot">
+  {% csrf_token %}
   <!-- ======= Top banner: balances ======= -->
   <div class="balance-banner p-3 mb-3">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
@@ -52,12 +53,12 @@
       <div class="d-flex align-items-center gap-3">
         <div class="balance-metric text-end">
           <div class="label">Statement Balance</div>
-          <div class="value" id="statementBalance">{{ statement_balance|default:12450.75|floatformat:2 }}</div>
+          <div class="value" id="statementBalance">${{ statement_balance|floatformat:2 }}</div>
         </div>
         <div class="vr"></div>
         <div class="balance-metric text-end">
-          <div class="label">Balance in System</div>
-          <div class="value" id="systemBalance">{{ system_balance|default:11200.75|floatformat:2 }}</div>
+          <div class="label">Reconciled Balance in System</div>
+          <div class="value" id="reconciledBalance">${{ reconciled_balance|floatformat:2 }}</div>
         </div>
         <span id="diffBadge" class="badge diff-badge ms-2"></span>
       </div>
@@ -96,7 +97,7 @@
                     <div class="flex-grow-1" style="min-width:0;">
                       <div class="small text-primary fw-semibold txn-date"><i class="bi bi-calendar me-1"></i>{{ t.date|date:"d M Y" }}</div>
                       <div class="txn-title fw-semibold">{{ t.description|default:"(no description)" }}</div>
-                      <div class="txn-meta text-muted small">Ref: {{ t.reference|default:"—" }} · Memo: {{ t.memo|default:"—" }}</div>
+                      <div class="txn-meta text-muted small">Ref: {{ t.reference|default:"—" }}</div>
                     </div>
                     <div class="text-end ms-3">
                       <div class="{% if t.amount > 0 %}amount-pos{% else %}amount-neg{% endif %}">{% if t.amount > 0 %}+{% endif %}${{ t.amount|floatformat:2 }}</div>
@@ -125,7 +126,7 @@
                                value="{% if t.id == 1 %}Acme Corporation{% endif %}"/>
                         <datalist id="contactSuggestions">
                           {% for c in contacts %}
-                          <option value="{{ c.name }}">{{ c.name }}</option>
+                          <option value="{{ c }}">{{ c }}</option>
                           {% endfor %}
                         </datalist>
                       </div>
@@ -136,7 +137,7 @@
                           {% for group, accounts in coa_groups.items %}
                             <optgroup label="{{ group }}">
                               {% for acc in accounts %}
-                              <option value="{{ acc.code }}"{% if t.id == 1 and acc.code == '4100' %} selected{% endif %}>{{ acc.code }} — {{ acc.name }}</option>
+                              <option value="{{ acc.id }}"{% if t.id == 1 and acc.code == '4100' %} selected{% endif %}>{{ acc.code }} — {{ acc.name }}</option>
                               {% endfor %}
                             </optgroup>
                           {% endfor %}
@@ -146,7 +147,7 @@
                     <div class="row">
                       <div class="col-6">
                         <label class="pillar-label text-success mb-1"><i class="bi bi-chat-text me-1"></i>Why</label>
-                        <input class="form-control form-control-sm" name="why_{{ t.id }}" placeholder="Enter a description…" value="{% if t.id == 1 %}Monthly web development services{% else %}{{ t.memo|default:'' }}{% endif %}"/>
+                        <input class="form-control form-control-sm" name="why_{{ t.id }}" placeholder="Enter a description…" value="{% if t.id == 1 %}Monthly web development services{% else %}{{ t.description|default:'' }}{% endif %}"/>
                       </div>
                       <div class="col-6">
                         <label class="form-label small mb-1">Tax</label>
@@ -176,8 +177,8 @@
   // ——— Balances diff badge ———
   function updateDiffBadge() {
     const s = parseFloat((document.getElementById('statementBalance')?.textContent||'0').replace(/[,\s$]/g,'')) || 0;
-    const b = parseFloat((document.getElementById('systemBalance')?.textContent||'0').replace(/[,\s$]/g,'')) || 0;
-    const diff = (s - b).toFixed(2);
+    const r = parseFloat((document.getElementById('reconciledBalance')?.textContent||'0').replace(/[,\s$]/g,'')) || 0;
+    const diff = (s - r).toFixed(2);
     const badge = document.getElementById('diffBadge');
     if (!badge) return;
     if (diff == 0 || diff === '0.00') {
@@ -185,7 +186,7 @@
       badge.textContent = 'Balanced';
     } else {
       badge.className = 'badge bg-warning text-dark diff-badge';
-      badge.textContent = 'Diff $' + diff;
+      badge.textContent = 'Remaining $' + Math.abs(diff).toLocaleString();
     }
   }
 
@@ -210,49 +211,135 @@
     else btn.classList.add('d-none');
   }
 
-  function okMatch(id) {
+  async function okMatch(id) {
     const row = document.querySelector(`[data-transaction-id="${id}"]`);
-    const what = row.querySelector(`[name="what_${id}"]`)?.value;
-    if (!what) { alert('Please choose an account (What)'); return; }
+    const contactField = row.querySelector(`[name="who_${id}"]`);
+    const accountField = row.querySelector(`[name="what_${id}"]`);
+    const taxField = row.querySelector(`[name="tax_${id}"]`);
+    const notesField = row.querySelector(`[name="notes_${id}"]`);
+    
+    const contact = contactField?.value || '';
+    const accountId = accountField?.value;
+    const taxTreatment = taxField?.value || 'no_gst';
+    const notes = notesField?.value || '';
+    
+    if (!accountId) { 
+      alert('Please choose an account (What)'); 
+      return; 
+    }
 
-    // Freeze fields
-    row.querySelectorAll('select, input').forEach(el => el.disabled = true);
-
-    // Visual confirmation
+    // Show loading state
     const okBtn = document.getElementById('ok'+id);
-    okBtn.innerHTML = '<i class="bi bi-check me-1"></i>Matched';
-    okBtn.classList.add('btn-outline-success');
-    okBtn.classList.remove('btn-primary');
     okBtn.disabled = true;
+    okBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Matching...';
 
-    // Add to matched array
-    matched.push(id);
+    try {
+      // Prepare data for AJAX call
+      const data = {
+        transaction_id: id,
+        contact: contact,
+        account_id: accountId,
+        tax_treatment: taxTreatment,
+        notes: notes
+      };
 
-    // Cool disappearing effect
-    setTimeout(() => {
-      row.style.transition = 'all 0.8s ease-out';
-      row.style.transform = 'translateX(20px)';
-      row.style.opacity = '0';
-      row.style.maxHeight = row.offsetHeight + 'px';
-      
-      setTimeout(() => {
-        row.style.maxHeight = '0';
-        row.style.padding = '0';
-        row.style.marginBottom = '0';
-        row.style.borderBottom = 'none';
-        
+      console.log('Sending transaction match data:', data);
+
+      const response = await fetch('{% url "reconciliation:match_transaction" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(data)
+      });
+
+      const result = await response.json();
+      console.log('Transaction match result:', result);
+
+      if (result.success) {
+        // Freeze fields
+        row.querySelectorAll('select, input').forEach(el => el.disabled = true);
+
+        // Visual confirmation
+        okBtn.innerHTML = '<i class="bi bi-check me-1"></i>Matched';
+        okBtn.classList.add('btn-outline-success');
+        okBtn.classList.remove('btn-primary');
+
+        // Add to matched array
+        matched.push(id);
+
+        // Cool disappearing effect
         setTimeout(() => {
-          row.remove();
+          row.style.transition = 'all 0.8s ease-out';
+          row.style.transform = 'translateX(20px)';
+          row.style.opacity = '0';
+          row.style.maxHeight = row.offsetHeight + 'px';
           
-          // Update transaction count in tab
-          const remainingCount = document.querySelectorAll('.transaction-item').length;
-          const tabElement = document.querySelector('.nav-link.active');
-          if (tabElement) {
-            tabElement.textContent = `Reconcile (${remainingCount})`;
-          }
-        }, 400);
-      }, 400);
-    }, 1000);
+          setTimeout(() => {
+            row.style.maxHeight = '0';
+            row.style.padding = '0';
+            row.style.marginBottom = '0';
+            row.style.borderBottom = 'none';
+            
+            setTimeout(() => {
+              row.remove();
+              
+              // Update transaction count in tab
+              const remainingCount = document.querySelectorAll('.transaction-item').length;
+              const tabElement = document.querySelector('.nav-link.active');
+              if (tabElement) {
+                tabElement.textContent = `Reconcile (${remainingCount})`;
+              }
+              
+              // Update progress statistics
+              updateProgressStats();
+              
+            }, 400);
+          }, 400);
+        }, 1000);
+        
+      } else {
+        // Handle error
+        alert('Error: ' + (result.error || 'Failed to match transaction'));
+        okBtn.disabled = false;
+        okBtn.innerHTML = 'OK';
+      }
+
+    } catch (error) {
+      console.error('Error matching transaction:', error);
+      alert('Network error occurred. Please try again.');
+      okBtn.disabled = false;
+      okBtn.innerHTML = 'OK';
+    }
+  }
+
+  // Update progress statistics
+  async function updateProgressStats() {
+    try {
+      const accountId = '{{ account.id }}';
+      const response = await fetch(`{% url "reconciliation:reconciliation_progress" account_id=0 %}`.replace('0', accountId));
+      const result = await response.json();
+      
+      if (result.success) {
+        const progress = result.progress;
+        
+        // Update progress display if elements exist
+        const progressBar = document.querySelector('.progress-bar');
+        const progressPercentage = document.querySelector('.progress-percentage');
+        
+        if (progressBar) {
+          progressBar.style.width = `${progress.percentage}%`;
+        }
+        if (progressPercentage) {
+          progressPercentage.textContent = `${progress.percentage}%`;
+        }
+        
+        console.log('Progress updated:', progress);
+      }
+    } catch (error) {
+      console.error('Error updating progress:', error);
+    }
   }
 
   function autoMatch(){

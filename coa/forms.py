@@ -142,7 +142,6 @@ class AccountForm(forms.ModelForm):
             "account_type",
             "tax_rate",
             "description",
-            "parent_account",
         ]
 
         widgets = {
@@ -169,22 +168,75 @@ class AccountForm(forms.ModelForm):
                     "placeholder": "Optional description...",
                 }
             ),
-            "parent_account": forms.Select(attrs={"class": "form-select"}),
         }
 
     def __init__(self, *args, **kwargs):
         company = kwargs.pop("company", None)
         super().__init__(*args, **kwargs)
+        self.company = company
 
-        # Filter tax rates and parent accounts by company
+        # Filter tax rates by company
         if company:
             self.fields["tax_rate"].queryset = TaxRate.objects.filter(
                 company=company, is_active=True
             ).order_by("name")
-            self.fields["parent_account"].queryset = Account.objects.filter(
-                company=company, is_active=True
-            ).order_by("code")
 
         # Make tax rate optional
         self.fields["tax_rate"].empty_label = "No tax rate"
-        self.fields["parent_account"].empty_label = "No parent account"
+
+    def clean_code(self):
+        """Validate that account code is unique within the company."""
+        code = self.cleaned_data.get('code')
+        if code and self.company:
+            # Check if account with this code already exists for this company
+            # Exclude the current instance if we're editing an existing account
+            existing_accounts = Account.objects.filter(
+                company=self.company, 
+                code=code
+            )
+            
+            # If we're editing an existing account, exclude it from the check
+            if self.instance and self.instance.pk:
+                existing_accounts = existing_accounts.exclude(pk=self.instance.pk)
+            
+            if existing_accounts.exists():
+                existing = existing_accounts.first()
+                raise forms.ValidationError(
+                    f'Account code "{code}" already exists for "{existing.name}". '
+                    f'Please use a different code (e.g., {self._suggest_next_code(code)}).'
+                )
+        return code
+
+    def _suggest_next_code(self, base_code):
+        """Suggest the next available code based on the attempted code."""
+        try:
+            base_num = int(base_code)
+            # Try incrementing the code
+            for i in range(1, 10):
+                suggested_code = str(base_num + i)
+                query = Account.objects.filter(
+                    company=self.company, 
+                    code=suggested_code
+                )
+                # Exclude current instance if editing
+                if self.instance and self.instance.pk:
+                    query = query.exclude(pk=self.instance.pk)
+                
+                if not query.exists():
+                    return suggested_code
+        except ValueError:
+            # If code is not numeric, suggest adding a suffix
+            for suffix in ['A', 'B', 'C']:
+                suggested_code = f"{base_code}{suffix}"
+                query = Account.objects.filter(
+                    company=self.company, 
+                    code=suggested_code
+                )
+                # Exclude current instance if editing
+                if self.instance and self.instance.pk:
+                    query = query.exclude(pk=self.instance.pk)
+                
+                if not query.exists():
+                    return suggested_code
+        return f"{base_code}_NEW"
+        return f"{base_code}_NEW"

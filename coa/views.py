@@ -1,8 +1,9 @@
-from django.shortcuts import redirect, render, get_object_or_404
+from django.shortcuts import redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db.models import Q, Count
+from django.db import IntegrityError
 from django.utils.decorators import method_decorator
 from django.views.generic import (
     ListView,
@@ -130,7 +131,7 @@ class CreateAccountView(CompanyAwareAccountMixin, CreateView):
 
     model = Account
     form_class = AccountForm
-    template_name = "coa/create_account_simple.html"
+    template_name = "coa/test_create_account.html"
 
     def get_form_kwargs(self):
         """Pass company to form."""
@@ -140,20 +141,68 @@ class CreateAccountView(CompanyAwareAccountMixin, CreateView):
 
     def form_valid(self, form):
         """Save account with company and user info."""
-        account = form.save(commit=False)
-        account.company = self.active_company
-        account.created_by = self.request.user
-        account.updated_by = self.request.user
-        account.ytd_balance = 0.00
-        account.save()
+        try:
+            account = form.save(commit=False)
+            account.company = self.active_company
+            account.created_by = self.request.user
+            account.updated_by = self.request.user
+            account.ytd_balance = 0.00
+            account.save()
 
-        messages.success(
-            self.request, f'Account "{account.full_name}" created successfully!'
-        )
-        return redirect("coa:chart_of_accounts")
+            messages.success(
+                self.request, f'Account "{account.full_name}" created successfully!'
+            )
+            return redirect("coa:chart_of_accounts")
+        
+        except IntegrityError as e:
+            # Handle duplicate account code gracefully
+            if "UNIQUE constraint failed" in str(e) and "code" in str(e):
+                code = form.cleaned_data.get('code', '')
+                suggested_code = self._get_suggested_code(code)
+                
+                messages.warning(
+                    self.request, 
+                    f'⚠️ Account code "{code}" already exists! Try using "{suggested_code}" instead.'
+                )
+                
+                # Add the error to the form to show it inline
+                form.add_error('code', f'This code is already taken. Try "{suggested_code}" instead.')
+            else:
+                messages.error(
+                    self.request, 
+                    'Unable to create account. Please check your input and try again.'
+                )
+            
+            # Return form with errors
+            return self.form_invalid(form)
+
+    def _get_suggested_code(self, attempted_code):
+        """Generate suggested alternative codes."""
+        try:
+            base_num = int(attempted_code)
+            # Try incrementing the code
+            for i in range(1, 10):
+                suggested_code = str(base_num + i)
+                if not Account.objects.filter(
+                    company=self.active_company, 
+                    code=suggested_code
+                ).exists():
+                    return suggested_code
+        except ValueError:
+            # If code is not numeric, suggest adding a suffix
+            for suffix in ['A', 'B', 'C', '1', '2']:
+                suggested_code = f"{attempted_code}{suffix}"
+                if not Account.objects.filter(
+                    company=self.active_company, 
+                    code=suggested_code[:10]  # Respect max length
+                ).exists():
+                    return suggested_code[:10]
+        
+        # Fallback suggestion
+        return f"{attempted_code[:8]}01"
 
     def get_context_data(self, **kwargs):
-        """Add account types to context."""
+        """Add basic context."""
         context = super().get_context_data(**kwargs)
         context.update(
             {
@@ -162,6 +211,178 @@ class CreateAccountView(CompanyAwareAccountMixin, CreateView):
             }
         )
         return context
+
+
+@method_decorator(login_required, name="dispatch")
+class EditAccountView(CompanyAwareAccountMixin, UpdateView):
+    """Edit existing account for active company."""
+
+    model = Account
+    form_class = AccountForm
+    template_name = "coa/edit_account.html"
+    pk_url_kwarg = "account_id"
+
+    def get_form_kwargs(self):
+        """Pass company to form."""
+        kwargs = super().get_form_kwargs()
+        kwargs["company"] = self.active_company
+        return kwargs
+
+    def form_valid(self, form):
+        """Update account with user info."""
+        try:
+            # Get the account object first
+            account = form.save(commit=False)
+            account.updated_by = self.request.user
+            
+            # Save the account
+            account.save()
+
+            messages.success(
+                self.request, f'Account "{account.full_name}" updated successfully!'
+            )
+            return redirect("coa:chart_of_accounts")
+        
+        except IntegrityError as e:
+            # Handle duplicate account code gracefully
+            if "UNIQUE constraint failed" in str(e) and "code" in str(e):
+                code = form.cleaned_data.get('code', '')
+                
+                # Get a fresh suggestion that excludes the current account
+                suggested_code = self._get_suggested_code(code, exclude_pk=self.object.pk)
+                
+                messages.warning(
+                    self.request, 
+                    f'⚠️ Account code "{code}" is already in use! Try "{suggested_code}" instead.'
+                )
+                
+                # Add the error to the form to show it inline
+                form.add_error('code', f'This code is already taken. Try "{suggested_code}" instead.')
+            else:
+                messages.error(
+                    self.request, 
+                    'Unable to update account. Please check your input and try again.'
+                )
+            
+            # Return form with errors
+            return self.form_invalid(form)
+
+    def _get_suggested_code(self, attempted_code, exclude_pk=None):
+        """Generate suggested alternative codes, excluding specific account."""
+        try:
+            base_num = int(attempted_code)
+            for i in range(1, 10):
+                suggested_code = str(base_num + i)
+                query = Account.objects.filter(
+                    company=self.active_company, 
+                    code=suggested_code
+                )
+                if exclude_pk:
+                    query = query.exclude(pk=exclude_pk)
+                
+                if not query.exists():
+                    return suggested_code
+        except ValueError:
+            for suffix in ['A', 'B', 'C', '1', '2']:
+                suggested_code = f"{attempted_code}{suffix}"
+                query = Account.objects.filter(
+                    company=self.active_company, 
+                    code=suggested_code[:10]
+                )
+                if exclude_pk:
+                    query = query.exclude(pk=exclude_pk)
+                
+                if not query.exists():
+                    return suggested_code[:10]
+        
+        return f"{attempted_code[:8]}01"
+
+    def get_object(self, queryset=None):
+        """Get the account object with fresh data from database."""
+        if queryset is None:
+            queryset = self.get_queryset()
+        
+        # Always fetch fresh data from database to avoid stale data issues
+        queryset = queryset.select_related('tax_rate', 'company')
+        
+        return super().get_object(queryset=queryset)
+
+    def get_context_data(self, **kwargs):
+        """Add basic context."""
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "form_title": f"Edit Account: {self.object.full_name}",
+                "active_company": self.active_company,
+            }
+        )
+        return context
+
+
+@method_decorator(login_required, name="dispatch")
+class DeleteAccountView(CompanyAwareAccountMixin, DeleteView):
+    """Delete account for active company."""
+
+    model = Account
+    template_name = "coa/delete_account.html"
+    pk_url_kwarg = "account_id"
+    success_url = reverse_lazy("coa:chart_of_accounts")
+
+    def delete(self, request, *args, **kwargs):
+        """Handle account deletion with checks."""
+        account = self.get_object()
+        
+        # Check if account can be deleted
+        can_delete, reason = self._can_delete_account(account)
+        
+        if not can_delete:
+            messages.warning(request, f"⚠️ Cannot delete account: {reason}")
+            return redirect("coa:chart_of_accounts")
+        
+        # Soft delete by deactivating instead of hard delete
+        account.is_active = False
+        account.updated_by = request.user
+        account.save()
+        
+        messages.success(
+            request, 
+            f'Account "{account.full_name}" has been deactivated successfully!'
+        )
+        return redirect("coa:chart_of_accounts")
+
+    def _can_delete_account(self, account):
+        """Check if account can be safely deleted."""
+        # Check if account has transactions (you may need to implement this)
+        # For now, we'll allow deletion but deactivate instead
+        
+        # Check if it's a system essential account
+        if account.is_essential:
+            return False, "Essential system accounts cannot be deleted"
+        
+        # Check if account has a balance
+        if account.ytd_balance != 0:
+            return False, f"Account has a balance of ${account.ytd_balance}. Please zero the balance first"
+        
+        return True, "Account can be deleted"
+
+    def get_context_data(self, **kwargs):
+        """Add basic context."""
+        context = super().get_context_data(**kwargs)
+        can_delete, reason = self._can_delete_account(self.object)
+        
+        context.update(
+            {
+                "active_company": self.active_company,
+                "can_delete": can_delete,
+                "delete_reason": reason,
+            }
+        )
+        return context
+
+
+# Function-based view wrappers
+edit_account_view = EditAccountView.as_view()
+delete_account_view = DeleteAccountView.as_view()
 
 
 @login_required
@@ -199,6 +420,91 @@ def account_search_api(request):
         )
 
     return JsonResponse({"accounts": accounts_data})
+
+
+@login_required
+def check_code_availability_api(request):
+    """API endpoint to check if an account code is available."""
+    # Get active company from context mixin approach
+    mixin = CompanyContextMixin()
+    mixin.request = request
+    active_company = mixin.get_active_company()
+
+    if not active_company:
+        return JsonResponse({"available": True, "error": "No active company"})
+
+    code = request.GET.get("code", "").strip()
+    account_id = request.GET.get("account_id")  # For edit mode
+    
+    if not code:
+        return JsonResponse({"available": True})
+
+    # Check if account with this code already exists
+    existing_accounts = Account.objects.filter(
+        company=active_company, 
+        code=code,
+        is_active=True
+    )
+    
+    # Exclude current account if editing
+    if account_id:
+        try:
+            existing_accounts = existing_accounts.exclude(pk=int(account_id))
+        except (ValueError, TypeError):
+            pass
+    
+    if existing_accounts.exists():
+        existing_account = existing_accounts.first()
+        
+        # Generate suggestion
+        suggested_code = _generate_code_suggestion(code, active_company, account_id)
+        
+        return JsonResponse({
+            "available": False,
+            "existing_account": existing_account.name,
+            "suggested_code": suggested_code
+        })
+    
+    return JsonResponse({"available": True})
+
+
+def _generate_code_suggestion(attempted_code, company, exclude_account_id=None):
+    """Generate a suggested alternative code."""
+    try:
+        base_num = int(attempted_code)
+        for i in range(1, 10):
+            suggested_code = str(base_num + i)
+            query = Account.objects.filter(
+                company=company, 
+                code=suggested_code,
+                is_active=True
+            )
+            if exclude_account_id:
+                try:
+                    query = query.exclude(pk=int(exclude_account_id))
+                except (ValueError, TypeError):
+                    pass
+            
+            if not query.exists():
+                return suggested_code
+    except ValueError:
+        for suffix in ['A', 'B', 'C', '1', '2']:
+            suggested_code = f"{attempted_code}{suffix}"[:10]
+            query = Account.objects.filter(
+                company=company, 
+                code=suggested_code,
+                is_active=True
+            )
+            if exclude_account_id:
+                try:
+                    query = query.exclude(pk=int(exclude_account_id))
+                except (ValueError, TypeError):
+                    pass
+            
+            if not query.exists():
+                return suggested_code
+    
+    return f"{attempted_code[:8]}01"
 
 
 # Legacy function-based views for compatibility

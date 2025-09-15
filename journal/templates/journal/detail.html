@@ -36,7 +36,7 @@
             <li class="breadcrumb-item">{{ active_company.name }}</li>
         {% endif %}
       <li class="breadcrumb-item">
-        <a href="{% url 'journals:list' %}" class="text-decoration-none">
+        <a href="{% url 'journal:manual_journal' %}" class="text-decoration-none">
           <i class="bi bi-journal-text me-1"></i>Manual Journal
         </a>
       </li>
@@ -62,11 +62,11 @@
             </button>
             <ul class="dropdown-menu">
               {% if journal.status == 'draft' %}
-                <li><a class="dropdown-item" href="{% url 'journals:edit' journal.id %}">
+                <li><a class="dropdown-item" href="{% url 'journal:edit_journal' journal.id %}">
                   <i class="bi bi-pencil me-2"></i>Edit Journal
                 </a></li>
               {% endif %}
-              <li><a class="dropdown-item" href="{% url 'journals:duplicate' journal.id %}">
+              <li><a class="dropdown-item" href="{% url 'journal:duplicate_journal' journal.id %}">
                 <i class="bi bi-files me-2"></i>Duplicate
               </a></li>
             </ul>
@@ -151,10 +151,10 @@
             <tr>
               <td colspan="3" class="text-end fw-bold">TOTALS:</td>
               <td class="text-end fw-bold">
-                ${{ journal.lines.all|default_if_none:0 }}
+                ${{ total_debit|floatformat:2 }}
               </td>
               <td class="text-end fw-bold">
-                ${{ journal.lines.all|default_if_none:0 }}
+                ${{ total_credit|floatformat:2 }}
               </td>
             </tr>
           </tfoot>

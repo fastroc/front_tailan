@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load humanize %}
 
 {% block title %}Reports Dashboard - {{ active_company.name|default:"Professional Accounting System" }}{% endblock %}
 
@@ -115,25 +116,25 @@
       <div class="row g-4 text-center">
         <div class="col-lg-3 col-sm-6">
           <div class="quick-stat">
-            <div class="h4 mb-1 text-success fw-bold">$125,750</div>
+            <div class="h4 mb-1 text-success fw-bold">${{ total_assets|floatformat:0|intcomma }}</div>
             <div class="small text-muted">Total Assets</div>
           </div>
         </div>
         <div class="col-lg-3 col-sm-6">
           <div class="quick-stat">
-            <div class="h4 mb-1 text-primary fw-bold">47</div>
+            <div class="h4 mb-1 text-primary fw-bold">{{ active_accounts }}</div>
             <div class="small text-muted">Active Accounts</div>
           </div>
         </div>
         <div class="col-lg-3 col-sm-6">
           <div class="quick-stat">
-            <div class="h4 mb-1 text-info fw-bold">23</div>
+            <div class="h4 mb-1 text-info fw-bold">{{ total_journal_entries }}</div>
             <div class="small text-muted">Journal Entries</div>
           </div>
         </div>
         <div class="col-lg-3 col-sm-6">
           <div class="quick-stat">
-            <div class="h4 mb-1 text-warning fw-bold">12</div>
+            <div class="h4 mb-1 text-warning fw-bold">{{ pending_transactions }}</div>
             <div class="small text-muted">Pending Reconciliation</div>
           </div>
         </div>
@@ -151,7 +152,7 @@
           </div>
           <div>
             <h4 class="mb-1">Trial Balance Report</h4>
-            <p class="mb-0 opacity-75">Complete overview of all account balances as of September 7, 2025</p>
+            <p class="mb-0 opacity-75">Complete overview of all account balances as of {{ report_date|date:"F j, Y" }}</p>
           </div>
         </div>
         <div class="text-end">
@@ -187,23 +188,23 @@
         
         <div class="row g-2 mb-3">
           <div class="col-4 text-center">
-            <div class="fw-bold text-success">89</div>
+            <div class="fw-bold text-success">{{ matched_transactions }}</div>
             <div class="small text-muted">Matched</div>
           </div>
           <div class="col-4 text-center">
-            <div class="fw-bold text-warning">12</div>
+            <div class="fw-bold text-warning">{{ pending_transactions }}</div>
             <div class="small text-muted">Pending</div>
           </div>
           <div class="col-4 text-center">
-            <div class="fw-bold text-primary">$2,340</div>
+            <div class="fw-bold text-primary">${{ reconciliation_difference|floatformat:0|intcomma }}</div>
             <div class="small text-muted">Difference</div>
           </div>
         </div>
         
         <div class="d-grid">
-          <button class="btn btn-outline-primary btn-sm">
+          <a href="{% url 'reports_pending_reconciliation' %}" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-file-text me-2"></i>View Summary
-          </button>
+          </a>
         </div>
       </div>
     </div>
@@ -226,11 +227,11 @@
         
         <div class="row g-2 mb-3">
           <div class="col-6 text-center">
-            <div class="fw-bold text-primary">47</div>
+            <div class="fw-bold text-primary">{{ total_accounts }}</div>
             <div class="small text-muted">Total Accounts</div>
           </div>
           <div class="col-6 text-center">
-            <div class="fw-bold text-success">42</div>
+            <div class="fw-bold text-success">{{ active_accounts }}</div>
             <div class="small text-muted">Active</div>
           </div>
         </div>
@@ -261,23 +262,23 @@
         
         <div class="row g-2 mb-3">
           <div class="col-4 text-center">
-            <div class="fw-bold text-success">18</div>
+            <div class="fw-bold text-success">{{ posted_journals }}</div>
             <div class="small text-muted">Posted</div>
           </div>
           <div class="col-4 text-center">
-            <div class="fw-bold text-warning">5</div>
+            <div class="fw-bold text-warning">{{ draft_journals }}</div>
             <div class="small text-muted">Draft</div>
           </div>
           <div class="col-4 text-center">
-            <div class="fw-bold text-info">$45,890</div>
-            <div class="small text-muted">Total</div>
+            <div class="fw-bold text-info">${{ total_bank_balance|floatformat:0|intcomma }}</div>
+            <div class="small text-muted">Bank Total</div>
           </div>
         </div>
         
         <div class="d-grid">
-          <button class="btn btn-outline-primary btn-sm">
+          <a href="{% url 'reports_journal_entries' %}" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-journal me-2"></i>View Register
-          </button>
+          </a>
         </div>
       </div>
     </div>
@@ -300,11 +301,11 @@
         
         <div class="row g-2 mb-3">
           <div class="col-6 text-center">
-            <div class="fw-bold text-success">$89,450</div>
+            <div class="fw-bold text-success">${{ total_assets_balance|floatformat:0|intcomma }}</div>
             <div class="small text-muted">Assets</div>
           </div>
           <div class="col-6 text-center">
-            <div class="fw-bold text-danger">$36,300</div>
+            <div class="fw-bold text-danger">${{ total_liabilities|floatformat:0|intcomma }}</div>
             <div class="small text-muted">Liabilities</div>
           </div>
         </div>
@@ -417,3 +418,5 @@
   });
 </script>
 {% endblock %}
+
+

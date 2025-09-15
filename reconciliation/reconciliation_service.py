@@ -9,7 +9,6 @@ from decimal import Decimal
 from .models import ReconciliationSession, TransactionMatch
 from bank_accounts.models import BankTransaction
 from journal.models import Journal, JournalLine
-from coa.models import Account
 
 
 class ReconciliationService:
@@ -53,7 +52,7 @@ class ReconciliationService:
             coa_account=account
         ).exclude(
             id__in=matched_transaction_ids
-        ).order_by('-date', '-id')
+        ).order_by('date', 'id')  # Changed to ascending order - oldest first
     
     @classmethod
     @transaction.atomic
@@ -91,6 +90,134 @@ class ReconciliationService:
         cls.update_session_statistics(reconciliation_session)
         
         return transaction_match
+    
+    @classmethod
+    @transaction.atomic
+    def create_split_transaction(cls, bank_transaction, reconciliation_session, split_data, user):
+        """
+        Create a split transaction with multiple GL allocations
+        
+        Args:
+            bank_transaction: BankTransaction instance
+            reconciliation_session: ReconciliationSession instance
+            split_data: dict with main match data and 'splits' list
+            user: User making the match
+            
+        Returns:
+            TransactionMatch instance with splits created
+        """
+        from .models import TransactionSplit
+        
+        # Create main transaction match (without GL account for splits)
+        transaction_match = TransactionMatch.objects.create(
+            bank_transaction=bank_transaction,
+            reconciliation_session=reconciliation_session,
+            contact=split_data.get('contact', ''),
+            gl_account=None,  # No single GL account for split transactions
+            description=split_data.get('description', ''),
+            tax_rate='',  # Tax rates are per split
+            match_type='manual',
+            matched_by=user,
+            matched_at=timezone.now(),
+            is_reconciled=True
+        )
+        
+        # Create individual splits
+        splits = split_data.get('splits', [])
+        for i, split_info in enumerate(splits, 1):
+            TransactionSplit.objects.create(
+                transaction_match=transaction_match,
+                split_number=i,
+                amount=Decimal(str(split_info['amount'])),
+                contact=split_info.get('contact', split_data.get('contact', '')),
+                gl_account_id=split_info['gl_account_id'],
+                description=split_info.get('description', ''),
+                tax_rate=split_info.get('tax_rate', ''),
+                created_by=user
+            )
+        
+        # Validate split balance
+        if transaction_match.split_balance_status != 'balanced':
+            raise ValueError(f"Split amounts don't match bank transaction amount. Status: {transaction_match.split_balance_status}")
+        
+        # Auto-create journal entry for splits
+        journal_entry = cls.create_journal_from_split_match(transaction_match, user)
+        transaction_match.journal_entry = journal_entry
+        transaction_match.save()
+        
+        # Update session statistics
+        cls.update_session_statistics(reconciliation_session)
+        
+        return transaction_match
+    
+    @classmethod
+    def create_journal_from_split_match(cls, transaction_match, user):
+        """Auto-create journal entry from split transaction match"""
+        if not transaction_match.is_split_transaction:
+            return cls.create_journal_from_match(transaction_match, user)
+        
+        bank_txn = transaction_match.bank_transaction
+        splits = transaction_match.splits.all()
+        
+        if not splits:
+            return None
+            
+        # Create journal entry
+        journal = Journal.objects.create(
+            narration=f"Bank Split: {transaction_match.description or bank_txn.description}",
+            reference=bank_txn.reference,
+            date=bank_txn.date,
+            created_by=user,
+            status='posted'  # Auto-post reconciliation entries
+        )
+        
+        # Create journal lines for each split
+        total_amount = Decimal('0')
+        
+        for split in splits:
+            amount = abs(split.amount)
+            total_amount += amount
+            
+            if bank_txn.amount > 0:
+                # Money coming IN (income): Credit GL accounts, Debit Bank account
+                JournalLine.objects.create(
+                    journal=journal,
+                    description=f"{split.description} ({split.contact})".strip(),
+                    account_code=split.gl_account.code,
+                    credit=amount,
+                    debit=0
+                )
+            else:
+                # Money going OUT (expense): Debit GL accounts, Credit Bank account
+                JournalLine.objects.create(
+                    journal=journal,
+                    description=f"{split.description} ({split.contact})".strip(),
+                    account_code=split.gl_account.code,
+                    debit=amount,
+                    credit=0
+                )
+        
+        # Create single bank account line for the total
+        if bank_txn.amount > 0:
+            # Bank Account (Debit for income)
+            JournalLine.objects.create(
+                journal=journal,
+                description=f"Bank deposit - {transaction_match.contact}",
+                account_code=bank_txn.coa_account.code,
+                debit=total_amount,
+                credit=0
+            )
+        else:
+            # Bank Account (Credit for expenses)
+            JournalLine.objects.create(
+                journal=journal,
+                description=f"Bank payment - {transaction_match.contact}",
+                account_code=bank_txn.coa_account.code,
+                credit=total_amount,
+                debit=0
+            )
+        
+        return journal
     
     @classmethod
     def create_journal_from_match(cls, transaction_match, user):
@@ -272,13 +399,11 @@ class ReconciliationService:
             for match in matches_to_delete:
                 if match.journal_entry:
                     journal_entries.append(match.journal_entry)
-        
+
         journals_count = len(journal_entries)
         
         try:
-            # Start transaction for data integrity
-            from django.db import transaction
-            
+            # Start database transaction for data integrity
             with transaction.atomic():
                 # Delete journal entries if requested
                 if delete_journal_entries and journal_entries:
@@ -311,9 +436,7 @@ class ReconciliationService:
                 'message': f'Error restarting reconciliation: {str(e)}',
                 'matches_deleted': 0,
                 'journals_deleted': 0
-            }
-    
-    @classmethod
+            }    @classmethod
     def _log_restart_action(cls, account, user, matches_count, journals_count):
         """Log restart action for audit trail"""
         import logging
@@ -365,3 +488,58 @@ class ReconciliationService:
                 report.total_reconciled = 0  # Reset after restart
                 report.total_unreconciled = matches_count
                 report.save()
+    
+    @classmethod
+    def update_journal_entry(cls, transaction_match):
+        """Update the journal entry for a modified transaction match"""
+        if not transaction_match.journal_entry:
+            # No journal entry exists, create one
+            transaction_match.journal_entry = cls.create_journal_from_match(
+                transaction_match, 
+                transaction_match.matched_by
+            )
+            transaction_match.save()
+            return
+        
+        journal = transaction_match.journal_entry
+        bank_tx = transaction_match.bank_transaction
+        
+        # Update journal details
+        journal.narration = f"Bank transaction: {bank_tx.description}"
+        journal.reference = bank_tx.reference or f"BT-{bank_tx.id}"
+        journal.save()
+        
+        # Clear existing journal lines
+        journal.lines.all().delete()
+        
+        # Create new journal lines based on updated match
+        if transaction_match.is_split_transaction:
+            # Handle split transaction
+            for split in transaction_match.splits.all():
+                # Debit/Credit the GL account
+                JournalLine.objects.create(
+                    journal=journal,
+                    account_code=split.gl_account.code,
+                    description=split.description or bank_tx.description,
+                    debit=split.amount if bank_tx.amount > 0 else 0,
+                    credit=abs(split.amount) if bank_tx.amount < 0 else 0
+                )
+        else:
+            # Single match - debit/credit the selected GL account
+            if transaction_match.gl_account:
+                JournalLine.objects.create(
+                    journal=journal,
+                    account_code=transaction_match.gl_account.code,
+                    description=transaction_match.description or bank_tx.description,
+                    debit=bank_tx.amount if bank_tx.amount > 0 else 0,
+                    credit=abs(bank_tx.amount) if bank_tx.amount < 0 else 0
+                )
+        
+        # Balancing entry to bank account
+        JournalLine.objects.create(
+            journal=journal,
+            account_code=bank_tx.coa_account.code,
+            description=f"Bank {bank_tx.description}",
+            debit=abs(bank_tx.amount) if bank_tx.amount < 0 else 0,
+            credit=bank_tx.amount if bank_tx.amount > 0 else 0
+        )

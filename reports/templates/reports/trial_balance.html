@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ report_title }} - {{ company.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Professional Trial Balance Styling */
+.trial-balance-report {
+    background: #f8fafc;
+    min-height: 100vh;
+    padding: 2rem 0;
+}
+
+.report-header {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.company-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.tb-table {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    font-size: 0.95rem;
+}
+
+.tb-table th {
+    background: #1e293b !important;
+    color: white !important;
+    font-weight: 600;
+    padding: 1rem;
+    border: none;
+    text-align: center;
+}
+
+.tb-table td {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: middle;
+}
+
+.account-type-header {
+    background: #f1f5f9 !important;
+    color: #1e293b !important;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-top: 2px solid #64748b;
+}
+
+.account-row:hover {
+    background: #f8fafc;
+}
+
+.subtotal-row {
+    background: #e2e8f0 !important;
+    font-weight: 600;
+    border-top: 1px solid #94a3b8;
+}
+
+.total-row {
+    background: #1e293b !important;
+    color: white !important;
+    font-weight: 700;
+    border-top: 3px solid #1e293b;
+    border-bottom: 3px solid #1e293b;
+}
+
+.balance-check {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.balance-check.balanced {
+    background: #dcfce7;
+    border: 2px solid #16a34a;
+    color: #166534;
+}
+
+.balance-check.unbalanced {
+    background: #fee2e2;
+    border: 2px solid #dc2626;
+    color: #991b1b;
+}
+
+.amount-column {
+    text-align: right;
+    font-weight: 600;
+    min-width: 120px;
+}
+
+.account-code {
+    color: #64748b;
+    font-weight: 500;
+    min-width: 80px;
+}
+
+.account-name {
+    color: #1e293b;
+    font-weight: 500;
+}
+
+.account-type-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-asset {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-liability {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-equity {
+    background: #f3e8ff;
+    color: #7c3aed;
+}
+
+.badge-revenue {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge-expense {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.summary-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.report-controls {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+@media (max-width: 768px) {
+    .tb-table {
+        font-size: 0.85rem;
+    }
+    
+    .amount-column {
+        min-width: 90px;
+    }
+    
+    .summary-cards {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media print {
+    .report-controls,
+    .btn,
+    .summary-cards {
+        display: none !important;
+    }
+    
+    .trial-balance-report {
+        background: white;
+        padding: 0;
+    }
+    
+    .report-header {
+        box-shadow: none;
+        border: 1px solid #000;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="trial-balance-report">
+    <div class="container-fluid">
+        <!-- Report Controls -->
+        <div class="report-controls">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h1 class="h4 mb-0">{{ report_title }}</h1>
+                    <small class="text-muted">{{ report_subtitle }}</small>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <div class="d-flex align-items-center justify-content-md-end gap-3">
+                        <div style="max-width: 200px;">
+                            <label class="form-label mb-1">As at Date:</label>
+                            <input type="date" class="form-control form-control-sm" value="{{ report_date|date:'Y-m-d' }}" 
+                                   onchange="updateReport(this.value)">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="?as_of_date={{ report_date|date:'Y-m-d' }}&format=pdf" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-file-pdf me-1"></i>PDF
+                            </a>
+                            <a href="?as_of_date={{ report_date|date:'Y-m-d' }}&format=excel" class="btn btn-outline-success btn-sm">
+                                <i class="bi bi-file-excel me-1"></i>Excel
+                            </a>
+                            <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-printer me-1"></i>Print
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Trial Balance Report -->
+        <div class="report-header">
+            <!-- Company Header -->
+            <div class="company-header">
+                <h2 class="mb-1">{{ company.name }}</h2>
+                <h3 class="h4 text-info mb-1">{{ report_title }}</h3>
+                <p class="text-muted mb-0">{{ report_subtitle }}</p>
+            </div>
+
+            <!-- Trial Balance Table -->
+            <div class="table-responsive">
+                <table class="table table-sm tb-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 10%;">Code</th>
+                            <th style="width: 40%;">Account Name</th>
+                            <th style="width: 15%;">Type</th>
+                            <th style="width: 17.5%;">Debit</th>
+                            <th style="width: 17.5%;">Credit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% regroup trial_balance.accounts by account.account_type as accounts_by_type %}
+                        
+                        {% for account_type in accounts_by_type %}
+                        <!-- Account Type Header -->
+                        <tr class="account-type-header">
+                            <td colspan="5">
+                                {% if account_type.grouper == 'current_asset' %}
+                                    CURRENT ASSETS
+                                {% elif account_type.grouper == 'fixed_asset' %}
+                                    FIXED ASSETS
+                                {% elif account_type.grouper == 'other_asset' %}
+                                    OTHER ASSETS
+                                {% elif account_type.grouper == 'current_liability' %}
+                                    CURRENT LIABILITIES
+                                {% elif account_type.grouper == 'long_term_liability' %}
+                                    LONG-TERM LIABILITIES
+                                {% elif account_type.grouper == 'equity' %}
+                                    EQUITY
+                                {% elif account_type.grouper == 'revenue' %}
+                                    REVENUE
+                                {% elif account_type.grouper == 'expense' %}
+                                    EXPENSES
+                                {% else %}
+                                    {{ account_type.grouper|upper }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        
+                        <!-- Accounts in this type -->
+                        {% for account_data in account_type.list %}
+                        <tr class="account-row">
+                            <td class="account-code">{{ account_data.account.code }}</td>
+                            <td class="account-name" style="padding-left: 1.5rem;">{{ account_data.account.name }}</td>
+                            <td>
+                                <span class="account-type-badge badge-{% if account_data.account.account_type|slice:':5' == 'asset' or account_data.account.account_type == 'current_asset' or account_data.account.account_type == 'fixed_asset' or account_data.account.account_type == 'other_asset' %}asset{% elif 'liability' in account_data.account.account_type %}liability{% elif account_data.account.account_type == 'equity' %}equity{% elif account_data.account.account_type == 'revenue' %}revenue{% elif account_data.account.account_type == 'expense' %}expense{% endif %}">
+                                    {{ account_data.account.get_account_type_display|default:account_data.account.account_type }}
+                                </span>
+                            </td>
+                            <td class="amount-column">
+                                {% if account_data.debit_amount > 0 %}
+                                    ${{ account_data.debit_amount|floatformat:2|intcomma }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="amount-column">
+                                {% if account_data.credit_amount > 0 %}
+                                    ${{ account_data.credit_amount|floatformat:2|intcomma }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        
+                        <!-- Subtotal for this account type -->
+                        <tr class="subtotal-row">
+                            <td colspan="3">
+                                <strong>
+                                    {% if account_type.grouper == 'current_asset' %}
+                                        Total Current Assets
+                                    {% elif account_type.grouper == 'fixed_asset' %}
+                                        Total Fixed Assets
+                                    {% elif account_type.grouper == 'other_asset' %}
+                                        Total Other Assets
+                                    {% elif account_type.grouper == 'current_liability' %}
+                                        Total Current Liabilities
+                                    {% elif account_type.grouper == 'long_term_liability' %}
+                                        Total Long-term Liabilities
+                                    {% elif account_type.grouper == 'equity' %}
+                                        Total Equity
+                                    {% elif account_type.grouper == 'revenue' %}
+                                        Total Revenue
+                                    {% elif account_type.grouper == 'expense' %}
+                                        Total Expenses
+                                    {% else %}
+                                        Total {{ account_type.grouper|title }}
+                                    {% endif %}
+                                </strong>
+                            </td>
+                            <td class="amount-column">
+                                <strong>
+                                    {% if account_type.list %}
+                                        {% with subtotal_debit=0 %}
+                                        {% for acc in account_type.list %}
+                                            {% if acc.debit_amount > 0 %}
+                                                {% if forloop.first %}
+                                                    ${{ acc.debit_amount|add:subtotal_debit|floatformat:2|intcomma }}
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% endwith %}
+                                    {% endif %}
+                                </strong>
+                            </td>
+                            <td class="amount-column">
+                                <strong>
+                                    {% if account_type.list %}
+                                        {% with subtotal_credit=0 %}
+                                        {% for acc in account_type.list %}
+                                            {% if acc.credit_amount > 0 %}
+                                                {% if forloop.first %}
+                                                    ${{ acc.credit_amount|add:subtotal_credit|floatformat:2|intcomma }}
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% endwith %}
+                                    {% endif %}
+                                </strong>
+                            </td>
+                        </tr>
+                        
+                        <!-- Spacing between account types -->
+                        <tr style="height: 1rem;"><td colspan="5"></td></tr>
+                        {% endfor %}
+                        
+                        <!-- Grand Totals -->
+                        <tr class="total-row">
+                            <td colspan="3"><strong>GRAND TOTALS</strong></td>
+                            <td class="amount-column"><strong>${{ trial_balance.totals.total_debits|floatformat:2|intcomma }}</strong></td>
+                            <td class="amount-column"><strong>${{ trial_balance.totals.total_credits|floatformat:2|intcomma }}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Balance Check -->
+            <div class="balance-check {% if trial_balance.totals.is_balanced %}balanced{% else %}unbalanced{% endif %}">
+                <div class="row align-items-center">
+                    <div class="col-md-12 text-center">
+                        <h4 class="mb-3">
+                            {% if trial_balance.totals.is_balanced %}
+                                <i class="bi bi-check-circle-fill me-2"></i>Trial Balance is BALANCED ✓
+                            {% else %}
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>Trial Balance is NOT BALANCED ⚠️
+                            {% endif %}
+                        </h4>
+                        <div class="row justify-content-center">
+                            <div class="col-md-3 text-center">
+                                <div class="h5">Total Debits</div>
+                                <div class="h4 mb-0">${{ trial_balance.totals.total_debits|floatformat:2|intcomma }}</div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="h5">Total Credits</div>
+                                <div class="h4 mb-0">${{ trial_balance.totals.total_credits|floatformat:2|intcomma }}</div>
+                            </div>
+                            {% if not trial_balance.totals.is_balanced %}
+                            <div class="col-md-3 text-center">
+                                <div class="h5">Difference</div>
+                                <div class="h4 mb-0 text-danger">${{ trial_balance.totals.difference|floatformat:2|intcomma }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="mt-3">
+                            <small>Generated on {{ "now"|date:"F j, Y \a\\t g:i A" }} | {{ trial_balance.accounts|length }} accounts included</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="h4 text-primary">${{ trial_balance.totals.total_debits|floatformat:0|intcomma }}</div>
+                <div class="text-muted">Total Debits</div>
+                <small class="text-muted">Assets & Expenses</small>
+            </div>
+            <div class="summary-card">
+                <div class="h4 text-success">${{ trial_balance.totals.total_credits|floatformat:0|intcomma }}</div>
+                <div class="text-muted">Total Credits</div>
+                <small class="text-muted">Liabilities, Equity & Revenue</small>
+            </div>
+            <div class="summary-card">
+                <div class="h4 text-info">{{ trial_balance.accounts|length }}</div>
+                <div class="text-muted">Total Accounts</div>
+                <small class="text-muted">With balances</small>
+            </div>
+            <div class="summary-card">
+                <div class="h4 {% if trial_balance.totals.is_balanced %}text-success{% else %}text-danger{% endif %}">
+                    {% if trial_balance.totals.is_balanced %}✓{% else %}✗{% endif %}
+                </div>
+                <div class="text-muted">Balance Status</div>
+                <small class="text-muted">
+                    {% if trial_balance.totals.is_balanced %}Balanced{% else %}Out of Balance{% endif %}
+                </small>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="text-center mt-4">
+            <a href="{% url 'reports:xero_dashboard' %}" class="btn btn-secondary me-2">
+                <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+            </a>
+            <a href="{% url 'reports:balance_sheet' %}?as_of_date={{ report_date|date:'Y-m-d' }}" class="btn btn-outline-primary me-2">
+                <i class="bi bi-building me-2"></i>View Balance Sheet
+            </a>
+            <a href="{% url 'reports:profit_loss' %}?end_date={{ report_date|date:'Y-m-d' }}" class="btn btn-outline-success">
+                <i class="bi bi-graph-up me-2"></i>View Profit & Loss
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateReport(newDate) {
+    const url = new URL(window.location);
+    url.searchParams.set('as_of_date', newDate);
+    window.location.href = url.toString();
+}
+
+// Enhanced table interactions
+document.addEventListener('DOMContentLoaded', function() {
+    // Add hover effects to account rows
+    const accountRows = document.querySelectorAll('.account-row');
+    accountRows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#f1f5f9';
+        });
+        
+        row.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+        });
+    });
+    
+    // Add click handlers for drill-down functionality
+    accountRows.forEach(row => {
+        row.addEventListener('click', function() {
+            const accountCode = this.querySelector('.account-code').textContent.trim();
+            if (accountCode) {
+                // In a real implementation, this would show account detail/ledger
+                console.log('Show ledger for account:', accountCode);
+            }
+        });
+        
+        // Add pointer cursor to indicate clickability
+        row.style.cursor = 'pointer';
+    });
+    
+    // Animate balance check on page load
+    setTimeout(() => {
+        const balanceCheck = document.querySelector('.balance-check');
+        if (balanceCheck) {
+            balanceCheck.style.opacity = '0';
+            balanceCheck.style.transform = 'translateY(20px)';
+            balanceCheck.style.transition = 'all 0.8s ease';
+            
+            setTimeout(() => {
+                balanceCheck.style.opacity = '1';
+                balanceCheck.style.transform = 'translateY(0)';
+            }, 300);
+        }
+    }, 100);
+    
+    // Animate summary cards
+    setTimeout(() => {
+        const summaryCards = document.querySelectorAll('.summary-card');
+        summaryCards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = 'all 0.6s ease';
+            
+            setTimeout(() => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, index * 100 + 500);
+        });
+    }, 100);
+});
+</script>
+{% endblock %}

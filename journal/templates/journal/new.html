@@ -327,11 +327,29 @@
 
   function removeRow(btn) { 
     const tbody = document.getElementById('lineBody');
-    if (tbody.children.length <= 2) {
-      alert('Journal must have at least 2 lines');
-      return;
+    const currentRows = tbody.children.length;
+    
+    if (currentRows <= 2) {
+      // Show better explanation and offer to add blank line
+      const result = confirm(
+        'A journal entry must have at least 2 lines for proper double-entry bookkeeping.\n\n' +
+        'Would you like to:\n' +
+        '• OK: Remove this line and add a blank line\n' +
+        '• Cancel: Keep this line'
+      );
+      
+      if (!result) {
+        return; // User cancelled
+      }
+      
+      // Remove the line and add a blank one
+      btn.closest('tr').remove();
+      addLine();
+    } else {
+      // Safe to remove - more than 2 lines
+      btn.closest('tr').remove();
     }
-    btn.closest('tr').remove(); 
+    
     recalc(); 
   }
 

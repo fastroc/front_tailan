@@ -383,10 +383,10 @@
                 <div class="metric-icon mx-auto">
                     <i class="bi bi-bank"></i>
                 </div>
-                <div class="metric-value">$45,250</div>
+                <div class="metric-value">{{ dashboard_metrics.total_cash|default:"$0" }}</div>
                 <div class="metric-label">Total Cash Balance</div>
                 <div class="metric-change positive">
-                    <i class="bi bi-arrow-up"></i> +$2,340 this month
+                    <i class="bi bi-arrow-up"></i> {{ dashboard_metrics.cash_change|default:"No transactions yet" }}
                 </div>
             </div>
         </div>
@@ -398,10 +398,10 @@
                 <div class="metric-icon mx-auto">
                     <i class="bi bi-journal-check"></i>
                 </div>
-                <div class="metric-value">147</div>
+                <div class="metric-value">{{ dashboard_metrics.journal_entries|default:"0" }}</div>
                 <div class="metric-label">Journal Entries</div>
                 <div class="metric-change positive">
-                    <i class="bi bi-arrow-up"></i> 12 this week
+                    <i class="bi bi-arrow-up"></i> {{ dashboard_metrics.journal_change|default:"Getting started" }}
                 </div>
             </div>
         </div>
@@ -413,10 +413,10 @@
                 <div class="metric-icon mx-auto">
                     <i class="bi bi-check-circle"></i>
                 </div>
-                <div class="metric-value">98%</div>
+                <div class="metric-value">{{ dashboard_metrics.reconciliation_rate|default:"0%" }}</div>
                 <div class="metric-label">Reconciliation Rate</div>
                 <div class="metric-change neutral">
-                    <i class="bi bi-dash"></i> 3 pending items
+                    <i class="bi bi-dash"></i> {{ dashboard_metrics.reconciliation_change|default:"No data yet" }}
                 </div>
             </div>
         </div>
@@ -428,10 +428,10 @@
                 <div class="metric-icon mx-auto">
                     <i class="bi bi-building-gear"></i>
                 </div>
-                <div class="metric-value">24</div>
+                <div class="metric-value">{{ dashboard_metrics.fixed_assets|default:"0" }}</div>
                 <div class="metric-label">Fixed Assets</div>
                 <div class="metric-change neutral">
-                    <i class="bi bi-dash"></i> $156k total value
+                    <i class="bi bi-dash"></i> {{ dashboard_metrics.asset_value|default:"$0 total value" }}
                 </div>
             </div>
         </div>
@@ -447,41 +447,32 @@
                 Recent Activity
             </h5>
             
+            {% for activity in recent_activity %}
             <div class="activity-item">
-                <div class="activity-icon bg-success text-white">
-                    <i class="bi bi-plus"></i>
+                <div class="activity-icon {{ activity.icon_class }} text-white">
+                    <i class="bi bi-{{ activity.icon }}"></i>
                 </div>
                 <div class="activity-content">
-                    <div class="fw-semibold">Journal Entry #JE-2024-147</div>
-                    <small class="text-muted">Office Supplies Expense - $245.00</small>
+                    <div class="fw-semibold">{{ activity.title }}</div>
+                    <small class="text-muted">{{ activity.description }}</small>
                 </div>
-                <div class="activity-time">2 hours ago</div>
+                <div class="activity-time">{{ activity.time }}</div>
             </div>
-            
+            {% empty %}
             <div class="activity-item">
                 <div class="activity-icon bg-primary text-white">
-                    <i class="bi bi-arrow-repeat"></i>
+                    <i class="bi bi-info"></i>
                 </div>
                 <div class="activity-content">
-                    <div class="fw-semibold">Bank Reconciliation</div>
-                    <small class="text-muted">Matched 15 transactions for Chase Checking</small>
+                    <div class="fw-semibold">Welcome to your accounting system!</div>
+                    <small class="text-muted">Start by creating journal entries or uploading bank statements</small>
                 </div>
-                <div class="activity-time">4 hours ago</div>
+                <div class="activity-time">Getting started</div>
             </div>
-            
-            <div class="activity-item">
-                <div class="activity-icon bg-warning text-white">
-                    <i class="bi bi-building"></i>
-                </div>
-                <div class="activity-content">
-                    <div class="fw-semibold">Asset Depreciation</div>
-                    <small class="text-muted">Calculated monthly depreciation - $1,240.00</small>
-                </div>
-                <div class="activity-time">1 day ago</div>
-            </div>
+            {% endfor %}
             
             <div class="text-center mt-3">
-                <a href="#" class="btn btn-outline-primary btn-sm">View All Activity</a>
+                <a href="/journal/" class="btn btn-outline-primary btn-sm">View Journal Entries</a>
             </div>
         </div>
     </div>
@@ -494,28 +485,30 @@
                 Pending Tasks
             </h5>
             
+            {% for task in pending_tasks %}
             <div class="activity-item">
-                <div class="activity-icon bg-warning text-white">
-                    <i class="bi bi-exclamation"></i>
+                <div class="activity-icon {{ task.icon_class }} text-white">
+                    <i class="bi bi-{{ task.icon }}"></i>
                 </div>
                 <div class="activity-content">
-                    <div class="fw-semibold">3 Unmatched Transactions</div>
-                    <small class="text-muted">Bank reconciliation pending</small>
+                    <div class="fw-semibold">{{ task.title }}</div>
+                    <small class="text-muted">{{ task.description }}</small>
                 </div>
             </div>
-            
+            {% empty %}
             <div class="activity-item">
-                <div class="activity-icon bg-danger text-white">
-                    <i class="bi bi-calendar-x"></i>
+                <div class="activity-icon bg-success text-white">
+                    <i class="bi bi-check"></i>
                 </div>
                 <div class="activity-content">
-                    <div class="fw-semibold">Month-End Close</div>
-                    <small class="text-muted">Due in 5 days</small>
+                    <div class="fw-semibold">All caught up!</div>
+                    <small class="text-muted">No pending tasks</small>
                 </div>
             </div>
+            {% endfor %}
             
             <div class="text-center mt-3">
-                <a href="#" class="btn btn-outline-primary btn-sm">View All Tasks</a>
+                <a href="/journal/" class="btn btn-outline-primary btn-sm">View All Tasks</a>
             </div>
         </div>
     </div>

@@ -1,0 +1,599 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Fixed Asset Register - Fixed Assets{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-header {
+        background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+    }
+    
+    .report-actions {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    
+    .summary-card {
+        background: white;
+        border: 1px solid #e3e6f0;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    }
+    
+    .table-responsive {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        overflow: hidden;
+    }
+    
+    .table thead th {
+        background-color: #5a5c69;
+        color: white;
+        border: none;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        padding: 0.75rem 0.5rem;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fc;
+    }
+    
+    .currency {
+        font-family: 'Courier New', monospace;
+        text-align: right;
+        font-size: 0.85rem;
+    }
+    
+    .asset-status {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.4rem;
+        border-radius: 12px;
+        font-weight: 500;
+    }
+    
+    .status-active {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .status-disposed {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .status-under-construction {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .status-retired {
+        background-color: #e2e3e5;
+        color: #383d41;
+    }
+    
+    .register-section {
+        border-left: 4px solid #6f42c1;
+        padding-left: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .section-title {
+        color: #5a5c69;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .total-row {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-top: 2px solid #5a5c69;
+        position: sticky;
+        bottom: 0;
+    }
+    
+    .filter-form {
+        background: white;
+        border: 2px solid #e3e6f0;
+        border-radius: 8px;
+        padding: 0.4rem;
+        color: #5a5c69;
+    }
+    
+    .btn-export {
+        background: linear-gradient(45deg, #6f42c1, #e83e8c);
+        border: none;
+        color: white;
+        font-weight: 500;
+    }
+    
+    .btn-export:hover {
+        background: linear-gradient(45deg, #5a32a3, #d91a72);
+        color: white;
+    }
+    
+    .asset-link {
+        color: #6f42c1;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+    
+    .asset-link:hover {
+        color: #e83e8c;
+        text-decoration: underline;
+    }
+    
+    .asset-details {
+        font-size: 0.8rem;
+        color: #6c757d;
+        line-height: 1.2;
+    }
+    
+    .depreciation-info {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+    
+    .register-filters {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .category-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+        border-radius: 10px;
+        background-color: #e9ecef;
+        color: #495057;
+    }
+    
+    .asset-image {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+    }
+    
+    .no-image {
+        width: 40px;
+        height: 40px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+        font-size: 0.7rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Report Header -->
+    <div class="report-header text-center">
+        <h1 class="mb-2">
+            <i class="fas fa-book-open"></i>
+            Fixed Asset Register
+        </h1>
+        <p class="mb-0">
+            Complete Asset Inventory as of {{ report_date|date:"F j, Y" }} | 
+            Generated at {{ report_date|time:"g:i A" }}
+        </p>
+    </div>
+
+    <!-- Report Filters -->
+    <div class="register-filters">
+        <form method="get" class="row align-items-end">
+            <div class="col-md-2">
+                <label for="status" class="form-label mb-1 fw-bold">Status:</label>
+                <select name="status" id="status" class="form-select filter-form">
+                    <option value="">All Status</option>
+                    <option value="ACTIVE" {% if status == 'ACTIVE' %}selected{% endif %}>Active</option>
+                    <option value="DISPOSED" {% if status == 'DISPOSED' %}selected{% endif %}>Disposed</option>
+                    <option value="UNDER_CONSTRUCTION" {% if status == 'UNDER_CONSTRUCTION' %}selected{% endif %}>Under Construction</option>
+                    <option value="RETIRED" {% if status == 'RETIRED' %}selected{% endif %}>Retired</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="asset_type" class="form-label mb-1 fw-bold">Type:</label>
+                <select name="asset_type" id="asset_type" class="form-select filter-form">
+                    <option value="">All Types</option>
+                    {% for type in asset_types %}
+                        <option value="{{ type.id }}" {% if type.id|stringformat:"s" == asset_type %}selected{% endif %}>{{ type.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="location" class="form-label mb-1 fw-bold">Location:</label>
+                <select name="location" id="location" class="form-select filter-form">
+                    <option value="">All Locations</option>
+                    {% for loc in locations %}
+                        <option value="{{ loc }}" {% if loc == location %}selected{% endif %}>{{ loc }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="department" class="form-label mb-1 fw-bold">Department:</label>
+                <select name="department" id="department" class="form-select filter-form">
+                    <option value="">All Departments</option>
+                    {% for dept in departments %}
+                        <option value="{{ dept }}" {% if dept == department %}selected{% endif %}>{{ dept }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="search" class="form-label mb-1 fw-bold">Search:</label>
+                <input type="text" name="search" id="search" class="form-control filter-form" 
+                       placeholder="Asset name/code..." value="{{ search }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Report Actions -->
+    <div class="report-actions">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="d-flex align-items-center flex-wrap">
+                    <div class="me-3 mb-2">
+                        <small class="text-muted">
+                            Showing {{ assets.start_index }}-{{ assets.end_index }} of {{ assets.paginator.count }} assets
+                        </small>
+                    </div>
+                    <div class="me-3 mb-2">
+                        <form method="get" class="d-flex align-items-center">
+                            {% for key, value in request.GET.items %}
+                                {% if key != 'per_page' %}
+                                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                                {% endif %}
+                            {% endfor %}
+                            <label for="per_page" class="form-label mb-0 me-2 fw-bold">Per page:</label>
+                            <select name="per_page" id="per_page" class="form-select filter-form" style="width: auto;" onchange="this.form.submit()">
+                                <option value="25" {% if per_page == '25' %}selected{% endif %}>25</option>
+                                <option value="50" {% if per_page == '50' %}selected{% endif %}>50</option>
+                                <option value="100" {% if per_page == '100' %}selected{% endif %}>100</option>
+                                <option value="all" {% if per_page == 'all' %}selected{% endif %}>All</option>
+                            </select>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="btn-group">
+                    <a href="{% url 'assets:export_report' 'asset_register' %}?{{ request.GET.urlencode }}" 
+                       class="btn btn-export">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </a>
+                    <a href="{% url 'assets:export_report' 'asset_register' %}?{{ request.GET.urlencode }}&format=pdf" 
+                       class="btn btn-export">
+                        <i class="fas fa-file-pdf"></i> Export PDF
+                    </a>
+                    <button onclick="window.print()" class="btn btn-outline-secondary">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row">
+        <div class="col-md-2">
+            <div class="summary-card text-center">
+                <h6 class="text-primary">Total Assets</h6>
+                <h4 class="mb-0">{{ summary.total_count|floatformat:0 }}</h4>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="summary-card text-center">
+                <h6 class="text-success">Original Cost</h6>
+                <h5 class="mb-0 currency">${{ summary.total_cost|floatformat:0|intcomma }}</h5>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="summary-card text-center">
+                <h6 class="text-warning">Accumulated Depreciation</h6>
+                <h5 class="mb-0 currency">${{ summary.total_depreciation|floatformat:0|intcomma }}</h5>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="summary-card text-center">
+                <h6 class="text-info">Net Book Value</h6>
+                <h5 class="mb-0 currency">${{ summary.net_book_value|floatformat:0|intcomma }}</h5>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="summary-card text-center">
+                <h6 class="text-secondary">Active Assets</h6>
+                <h4 class="mb-0">{{ summary.active_count|floatformat:0 }}</h4>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="summary-card text-center">
+                <h6 class="text-danger">Disposed Assets</h6>
+                <h4 class="mb-0">{{ summary.disposed_count|floatformat:0 }}</h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asset Register Table -->
+    <div class="register-section">
+        <h3 class="section-title">
+            <i class="fas fa-list-ul"></i> 
+            Asset Register Detail
+        </h3>
+        
+        <div class="table-responsive" style="max-height: 800px; overflow-y: auto;">
+            <table class="table table-hover table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 3%;"></th>
+                        <th style="width: 10%;">Asset Code</th>
+                        <th style="width: 20%;">Description</th>
+                        <th style="width: 8%;">Type</th>
+                        <th style="width: 8%;">Status</th>
+                        <th style="width: 8%;">Location</th>
+                        <th style="width: 8%;">Acquired</th>
+                        <th style="width: 8%;">Cost</th>
+                        <th style="width: 8%;">Depreciation</th>
+                        <th style="width: 8%;">Net Value</th>
+                        <th style="width: 6%;">Life</th>
+                        <th style="width: 5%;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for asset in assets %}
+                    <tr>
+                        <td class="text-center">
+                            {% if asset.image %}
+                                <img src="{{ asset.image.url }}" alt="{{ asset.name }}" class="asset-image">
+                            {% else %}
+                                <div class="no-image">
+                                    <i class="fas fa-image"></i>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'assets:detail' asset.id %}" class="asset-link">
+                                <strong>{{ asset.asset_code }}</strong>
+                            </a>
+                            {% if asset.barcode %}
+                                <br><small class="text-muted">{{ asset.barcode }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="asset-details">
+                                <strong>{{ asset.name }}</strong>
+                                {% if asset.manufacturer %}
+                                    <br><small>{{ asset.manufacturer }}</small>
+                                {% endif %}
+                                {% if asset.model %}
+                                    <br><small>Model: {{ asset.model }}</small>
+                                {% endif %}
+                                {% if asset.serial_number %}
+                                    <br><small>S/N: {{ asset.serial_number }}</small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if asset.asset_type %}
+                                <span class="category-badge">{{ asset.asset_type.name }}</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="asset-status status-{{ asset.status|lower|slugify }}">
+                                {{ asset.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="asset-details">
+                            {% if asset.location %}
+                                {{ asset.location }}
+                                {% if asset.department %}
+                                    <br><small>{{ asset.department }}</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {{ asset.acquisition_date|date:"M j, Y" }}
+                        </td>
+                        <td class="currency">${{ asset.cost|floatformat:2|intcomma }}</td>
+                        <td class="currency">
+                            {% if asset.accumulated_depreciation %}
+                                ${{ asset.accumulated_depreciation|floatformat:2|intcomma }}
+                                <br><small class="depreciation-info">
+                                    {{ asset.get_depreciation_method_display }}
+                                </small>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="currency">
+                            <strong>${{ asset.current_book_value|floatformat:2|intcomma }}</strong>
+                        </td>
+                        <td class="text-center">
+                            {% if asset.useful_life_years %}
+                                {{ asset.useful_life_years }}y
+                                {% if asset.useful_life_months %}
+                                    <br><small>{{ asset.useful_life_months }}m</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group-vertical btn-group-sm">
+                                <a href="{% url 'assets:detail' asset.id %}" class="btn btn-outline-primary btn-sm" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'assets:edit' asset.id %}" class="btn btn-outline-secondary btn-sm" title="Edit Asset">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="12" class="text-center text-muted py-4">
+                            <i class="fas fa-info-circle"></i>
+                            No assets found matching the selected criteria.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    
+                    {% if assets and summary %}
+                    <tr class="total-row">
+                        <td colspan="7" class="text-end"><strong>TOTALS ({{ summary.total_count }} assets):</strong></td>
+                        <td class="currency"><strong>${{ summary.total_cost|floatformat:2|intcomma }}</strong></td>
+                        <td class="currency"><strong>${{ summary.total_depreciation|floatformat:2|intcomma }}</strong></td>
+                        <td class="currency"><strong>${{ summary.net_book_value|floatformat:2|intcomma }}</strong></td>
+                        <td colspan="2"></td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if assets.has_other_pages %}
+    <nav aria-label="Asset register pagination">
+        <ul class="pagination justify-content-center">
+            {% if assets.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ assets.previous_page_number }}&{{ request.GET.urlencode }}">
+                        Previous
+                    </a>
+                </li>
+            {% endif %}
+            
+            {% for num in assets.paginator.page_range %}
+                {% if assets.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}&{{ request.GET.urlencode }}">
+                            {{ num }}
+                        </a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if assets.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ assets.next_page_number }}&{{ request.GET.urlencode }}">
+                        Next
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    <!-- Asset Type Summary -->
+    {% if type_summary %}
+    <div class="register-section">
+        <h4 class="section-title">
+            <i class="fas fa-chart-pie"></i> 
+            Assets by Type
+        </h4>
+        
+        <div class="row">
+            {% for type_data in type_summary %}
+            <div class="col-md-4 col-sm-6">
+                <div class="summary-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-primary mb-0">{{ type_data.type_name }}</h6>
+                        <span class="category-badge">{{ type_data.count }} asset{{ type_data.count|pluralize }}</span>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted">Total Cost:</small>
+                            <div class="currency"><strong>${{ type_data.total_cost|floatformat:0|intcomma }}</strong></div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Net Value:</small>
+                            <div class="currency"><strong>${{ type_data.net_value|floatformat:0|intcomma }}</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Footer Information -->
+    <div class="text-center text-muted mt-4 py-3 border-top">
+        <small>
+            <i class="fas fa-info-circle"></i>
+            This fixed asset register provides a complete inventory of all assets as of {{ report_date|date:"F j, Y" }}.
+            Net book values are calculated based on current depreciation schedules.
+            <br>
+            Generated from Fixed Asset Management System on {{ report_date|date:"F j, Y" }} at {{ report_date|time:"g:i A" }}
+        </small>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit filters when changed (with delay)
+    const filterInputs = document.querySelectorAll('#status, #asset_type, #location, #department');
+    filterInputs.forEach(function(input) {
+        input.addEventListener('change', function() {
+            setTimeout(function() {
+                input.closest('form').submit();
+            }, 300);
+        });
+    });
+    
+    // Search form submission on Enter
+    const searchInput = document.getElementById('search');
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this.closest('form').submit();
+        }
+    });
+    
+    // Initialize tooltips
+    const tooltips = document.querySelectorAll('[title]');
+    if (typeof bootstrap !== 'undefined') {
+        tooltips.forEach(function(element) {
+            new bootstrap.Tooltip(element);
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -25,10 +25,17 @@ def manual_journal_list(request):
     search_query = request.GET.get("search", "")
     status_filter = request.GET.get("status", "")
     period_filter = request.GET.get("period", "")
+    include_reconciliation = request.GET.get("include_reconciliation", "false") == "true"
 
     # Base queryset - filter by company if journals have company field
     # For now, show all journals since Journal model doesn't have company field yet
     journals = Journal.objects.select_related("created_by").prefetch_related("lines")
+    
+    # EXCLUDE auto-generated reconciliation journals by default (like Xero does)
+    if not include_reconciliation:
+        journals = journals.exclude(
+            Q(narration__startswith="Bank:") | Q(narration__startswith="Bank Split:")
+        )
 
     # Apply search filter
     if search_query:
@@ -69,6 +76,7 @@ def manual_journal_list(request):
         "search_query": search_query,
         "status_filter": status_filter,
         "period_filter": period_filter,
+        "include_reconciliation": include_reconciliation,
         "total_count": total_count,
         "posted_count": posted_count,
         "draft_count": draft_count,
@@ -148,10 +156,22 @@ def new_journal(request):
 
 def journal_detail(request, journal_id):
     """View journal details"""
+    # Get active company using the mixin approach
+    mixin = CompanyRequiredMixin()
+    mixin.request = request
+    active_company = mixin.get_active_company()
+    
     journal = get_object_or_404(Journal, id=journal_id)
+    
+    # Calculate totals
+    total_debit = sum(line.debit for line in journal.lines.all())
+    total_credit = sum(line.credit for line in journal.lines.all())
 
     context = {
         "journal": journal,
+        "total_debit": total_debit,
+        "total_credit": total_credit,
+        "active_company": active_company,
     }
 
     return render(request, "journal/detail.html", context)
@@ -344,3 +364,23 @@ def delete_journal_api(request, journal_id):
     journal.delete()
 
     return JsonResponse({"success": True, "message": "Journal deleted successfully"})
+
+
+def force_delete_journal_api(request, journal_id):
+    """API endpoint to force delete any journal (admin/testing only)"""
+    if request.method != "DELETE":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    journal = get_object_or_404(Journal, id=journal_id)
+    
+    # Store info for response
+    journal_ref = f"JE{journal.id:04d}"
+    journal_status = journal.status
+    
+    # Force delete regardless of status
+    journal.delete()
+
+    return JsonResponse({
+        "success": True, 
+        "message": f"Journal {journal_ref} ({journal_status}) force-deleted successfully"
+    })

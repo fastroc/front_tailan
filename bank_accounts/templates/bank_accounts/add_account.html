@@ -13,6 +13,23 @@
 <div class="container py-4">
   <h5 class="mb-3">Add bank account</h5>
 
+  <!-- Messages -->
+  {% if messages %}
+    <div class="alert-container mb-3">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          <strong>
+            {% if message.tags == 'warning' %}⚠️{% endif %}
+            {% if message.tags == 'success' %}✅{% endif %}
+            {% if message.tags == 'error' %}❌{% endif %}
+          </strong>
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
   <div class="info-banner p-3 mb-3">
     <div class="d-flex gap-3">
       <div class="flex-grow-1">
@@ -23,18 +40,34 @@
     </div>
   </div>
 
-  <form method="post" class="card" style="max-width:720px;">
+  <form method="post" class="card" style="max-width:720px;" id="bank-account-form">
     {% csrf_token %}
     <div class="card-header bg-white border-0 fw-semibold">Account details</div>
     <div class="card-body">
       <div class="mb-3">
         <label class="form-label">Account name <span class="text-danger">*</span></label>
-        <input type="text" class="form-control" name="name" placeholder="e.g., Business Checking Account" required>
+        <input type="text" class="form-control" name="name" 
+               placeholder="e.g., Business Checking Account" 
+               value="{% if form_data %}{{ form_data.name|default:'' }}{% endif %}" required>
       </div>
       <div class="mb-3">
         <label class="form-label">Account Code (optional)</label>
-        <input type="text" class="form-control" name="code" placeholder="e.g., 10010">
+        <input type="text" class="form-control" name="code" 
+               placeholder="e.g., 1030" 
+               value="{% if form_data %}{{ form_data.code|default:'' }}{% endif %}"
+               id="account-code-input">
         <div class="form-text">Can be set later from Chart of Accounts</div>
+        
+        {% if form_data.suggested_code %}
+          <div class="alert alert-info mt-2 py-2">
+            <i class="bi bi-lightbulb me-2"></i>
+            <strong>Suggestion:</strong> Try using <strong>{{ form_data.suggested_code }}</strong> instead.
+            <button type="button" class="btn btn-sm btn-outline-primary ms-2" 
+                    onclick="document.getElementById('account-code-input').value='{{ form_data.suggested_code }}'">
+              Use {{ form_data.suggested_code }}
+            </button>
+          </div>
+        {% endif %}
       </div>
 
       <div class="d-flex justify-content-between align-items-center mt-4">
@@ -44,4 +77,64 @@
     </div>
   </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Real-time code validation for bank accounts
+document.addEventListener('DOMContentLoaded', function() {
+    const codeInput = document.getElementById('account-code-input');
+    
+    if (codeInput) {
+        let checkTimeout;
+        
+        codeInput.addEventListener('input', function() {
+            clearTimeout(checkTimeout);
+            
+            // Remove any existing warnings
+            const existingWarning = document.querySelector('.code-warning');
+            if (existingWarning) {
+                existingWarning.remove();
+            }
+            
+            const code = this.value.trim();
+            if (code.length >= 3) {
+                checkTimeout = setTimeout(() => {
+                    checkCodeAvailability(code);
+                }, 500);
+            }
+        });
+    }
+    
+    function checkCodeAvailability(code) {
+        // Make AJAX call to check if code is available
+        fetch(`/coa/api/check-code/?code=${encodeURIComponent(code)}`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.available) {
+                showCodeWarning(codeInput, `Code ${code} is already used by "${data.existing_account}". Try ${data.suggested_code} instead.`);
+            }
+        })
+        .catch(error => {
+            console.log('Code check failed:', error);
+            // Silently fail - server-side validation will catch it
+        });
+    }
+    
+    function showCodeWarning(input, message) {
+        const warningDiv = document.createElement('div');
+        warningDiv.className = 'alert alert-warning mt-2 py-2 code-warning';
+        warningDiv.innerHTML = `
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>Code Warning:</strong> ${message}
+        `;
+        input.parentNode.appendChild(warningDiv);
+    }
+});
+</script>
 {% endblock %}

@@ -1,0 +1,470 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Asset Movements Report - Fixed Assets{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+    }
+    
+    .report-actions {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    
+    .summary-card {
+        background: white;
+        border: 1px solid #e3e6f0;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    }
+    
+    .table-responsive {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        overflow: hidden;
+    }
+    
+    .table thead th {
+        background-color: #5a5c69;
+        color: white;
+        border: none;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+        padding: 1rem 0.75rem;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fc;
+    }
+    
+    .currency {
+        font-family: 'Courier New', monospace;
+        text-align: right;
+    }
+    
+    .transaction-type {
+        font-size: 0.85rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 15px;
+        font-weight: 500;
+    }
+    
+    .type-acquisition {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .type-improvement {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .type-disposal {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .type-transfer {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .type-revaluation {
+        background-color: #e2e3e5;
+        color: #383d41;
+    }
+    
+    .movements-section {
+        border-left: 4px solid #28a745;
+        padding-left: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .section-title {
+        color: #5a5c69;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .total-row {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-top: 2px solid #5a5c69;
+    }
+    
+    .date-filter {
+        background: white;
+        border: 2px solid #e3e6f0;
+        border-radius: 8px;
+        padding: 0.5rem;
+        color: #5a5c69;
+    }
+    
+    .btn-export {
+        background: linear-gradient(45deg, #28a745, #20c997);
+        border: none;
+        color: white;
+        font-weight: 500;
+    }
+    
+    .btn-export:hover {
+        background: linear-gradient(45deg, #218838, #1ea085);
+        color: white;
+    }
+    
+    .movement-details {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+    
+    .asset-link {
+        color: #28a745;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .asset-link:hover {
+        color: #20c997;
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Report Header -->
+    <div class="report-header text-center">
+        <h1 class="mb-2">
+            <i class="fas fa-exchange-alt"></i>
+            Asset Movements Report
+        </h1>
+        <p class="mb-0">
+            Period: {{ start_date|date:"M j, Y" }} - {{ end_date|date:"M j, Y" }} | 
+            Generated on {{ report_date|date:"F j, Y" }} at {{ report_date|time:"g:i A" }}
+        </p>
+    </div>
+
+    <!-- Report Actions -->
+    <div class="report-actions">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <form method="get" class="d-flex align-items-center flex-wrap">
+                    <div class="me-3 mb-2">
+                        <label for="start_date" class="form-label mb-1 fw-bold">From:</label>
+                        <input type="date" name="start_date" id="start_date" 
+                               class="form-control date-filter" 
+                               value="{{ start_date|date:'Y-m-d' }}" style="width: auto;">
+                    </div>
+                    <div class="me-3 mb-2">
+                        <label for="end_date" class="form-label mb-1 fw-bold">To:</label>
+                        <input type="date" name="end_date" id="end_date" 
+                               class="form-control date-filter" 
+                               value="{{ end_date|date:'Y-m-d' }}" style="width: auto;">
+                    </div>
+                    <div class="me-3 mb-2">
+                        <label for="transaction_type" class="form-label mb-1 fw-bold">Type:</label>
+                        <select name="transaction_type" id="transaction_type" class="form-select date-filter" style="width: auto;">
+                            <option value="">All Types</option>
+                            <option value="ACQUISITION" {% if transaction_type == 'ACQUISITION' %}selected{% endif %}>Acquisitions</option>
+                            <option value="IMPROVEMENT" {% if transaction_type == 'IMPROVEMENT' %}selected{% endif %}>Improvements</option>
+                            <option value="DISPOSAL" {% if transaction_type == 'DISPOSAL' %}selected{% endif %}>Disposals</option>
+                            <option value="TRANSFER" {% if transaction_type == 'TRANSFER' %}selected{% endif %}>Transfers</option>
+                            <option value="REVALUATION" {% if transaction_type == 'REVALUATION' %}selected{% endif %}>Revaluations</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter"></i> Filter
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="btn-group">
+                    <a href="{% url 'assets:export_report' 'movements' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&transaction_type={{ transaction_type }}" 
+                       class="btn btn-export">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </a>
+                    <a href="{% url 'assets:export_report' 'movements' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&transaction_type={{ transaction_type }}&format=pdf" 
+                       class="btn btn-export">
+                        <i class="fas fa-file-pdf"></i> Export PDF
+                    </a>
+                    <button onclick="window.print()" class="btn btn-outline-secondary">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row">
+        <div class="col-md-2">
+            <div class="summary-card text-center">
+                <h6 class="text-primary">Total Movements</h6>
+                <h4 class="mb-0">{{ movements_count|floatformat:0 }}</h4>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="summary-card text-center">
+                <h6 class="text-success">Acquisitions</h6>
+                <h4 class="mb-0 currency">${{ summary.acquisitions|floatformat:2|intcomma }}</h4>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="summary-card text-center">
+                <h6 class="text-info">Improvements</h6>
+                <h4 class="mb-0 currency">${{ summary.improvements|floatformat:2|intcomma }}</h4>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="summary-card text-center">
+                <h6 class="text-warning">Disposals</h6>
+                <h4 class="mb-0 currency">${{ summary.disposals|floatformat:2|intcomma }}</h4>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="summary-card text-center">
+                <h6 class="text-secondary">Transfers</h6>
+                <h4 class="mb-0 currency">${{ summary.transfers|floatformat:2|intcomma }}</h4>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="summary-card text-center">
+                <h6 class="text-dark">Net Movement</h6>
+                <h4 class="mb-0 currency">${{ summary.net_movement|floatformat:2|intcomma }}</h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asset Movements Table -->
+    <div class="movements-section">
+        <h3 class="section-title">
+            <i class="fas fa-list-alt"></i> 
+            Asset Movements Detail
+        </h3>
+        
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">Date</th>
+                        <th style="width: 12%;">Asset Code</th>
+                        <th style="width: 20%;">Asset Description</th>
+                        <th style="width: 10%;">Transaction Type</th>
+                        <th style="width: 12%;">Amount</th>
+                        <th style="width: 15%;">Description</th>
+                        <th style="width: 10%;">Journal Entry</th>
+                        <th style="width: 11%;">Created By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for movement in asset_movements %}
+                    <tr>
+                        <td>
+                            <strong>{{ movement.transaction_date|date:"M j, Y" }}</strong>
+                            <br><small class="text-muted">{{ movement.transaction_date|time:"g:i A" }}</small>
+                        </td>
+                        <td>
+                            <a href="{% url 'assets:detail' movement.asset.id %}" class="asset-link">
+                                <strong>{{ movement.asset.asset_code }}</strong>
+                            </a>
+                        </td>
+                        <td>
+                            <div>
+                                <strong>{{ movement.asset.name }}</strong>
+                                {% if movement.asset.location %}
+                                    <br><small class="text-muted">{{ movement.asset.location }}</small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="transaction-type type-{{ movement.transaction_type|lower }}">
+                                {{ movement.get_transaction_type_display }}
+                            </span>
+                        </td>
+                        <td class="currency">
+                            {% if movement.transaction_type == 'DISPOSAL' %}
+                                <span class="text-danger">
+                                    -${{ movement.amount|floatformat:2|intcomma }}
+                                </span>
+                            {% else %}
+                                <span class="text-success">
+                                    ${{ movement.amount|floatformat:2|intcomma }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="movement-details">
+                                {{ movement.description|default:"—" }}
+                                {% if movement.notes %}
+                                    <br><small class="text-muted">{{ movement.notes|truncatechars:50 }}</small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            {% if movement.journal_entry %}
+                                <a href="#" class="text-primary" title="Journal Entry #{{ movement.journal_entry.id }}">
+                                    <i class="fas fa-book"></i> {{ movement.journal_entry.id }}
+                                </a>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="movement-details">
+                                {{ movement.created_by.get_full_name|default:movement.created_by.username }}
+                                <br><small class="text-muted">{{ movement.created_at|date:"M j" }}</small>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            <i class="fas fa-info-circle"></i>
+                            No asset movements found for the selected period
+                            {% if transaction_type %} and transaction type{% endif %}.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    
+                    {% if asset_movements %}
+                    <tr class="total-row">
+                        <td colspan="4" class="text-end"><strong>TOTALS:</strong></td>
+                        <td class="currency">
+                            <strong class="{% if summary.net_movement >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if summary.net_movement >= 0 %}${% else %}-${% endif %}{{ summary.net_movement|abs|floatformat:2|intcomma }}
+                            </strong>
+                        </td>
+                        <td colspan="3"></td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Movement Type Summary -->
+    {% if type_summary %}
+    <div class="movements-section">
+        <h4 class="section-title">
+            <i class="fas fa-chart-bar"></i> 
+            Movement Summary by Type
+        </h4>
+        
+        <div class="row">
+            {% for type_data in type_summary %}
+            <div class="col-md-6 col-lg-4">
+                <div class="summary-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-primary mb-0">{{ type_data.type_display }}</h6>
+                        <span class="transaction-type type-{{ type_data.type|lower }}">
+                            {{ type_data.count }} movement{{ type_data.count|pluralize }}
+                        </span>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted">Total Amount:</small>
+                            <div class="currency">
+                                <strong>${{ type_data.total_amount|floatformat:2|intcomma }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Avg Amount:</small>
+                            <div class="currency">
+                                <strong>${{ type_data.avg_amount|floatformat:2|intcomma }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Pagination -->
+    {% if asset_movements.has_other_pages %}
+    <nav aria-label="Asset movements pagination">
+        <ul class="pagination justify-content-center">
+            {% if asset_movements.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ asset_movements.previous_page_number }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&transaction_type={{ transaction_type }}">
+                        Previous
+                    </a>
+                </li>
+            {% endif %}
+            
+            {% for num in asset_movements.paginator.page_range %}
+                {% if asset_movements.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&transaction_type={{ transaction_type }}">
+                            {{ num }}
+                        </a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if asset_movements.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ asset_movements.next_page_number }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&transaction_type={{ transaction_type }}">
+                        Next
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    <!-- Footer Information -->
+    <div class="text-center text-muted mt-4 py-3 border-top">
+        <small>
+            <i class="fas fa-info-circle"></i>
+            This report shows all asset movements including acquisitions, improvements, disposals, transfers, and revaluations.
+            <br>
+            Generated from Fixed Asset Management System on {{ report_date|date:"F j, Y" }} at {{ report_date|time:"g:i A" }}
+        </small>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add tooltips for journal entries
+    const tooltips = document.querySelectorAll('[title]');
+    if (typeof bootstrap !== 'undefined') {
+        tooltips.forEach(function(element) {
+            new bootstrap.Tooltip(element);
+        });
+    }
+    
+    // Auto-submit form when dates change
+    const dateInputs = document.querySelectorAll('#start_date, #end_date, #transaction_type');
+    dateInputs.forEach(function(input) {
+        input.addEventListener('change', function() {
+            // Add a small delay to allow user to finish selecting dates
+            setTimeout(function() {
+                input.closest('form').submit();
+            }, 500);
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,335 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Tax Depreciation Schedule - Fixed Assets{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+    }
+    
+    .report-actions {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    
+    .summary-card {
+        background: white;
+        border: 1px solid #e3e6f0;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    }
+    
+    .table-responsive {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        overflow: hidden;
+    }
+    
+    .table thead th {
+        background-color: #5a5c69;
+        color: white;
+        border: none;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+        padding: 1rem 0.75rem;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fc;
+    }
+    
+    .currency {
+        font-family: 'Courier New', monospace;
+        text-align: right;
+    }
+    
+    .depreciation-method {
+        font-size: 0.85rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 15px;
+        font-weight: 500;
+    }
+    
+    .method-straight-line {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .method-declining-balance {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .method-units-of-production {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .tax-year-section {
+        border-left: 4px solid #667eea;
+        padding-left: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .section-title {
+        color: #5a5c69;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .total-row {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-top: 2px solid #5a5c69;
+    }
+    
+    .year-filter {
+        background: white;
+        border: 2px solid #e3e6f0;
+        border-radius: 8px;
+        padding: 0.5rem;
+        color: #5a5c69;
+    }
+    
+    .btn-export {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        border: none;
+        color: white;
+        font-weight: 500;
+    }
+    
+    .btn-export:hover {
+        background: linear-gradient(45deg, #5a6fd8, #6a42a0);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Report Header -->
+    <div class="report-header text-center">
+        <h1 class="mb-2">
+            <i class="fas fa-calculator"></i>
+            Tax Depreciation Schedule
+        </h1>
+        <p class="mb-0">
+            Tax Year {{ tax_year }} | 
+            Generated on {{ report_date|date:"F j, Y" }} at {{ report_date|time:"g:i A" }}
+        </p>
+    </div>
+
+    <!-- Report Actions -->
+    <div class="report-actions">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <form method="get" class="d-flex align-items-center">
+                    <label for="tax_year" class="me-2 mb-0 fw-bold">Tax Year:</label>
+                    <select name="tax_year" id="tax_year" class="form-select year-filter me-3" style="width: auto;" onchange="this.form.submit()">
+                        {% for year in available_years %}
+                            <option value="{{ year }}" {% if year == tax_year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted">{{ assets_count }} assets for tax year {{ tax_year }}</small>
+                </form>
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="btn-group">
+                    <a href="{% url 'assets:export_report' 'tax_schedule' %}?tax_year={{ tax_year }}" 
+                       class="btn btn-export">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </a>
+                    <a href="{% url 'assets:export_report' 'tax_schedule' %}?tax_year={{ tax_year }}&format=pdf" 
+                       class="btn btn-export">
+                        <i class="fas fa-file-pdf"></i> Export PDF
+                    </a>
+                    <button onclick="window.print()" class="btn btn-outline-secondary">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="summary-card text-center">
+                <h5 class="text-primary">Total Assets</h5>
+                <h3 class="mb-0">{{ assets_count|floatformat:0 }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="summary-card text-center">
+                <h5 class="text-success">Cost Basis</h5>
+                <h3 class="mb-0 currency">${{ summary.total_cost|floatformat:2|intcomma }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="summary-card text-center">
+                <h5 class="text-warning">{{ tax_year }} Depreciation</h5>
+                <h3 class="mb-0 currency">${{ summary.current_year_depreciation|floatformat:2|intcomma }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="summary-card text-center">
+                <h5 class="text-info">Net Book Value</h5>
+                <h3 class="mb-0 currency">${{ summary.net_book_value|floatformat:2|intcomma }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tax Depreciation Schedule -->
+    <div class="tax-year-section">
+        <h3 class="section-title">
+            <i class="fas fa-clipboard-list"></i> 
+            Tax Depreciation Schedule - {{ tax_year }}
+        </h3>
+        
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Asset Code</th>
+                        <th style="width: 25%;">Asset Description</th>
+                        <th style="width: 12%;">Tax Method</th>
+                        <th style="width: 8%;">Tax Rate</th>
+                        <th style="width: 10%;">Cost Basis</th>
+                        <th style="width: 10%;">Prior Depreciation</th>
+                        <th style="width: 10%;">{{ tax_year }} Depreciation</th>
+                        <th style="width: 10%;">Net Book Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for asset in tax_schedule %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'assets:detail' asset.id %}" class="text-decoration-none">
+                                <strong>{{ asset.asset_code }}</strong>
+                            </a>
+                        </td>
+                        <td>
+                            <div>
+                                <strong>{{ asset.name }}</strong>
+                                {% if asset.location %}
+                                    <br><small class="text-muted">{{ asset.location }}</small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="depreciation-method method-{{ asset.depreciation_method|lower|slugify }}">
+                                {{ asset.get_depreciation_method_display }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            {% if asset.depreciation_method == 'STRAIGHT_LINE' %}
+                                {{ asset.useful_life_years }}y
+                            {% elif asset.depreciation_method == 'DECLINING_BALANCE' %}
+                                {{ asset.declining_balance_rate|floatformat:1 }}%
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td class="currency">${{ asset.cost|floatformat:2|intcomma }}</td>
+                        <td class="currency">${{ asset.prior_depreciation|floatformat:2|intcomma }}</td>
+                        <td class="currency text-warning">
+                            <strong>${{ asset.current_year_depreciation|floatformat:2|intcomma }}</strong>
+                        </td>
+                        <td class="currency">${{ asset.net_book_value|floatformat:2|intcomma }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            <i class="fas fa-info-circle"></i>
+                            No assets found for tax year {{ tax_year }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    
+                    {% if tax_schedule %}
+                    <tr class="total-row">
+                        <td colspan="4" class="text-end"><strong>TOTALS:</strong></td>
+                        <td class="currency"><strong>${{ summary.total_cost|floatformat:2|intcomma }}</strong></td>
+                        <td class="currency"><strong>${{ summary.total_prior_depreciation|floatformat:2|intcomma }}</strong></td>
+                        <td class="currency text-warning"><strong>${{ summary.current_year_depreciation|floatformat:2|intcomma }}</strong></td>
+                        <td class="currency"><strong>${{ summary.net_book_value|floatformat:2|intcomma }}</strong></td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Depreciation Method Summary -->
+    {% if method_summary %}
+    <div class="tax-year-section">
+        <h4 class="section-title">
+            <i class="fas fa-chart-pie"></i> 
+            Depreciation by Method
+        </h4>
+        
+        <div class="row">
+            {% for method in method_summary %}
+            <div class="col-md-4">
+                <div class="summary-card">
+                    <h6 class="text-primary">{{ method.method_display }}</h6>
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted">Assets:</small>
+                            <div><strong>{{ method.count }}</strong></div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">{{ tax_year }} Depreciation:</small>
+                            <div class="currency"><strong>${{ method.depreciation|floatformat:2|intcomma }}</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Footer Information -->
+    <div class="text-center text-muted mt-4 py-3 border-top">
+        <small>
+            <i class="fas fa-info-circle"></i>
+            This tax depreciation schedule is for informational purposes only. 
+            Please consult with your tax advisor for compliance with current tax regulations.
+            <br>
+            Generated from Fixed Asset Management System on {{ report_date|date:"F j, Y" }} at {{ report_date|time:"g:i A" }}
+        </small>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add tooltips to depreciation methods
+    const tooltips = document.querySelectorAll('.depreciation-method');
+    tooltips.forEach(function(element) {
+        element.setAttribute('title', 'Click asset code for detailed depreciation schedule');
+    });
+    
+    // Initialize Bootstrap tooltips if available
+    if (typeof bootstrap !== 'undefined') {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+});
+</script>
+{% endblock %}

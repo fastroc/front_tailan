@@ -1,0 +1,370 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Pending Reconciliation Report{% endblock %}
+
+{% block extra_css %}
+<style>
+    .metrics-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #dc3545;
+    }
+    .metric-label {
+        color: #6b7280;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+    .reconciliation-table {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .transaction-type-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.375rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+    .type-bank {
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+    .type-journal {
+        background-color: #f3e8ff;
+        color: #7c3aed;
+    }
+    .amount-positive {
+        color: #059669;
+        font-weight: 600;
+    }
+    .amount-negative {
+        color: #dc2626;
+        font-weight: 600;
+    }
+    .filter-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 1.5rem;
+    }
+    .unmatched-highlight {
+        border-left: 4px solid #f59e0b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">
+                <i class="fas fa-balance-scale"></i> Pending Reconciliation
+                {% if company %}
+                    <small class="text-muted">- {{ company.name }}</small>
+                {% endif %}
+            </h1>
+        </div>
+    </div>
+
+    {% if not company %}
+        <div class="alert alert-warning">
+            <h4>No Company Found</h4>
+            <p>{{ error_message }}</p>
+        </div>
+    {% else %}
+        <!-- Summary Metrics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="metrics-card text-center">
+                    <div class="metric-value text-warning">{{ total_pending_bank }}</div>
+                    <div class="metric-label">Unmatched Bank Transactions</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metrics-card text-center">
+                    <div class="metric-value text-info">{{ total_pending_journal }}</div>
+                    <div class="metric-label">Unmatched Journal Lines</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metrics-card text-center">
+                    <div class="metric-value">${{ bank_unmatched_amount|floatformat:2 }}</div>
+                    <div class="metric-label">Bank Amount Unmatched</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metrics-card text-center">
+                    <div class="metric-value text-danger">${{ total_unmatched_amount|floatformat:2 }}</div>
+                    <div class="metric-label">Total Reconciliation Difference</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Filter -->
+        <div class="filter-section">
+            <form method="get" class="row align-items-end">
+                <div class="col-md-4">
+                    <label for="account" class="form-label">Filter by Bank Account</label>
+                    <select name="account" id="account" class="form-control">
+                        <option value="">All Bank Accounts</option>
+                        {% for account in bank_accounts %}
+                            <option value="{{ account.id }}" {% if account_filter == account.id|stringformat:"s" %}selected{% endif %}>
+                                {{ account.account_number }} - {{ account.account_name }}
+                                ({{ account.account_type }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter"></i> Apply Filter
+                    </button>
+                    <a href="{% url 'reports_pending_reconciliation' %}" class="btn btn-outline-secondary ms-2">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                </div>
+                <div class="col-md-4 text-end">
+                    <a href="#" class="btn btn-success">
+                        <i class="fas fa-magic"></i> Auto-Match Transactions
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Pending Bank Transactions -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="reconciliation-table">
+                    <div class="table-header bg-primary text-white p-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-university"></i> Pending Bank Transactions
+                            <span class="badge bg-light text-dark ms-2">{{ total_pending_bank }}</span>
+                        </h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Account</th>
+                                    <th>Description</th>
+                                    <th>Reference</th>
+                                    <th>Amount</th>
+                                    <th>Type</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in pending_bank_transactions %}
+                                    <tr class="unmatched-highlight">
+                                        <td>
+                                            {{ transaction.transaction_date|date:"M d, Y" }}
+                                        </td>
+                                        <td>
+                                            <strong>{{ transaction.coa_account.account_number }}</strong>
+                                            <small class="text-muted d-block">
+                                                {{ transaction.coa_account.account_name }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {{ transaction.description|truncatechars:40 }}
+                                        </td>
+                                        <td>
+                                            {{ transaction.reference_number|default:"—" }}
+                                        </td>
+                                        <td>
+                                            <span class="{% if transaction.amount >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
+                                                ${{ transaction.amount|floatformat:2 }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="transaction-type-badge type-bank">
+                                                Bank
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-success" title="Match Transaction">
+                                                    <i class="fas fa-link"></i>
+                                                </button>
+                                                <button class="btn btn-outline-primary" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">
+                                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                            <h5 class="text-success">All Bank Transactions Matched!</h5>
+                                            <p class="text-muted">No pending bank transactions to reconcile.</p>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Journal Lines -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="reconciliation-table">
+                    <div class="table-header bg-secondary text-white p-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-book"></i> Pending Journal Lines
+                            <span class="badge bg-light text-dark ms-2">{{ total_pending_journal }}</span>
+                        </h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Journal Ref</th>
+                                    <th>Account</th>
+                                    <th>Description</th>
+                                    <th>Debit</th>
+                                    <th>Credit</th>
+                                    <th>Type</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for line in pending_journal_transactions %}
+                                    <tr class="unmatched-highlight">
+                                        <td>
+                                            {{ line.journal.date_created|date:"M d, Y" }}
+                                        </td>
+                                        <td>
+                                            <strong>{{ line.journal.reference|default:"—" }}</strong>
+                                        </td>
+                                        <td>
+                                            <strong>{{ line.account.account_number }}</strong>
+                                            <small class="text-muted d-block">
+                                                {{ line.account.account_name }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {{ line.description|truncatechars:40 }}
+                                        </td>
+                                        <td>
+                                            {% if line.debit_amount %}
+                                                <span class="amount-positive">
+                                                    ${{ line.debit_amount|floatformat:2 }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if line.credit_amount %}
+                                                <span class="amount-negative">
+                                                    ${{ line.credit_amount|floatformat:2 }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="transaction-type-badge type-journal">
+                                                Journal
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-success" title="Match Transaction">
+                                                    <i class="fas fa-link"></i>
+                                                </button>
+                                                <button class="btn btn-outline-primary" title="View Journal">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="text-center py-4">
+                                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                            <h5 class="text-success">All Journal Lines Matched!</h5>
+                                            <p class="text-muted">No pending journal lines to reconcile.</p>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reconciliation Summary -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="metrics-card">
+                    <h6>Reconciliation Status</h6>
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="h4 text-primary">${{ bank_unmatched_amount|floatformat:2 }}</div>
+                                <small class="text-muted">Bank Unmatched</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="h4 text-secondary">${{ journal_net_amount|floatformat:2 }}</div>
+                                <small class="text-muted">Journal Net</small>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="text-center">
+                        <div class="h4 {% if total_unmatched_amount == 0 %}text-success{% else %}text-danger{% endif %}">
+                            ${{ total_unmatched_amount|floatformat:2 }}
+                        </div>
+                        <small class="text-muted">Difference to Reconcile</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="metrics-card">
+                    <h6>Quick Actions</h6>
+                    <div class="d-grid gap-2">
+                        <a href="#" class="btn btn-primary">
+                            <i class="fas fa-magic"></i> Start Auto-Reconciliation
+                        </a>
+                        <a href="#" class="btn btn-outline-primary">
+                            <i class="fas fa-cog"></i> Manual Reconciliation Tool
+                        </a>
+                        <a href="{% url 'reports_dashboard' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if pending_bank_transactions.count >= 50 or pending_journal_transactions.count >= 50 %}
+            <div class="alert alert-info mt-3">
+                <i class="fas fa-info-circle"></i>
+                Showing first 50 transactions per category. Use account filters to narrow down the results.
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

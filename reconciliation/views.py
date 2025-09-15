@@ -68,10 +68,18 @@ def dashboard(request):
             return render(request, 'reconciliation/dashboard.html', context)
     
     # Get all bank accounts for this company from database
+    # Use same filtering logic as bank_accounts module
+    from django.db.models import Q
     bank_accounts = Account.objects.filter(
         company=company,
-        account_type='Bank'
-    ).order_by('name')
+        account_type='CURRENT_ASSET'
+    ).filter(
+        Q(name__icontains='bank') | 
+        Q(name__icontains='transactions') | 
+        Q(name__icontains='cash') |
+        Q(name__icontains='checking') |
+        Q(name__icontains='savings')
+    ).distinct().order_by('name')
     
     # Prepare real data for each account
     accounts_data = []
@@ -185,6 +193,7 @@ def dashboard(request):
     context = {
         'company': company,
         'accounts': accounts_data,
+        'accounts_data': accounts_data,  # Add this for template compatibility
         'total_accounts': bank_accounts.count(),
         'total_uploaded_files': total_uploaded_files,
         'total_transactions': total_transactions,
@@ -224,10 +233,33 @@ def account_reconciliation(request, account_id):
     try:
         if isinstance(account_id, str) and account_id.isdigit():
             account_id = int(account_id)
-            account = get_object_or_404(Account, id=account_id, company=company, account_type='Bank')
+            # Use same filtering logic as dashboard
+            from django.db.models import Q
+            account = get_object_or_404(
+                Account.objects.filter(
+                    company=company,
+                    account_type='CURRENT_ASSET'
+                ).filter(
+                    Q(name__icontains='bank') | 
+                    Q(name__icontains='transactions') | 
+                    Q(name__icontains='cash') |
+                    Q(name__icontains='checking') |
+                    Q(name__icontains='savings')
+                ), 
+                id=account_id
+            )
         else:
             # Handle string account identifiers by finding the account
-            bank_accounts = Account.objects.filter(company=company, account_type='Bank')
+            bank_accounts = Account.objects.filter(
+                company=company,
+                account_type='CURRENT_ASSET'
+            ).filter(
+                Q(name__icontains='bank') | 
+                Q(name__icontains='transactions') | 
+                Q(name__icontains='cash') |
+                Q(name__icontains='checking') |
+                Q(name__icontains='savings')
+            ).distinct()
             
             # Map common identifiers
             account_map = {}
@@ -261,6 +293,17 @@ def account_reconciliation(request, account_id):
     
     # Get unmatched transactions for this account  
     unmatched_transactions = ReconciliationService.get_unmatched_transactions(account)
+    
+    # Convert to list to ensure template can iterate
+    transactions_list = list(unmatched_transactions)
+    
+    # Get matched transactions for editing (ordered by transaction date - oldest first)
+    matched_transactions = TransactionMatch.objects.filter(
+        bank_transaction__coa_account=account,
+        is_reconciled=True
+    ).select_related(
+        'bank_transaction', 'gl_account', 'reconciliation_session'
+    ).order_by('bank_transaction__date')
     
     # Get reconciliation progress
     progress = ReconciliationService.get_reconciliation_progress(account)
@@ -297,13 +340,14 @@ def account_reconciliation(request, account_id):
         'account_id': account_id,
         'account_name': account.name,
         'reconciliation_session': reconciliation_session,
-        'transactions': unmatched_transactions,
+        'transactions': transactions_list,  # Use the list instead of queryset
+        'matched_transactions': matched_transactions,  # Add matched transactions
         'progress': progress,
         'coa_groups': coa_groups,
         'contacts': sample_contacts,
         'tax_rates': tax_rates,
         'total_transactions': progress['total_transactions'],
-        'matched_transactions': progress['matched_transactions'],
+        'matched_count': progress['matched_transactions'],
         'unmatched_transactions': progress['unmatched_transactions'],
         'reconciliation_percentage': progress['percentage'],
         'statement_balance': progress.get('statement_balance', 0.00),

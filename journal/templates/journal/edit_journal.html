@@ -1,0 +1,590 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit Manual Journal JE{{ journal.id|stringformat:"04d" }} - {{ active_company.name|default:"Professional Accounting System" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .warning-banner { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:.5rem; }
+  .mj-card { border:1px solid #e5e7eb; border-radius:.5rem; }
+  .table-fixed thead th { position: sticky; top: 0; background:#f8fafc; z-index:1; }
+  .w-acc { min-width: 240px; }
+  .w-desc { min-width: 280px; }
+  .w-tax { min-width: 160px; }
+  .w-amt { min-width: 160px; }
+  .totals-row { background:#f8fafc; font-weight:700; }
+  .btn-post { min-width:90px; }
+  .journal-amount {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-weight: 600;
+  }
+  .balance-check {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .balance-ok { background: #d1fae5; color: #065f46; border: 1px solid #10b981; }
+  .balance-error { background: #fee2e2; color: #991b1b; border: 1px solid #ef4444; }
+  .line-row:hover { background: #f8fafc; }
+  .drag-handle { cursor: grab; color: #9ca3af; }
+  .drag-handle:active { cursor: grabbing; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Company Context Header -->
+{% if active_company %}
+<div class="company-context-header mb-3">
+    <div class="d-flex align-items-center">
+        <div class="company-logo-small me-3">
+            {% if active_company.logo %}
+                <img src="{{ active_company.logo.url }}" alt="{{ active_company.name }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
+            {% else %}
+                <div class="bg-primary rounded d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; color: white; font-weight: 600;">
+                    {{ active_company.name|first|upper }}
+                </div>
+            {% endif %}
+        </div>
+        <div>
+            <h6 class="text-muted mb-0">
+                <i class="bi bi-building me-1"></i>
+                {{ active_company.name }}
+            </h6>
+            <small class="text-muted">Edit Manual Journal JE{{ journal.id|stringformat:"04d" }}</small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="container py-4" id="mjRoot">
+  <!-- CSRF Token for AJAX requests -->
+  {% csrf_token %}
+  
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        {% if active_company %}
+            <li class="breadcrumb-item">{{ active_company.name }}</li>
+        {% endif %}
+      <li class="breadcrumb-item">
+        <a href="{% url 'journal:manual_journal' %}" class="text-decoration-none">
+          <i class="bi bi-journal-text me-1"></i>Manual Journal
+        </a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'journal:journal_detail' journal.id %}" class="text-decoration-none">
+          JE{{ journal.id|stringformat:"04d" }}
+        </a>
+      </li>
+      <li class="breadcrumb-item active">Edit</li>
+    </ol>
+  </nav>
+
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+      <h1 class="h3 mb-1 fw-bold text-dark">Edit Manual Journal JE{{ journal.id|stringformat:"04d" }}</h1>
+      <p class="text-muted mb-0">
+        <span class="badge bg-warning text-dark me-2">{{ journal.status|title }}</span>
+        {{ journal.date|date:"M d, Y" }}
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'journal:journal_detail' journal.id %}" class="btn btn-outline-secondary">
+        <i class="bi bi-eye me-2"></i>
+        View Journal
+      </a>
+      <button class="btn btn-outline-secondary" onclick="window.history.back()">
+        <i class="bi bi-arrow-left me-2"></i>
+        Back
+      </button>
+    </div>
+  </div>
+
+  <!-- Warning Banner -->
+  <div class="warning-banner p-3 mb-3 d-flex align-items-start gap-2">
+    <i class="fa fa-info-circle mt-1"></i>
+    <div>
+      <strong>Editing Draft Journal:</strong> Only draft journals can be edited. Once posted, journals must be reversed to make corrections.
+    </div>
+  </div>
+
+  <!-- Balance Status -->
+  <div id="balanceStatus" class="balance-check balance-ok d-none">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-check-circle"></i>
+      <span id="balanceMessage">Journal is balanced</span>
+    </div>
+  </div>
+
+  <!-- Main Journal Form -->
+  <div class="card mj-card mb-3">
+    <div class="card-body">
+      <!-- Journal Header -->
+      <div class="row g-3 align-items-end mb-4">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Narration</label>
+          <input type="text" class="form-control" id="narration" placeholder="Narration for this journal" value="{{ journal.narration }}"/>
+          <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" id="useNarration">
+            <label class="form-check-label" for="useNarration">Update all line descriptions with narration</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="cashBasis" {% if journal.cash_basis %}checked{% endif %}>
+            <label class="form-check-label" for="cashBasis">Show journal on cash basis reports</label>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">Date</label>
+          <input type="date" class="form-control" id="journalDate" value="{{ journal.date|date:'Y-m-d' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">Auto Reversing Date <span class="text-muted small">(optional)</span></label>
+          <input type="date" class="form-control" id="reversingDate" value="{% if journal.auto_reversing_date %}{{ journal.auto_reversing_date|date:'Y-m-d' }}{% endif %}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">Amounts are</label>
+          <select class="form-select" id="amountMode">
+            <option value="" {% if not journal.amount_mode %}selected{% endif %}>No Tax</option>
+            {% for tax_rate in tax_rates %}
+            <option value="{{ tax_rate.id }}" {% if journal.amount_mode == tax_rate.id|stringformat:"s" %}selected{% endif %}>{{ tax_rate.name }} ({{ tax_rate.rate|floatformat:2 }}%)</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Journal Lines Table -->
+      <div class="table-responsive">
+        <table class="table table-fixed align-middle" id="linesTable">
+          <thead>
+            <tr>
+              <th style="width:32px"></th>
+              <th class="w-desc">Description</th>
+              <th class="w-acc">Account</th>
+              <th class="w-tax">Tax Rate</th>
+              <th class="w-amt text-end">Debit MNT</th>
+              <th class="w-amt text-end">Credit MNT</th>
+              <th style="width:36px"></th>
+            </tr>
+          </thead>
+          <tbody id="lineBody">
+            <!-- Existing lines will be loaded here -->
+          </tbody>
+          <tfoot>
+            <tr class="table-light">
+              <td></td>
+              <td colspan="3" class="text-end fw-semibold">Subtotal</td>
+              <td class="text-end journal-amount" id="subDebit">0.00</td>
+              <td class="text-end journal-amount" id="subCredit">0.00</td>
+              <td></td>
+            </tr>
+            <tr class="totals-row">
+              <td></td>
+              <td colspan="3" class="text-end">TOTAL</td>
+              <td class="text-end journal-amount" id="totDebit">0.00</td>
+              <td class="text-end journal-amount" id="totCredit">0.00</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Add Line Button -->
+      <button class="btn btn-outline-primary btn-sm" id="addLineBtn">
+        <i class="fa fa-plus me-1"></i>Add a new line
+      </button>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="d-flex gap-2 mb-4">
+    <div class="btn-group">
+      <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="bi bi-file-earmark me-1"></i>Save changes
+      </button>
+      <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="#" onclick="saveJournal('draft')">
+          <i class="bi bi-file-earmark me-2"></i>Save as draft
+        </a></li>
+      </ul>
+    </div>
+    <button class="btn btn-success btn-post" onclick="postJournal()" id="postBtn">
+      <i class="bi bi-check-circle me-1"></i>Save & Post
+    </button>
+    <a href="{% url 'journal:journal_detail' journal.id %}" class="btn btn-outline-secondary">
+      <i class="bi bi-x-circle me-1"></i>Cancel
+    </a>
+  </div>
+
+  <!-- History & Notes Section -->
+  <div class="card mj-card">
+    <div class="card-header bg-light">
+      <h6 class="mb-0">Journal Information</h6>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <small class="text-muted d-block">Journal ID</small>
+          <span class="fw-semibold">JE{{ journal.id|stringformat:"04d" }}</span>
+        </div>
+        <div class="col-md-6">
+          <small class="text-muted d-block">Status</small>
+          <span class="badge bg-warning text-dark">{{ journal.status|title }}</span>
+        </div>
+        <div class="col-md-6">
+          <small class="text-muted d-block">Created</small>
+          <span>{{ journal.created_at|date:"M d, Y g:i A" }}</span>
+        </div>
+        <div class="col-md-6">
+          <small class="text-muted d-block">Last Modified</small>
+          <span>{{ journal.updated_at|date:"M d, Y g:i A" }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Dynamic accounts data from server
+  const accounts = [
+    {% for account in accounts %}
+    { code: '{{ account.code }}', name: '{{ account.name|escapejs }}' }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  // Dynamic tax rates data from server  
+  const taxRates = [
+    {% for tax_rate in tax_rates %}
+    { id: '{{ tax_rate.id }}', name: '{{ tax_rate.name|escapejs }} ({{ tax_rate.rate|floatformat:2 }}%)' }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  // Existing journal lines
+  const existingLines = [
+    {% for line in journal.lines.all %}
+    {
+      description: '{{ line.description|escapejs }}',
+      account: '{{ line.account_code }}',
+      tax: {% if line.tax_rate %}'{{ line.tax_rate.id }}'{% else %}null{% endif %},
+      debit: {{ line.debit|default:"0" }},
+      credit: {{ line.credit|default:"0" }}
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  function fmt(n) { 
+    return (parseFloat(n || 0) || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2
+    }); 
+  }
+
+  function makeRow(idx, lineData = null) {
+    const tr = document.createElement('tr'); 
+    tr.dataset.idx = idx;
+    tr.className = 'line-row';
+    
+    tr.innerHTML = `
+      <td class="text-center">
+        <span class="drag-handle">≡</span>
+      </td>
+      <td>
+        <input class="form-control form-control-sm line-desc" placeholder="Description" value="${lineData ? lineData.description : ''}">
+      </td>
+      <td>
+        <select class="form-select form-select-sm line-acc">
+          <option value="">Choose account…</option>
+          ${accounts.map(a => `<option value="${a.code}" ${lineData && lineData.account === a.code ? 'selected' : ''}>${a.code} — ${a.name}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <select class="form-select form-select-sm line-tax">
+          <option value="">No Tax</option>
+          ${taxRates.map(t => `<option value="${t.id}" ${lineData && lineData.tax == t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+        </select>
+      </td>
+      <td class="text-end">
+        <input class="form-control form-control-sm text-end line-debit journal-amount" 
+               type="number" step="0.01" min="0" placeholder="0.00" 
+               value="${lineData && lineData.debit ? lineData.debit : ''}">
+      </td>
+      <td class="text-end">
+        <input class="form-control form-control-sm text-end line-credit journal-amount" 
+               type="number" step="0.01" min="0" placeholder="0.00"
+               value="${lineData && lineData.credit ? lineData.credit : ''}">
+      </td>
+      <td class="text-center">
+        <button class="btn btn-sm btn-outline-danger" onclick="removeRow(this)" title="Remove line">
+          <i class="fa fa-times"></i>
+        </button>
+      </td>`;
+    
+    // Add event listeners
+    tr.querySelectorAll('input, select').forEach(el => {
+      el.addEventListener('input', recalc);
+      el.addEventListener('change', recalc);
+    });
+    
+    // Handle debit/credit mutual exclusion
+    const debitInput = tr.querySelector('.line-debit');
+    const creditInput = tr.querySelector('.line-credit');
+    
+    debitInput.addEventListener('input', function() {
+      if (this.value && parseFloat(this.value) > 0) {
+        creditInput.value = '';
+      }
+    });
+    
+    creditInput.addEventListener('input', function() {
+      if (this.value && parseFloat(this.value) > 0) {
+        debitInput.value = '';
+      }
+    });
+    
+    return tr;
+  }
+
+  function loadExistingLines() {
+    const tb = document.getElementById('lineBody'); 
+    tb.innerHTML = '';
+    
+    if (existingLines.length > 0) {
+      existingLines.forEach((line, idx) => {
+        tb.appendChild(makeRow(idx, line));
+      });
+    } else {
+      // Add empty rows if no existing lines
+      for (let i = 0; i < 2; i++) {
+        tb.appendChild(makeRow(i));
+      }
+    }
+    recalc();
+  }
+
+  function removeRow(btn) { 
+    const tbody = document.getElementById('lineBody');
+    const currentRows = tbody.children.length;
+    
+    if (currentRows <= 2) {
+      // Show better explanation and offer to add blank line
+      const result = confirm(
+        'A journal entry must have at least 2 lines for proper double-entry bookkeeping.\n\n' +
+        'Would you like to:\n' +
+        '• OK: Remove this line and add a blank line\n' +
+        '• Cancel: Keep this line'
+      );
+      
+      if (!result) {
+        return; // User cancelled
+      }
+      
+      // Remove the line and add a blank one
+      btn.closest('tr').remove();
+      addLine();
+    } else {
+      // Safe to remove - more than 2 lines
+      btn.closest('tr').remove();
+    }
+    
+    recalc(); 
+  }
+
+  function recalc() {
+    let sd = 0, sc = 0; 
+    document.querySelectorAll('#lineBody tr').forEach(tr => {
+      const d = parseFloat(tr.querySelector('.line-debit').value) || 0; 
+      const c = parseFloat(tr.querySelector('.line-credit').value) || 0; 
+      sd += d; 
+      sc += c; 
+    });
+    
+    document.getElementById('subDebit').textContent = fmt(sd); 
+    document.getElementById('subCredit').textContent = fmt(sc);
+    document.getElementById('totDebit').textContent = fmt(sd); 
+    document.getElementById('totCredit').textContent = fmt(sc);
+    
+    // Update balance status
+    updateBalanceStatus(sd, sc);
+  }
+
+  function updateBalanceStatus(debit, credit) {
+    const statusDiv = document.getElementById('balanceStatus');
+    const messageSpan = document.getElementById('balanceMessage');
+    const postBtn = document.getElementById('postBtn');
+    const diff = Math.abs(debit - credit);
+    
+    if (diff < 0.01) { // Balanced (allowing for floating point precision)
+      statusDiv.className = 'balance-check balance-ok';
+      messageSpan.innerHTML = '<strong>Journal is balanced</strong> — Ready to post';
+      postBtn.disabled = false;
+    } else {
+      statusDiv.className = 'balance-check balance-error';
+      messageSpan.innerHTML = `<strong>Journal is not balanced</strong> — Difference: $${fmt(diff)}`;
+      postBtn.disabled = true;
+    }
+    
+    statusDiv.classList.remove('d-none');
+  }
+
+  function addLine() { 
+    const tb = document.getElementById('lineBody'); 
+    tb.appendChild(makeRow(tb.children.length)); 
+  }
+
+  function saveJournal(mode) { 
+    const lines = getJournalLines();
+    if (!lines.length) {
+      alert('Add at least one line with an account and amount.');
+      return;
+    }
+
+    const payload = {
+      narration: document.getElementById('narration').value,
+      date: document.getElementById('journalDate').value,
+      reversing_date: document.getElementById('reversingDate').value || null,
+      cash_basis: document.getElementById('cashBasis').checked,
+      amount_mode: document.getElementById('amountMode').value,
+      status: mode === 'draft' ? 'draft' : 'draft', // Keep as draft for save
+      lines: lines,
+    };
+    
+    console.log('Updating journal', payload);
+    
+    // Show loading state
+    const saveBtn = document.querySelector('.dropdown-toggle');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Saving...';
+    saveBtn.disabled = true;
+    
+    // Make API call to update journal
+    fetch('{% url "journal:edit_journal" journal.id %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert(data.message || 'Journal updated successfully!');
+        window.location.href = '{% url "journal:manual_journal" %}';
+      } else {
+        alert('Error: ' + (data.error || 'Failed to update journal'));
+        // Restore button
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Network error occurred while updating journal');
+      // Restore button
+      saveBtn.innerHTML = originalText;
+      saveBtn.disabled = false;
+    });
+  }
+
+  function postJournal() {
+    const lines = getJournalLines();
+    if (!lines.length) { 
+      alert('Add at least one line with an account and amount.'); 
+      return; 
+    }
+    
+    const totD = lines.reduce((s, l) => s + l.debit, 0); 
+    const totC = lines.reduce((s, l) => s + l.credit, 0);
+    
+    if (Math.abs(totD - totC) > 0.005) { 
+      alert('Journal is not balanced. Debits must equal credits.'); 
+      return; 
+    }
+
+    const payload = {
+      narration: document.getElementById('narration').value,
+      date: document.getElementById('journalDate').value,
+      reversing_date: document.getElementById('reversingDate').value || null,
+      cash_basis: document.getElementById('cashBasis').checked,
+      amount_mode: document.getElementById('amountMode').value,
+      status: 'posted',
+      lines: lines,
+    };
+    
+    console.log('Saving and posting journal', payload);
+    
+    if (confirm('Are you sure you want to save and post this journal? Posted journals cannot be edited.')) {
+      // Show loading state
+      const postBtn = document.querySelector('.btn-post');
+      const originalText = postBtn.innerHTML;
+      postBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Posting...';
+      postBtn.disabled = true;
+      
+      // Make API call to update and post journal
+      fetch('{% url "journal:edit_journal" journal.id %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message || 'Journal updated and posted successfully!');
+          window.location.href = '{% url "journal:manual_journal" %}';
+        } else {
+          alert('Error: ' + (data.error || 'Failed to update and post journal'));
+          // Restore button
+          postBtn.innerHTML = originalText;
+          postBtn.disabled = false;
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Network error occurred while updating and posting journal');
+        // Restore button
+        postBtn.innerHTML = originalText;
+        postBtn.disabled = false;
+      });
+    }
+  }
+
+  function getJournalLines() {
+    return [...document.querySelectorAll('#lineBody tr')].map(tr => ({
+      description: tr.querySelector('.line-desc').value.trim(),
+      account: tr.querySelector('.line-acc').value,
+      tax: tr.querySelector('.line-tax').value || null,
+      debit: parseFloat(tr.querySelector('.line-debit').value) || 0,
+      credit: parseFloat(tr.querySelector('.line-credit').value) || 0,
+    })).filter(l => l.account && (l.debit || l.credit));
+  }
+
+  // Initialize page
+  document.addEventListener('DOMContentLoaded', () => { 
+    loadExistingLines();
+    
+    document.getElementById('addLineBtn').addEventListener('click', addLine); 
+    
+    // Update descriptions when narration changes and checkbox is checked
+    document.getElementById('narration').addEventListener('input', () => { 
+      if (document.getElementById('useNarration').checked) { 
+        document.querySelectorAll('.line-desc').forEach(i => 
+          i.value = document.getElementById('narration').value
+        ); 
+      } 
+    }); 
+
+    // Handle use narration checkbox
+    document.getElementById('useNarration').addEventListener('change', function() {
+      if (this.checked) {
+        const narration = document.getElementById('narration').value;
+        document.querySelectorAll('.line-desc').forEach(i => i.value = narration);
+      }
+    });
+
+    console.log('Edit Manual Journal page ready');
+  });
+</script>
+{% endblock %}

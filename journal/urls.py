@@ -15,4 +15,5 @@ urlpatterns = [
     path('api/<int:journal_id>/post/', views.post_journal_api, name='post_journal_api'),
     path('api/<int:journal_id>/reverse/', views.reverse_journal_api, name='reverse_journal_api'),
     path('api/<int:journal_id>/delete/', views.delete_journal_api, name='delete_journal_api'),
+    path('api/<int:journal_id>/force-delete/', views.force_delete_journal_api, name='force_delete_journal_api'),
 ]

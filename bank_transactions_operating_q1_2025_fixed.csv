@@ -1,0 +1,45 @@
+Date,Description,Amount,Reference
+2025.01.02,Opening Balance,125000.00,BAL-2025-001
+2025.01.03,Client Payment - ABC Corp,15500.00,CHK-4521
+2025.01.05,Office Rent Payment,-4200.00,ACH-1001
+2025.01.07,Utility Payment - Electric,-385.50,ACH-1002
+2025.01.08,Client Payment - XYZ Ltd,22500.00,WIRE-2001
+2025.01.10,Software Subscriptions,-850.00,ACH-1003
+2025.01.12,Equipment Purchase - Dell,-8500.00,CHK-4522
+2025.01.15,Payroll Transfer,-28500.00,ACH-1004
+2025.01.18,Client Payment - Tech Solutions,18750.00,CHK-4523
+2025.01.20,Office Supplies & Equipment,-1250.00,CHK-4524
+2025.01.22,Insurance Premium,-2800.00,ACH-1005
+2025.01.25,Client Payment - Global Tech,-12500.00,CHK-4525
+2025.01.28,Marketing Expenses,-1850.00,CHK-4526
+2025.01.30,Bank Service Charges,-45.00,FEE-001
+2025.02.01,Client Payment - StartupXYZ,8750.00,WIRE-2002
+2025.02.03,Professional Services,-3500.00,CHK-4527
+2025.02.05,Travel Expenses,-980.00,CHK-4528
+2025.02.08,Client Payment - Enterprise Inc,31200.00,CHK-4529
+2025.02.10,Equipment Maintenance,-750.00,ACH-1006
+2025.02.12,Telecommunications,-320.00,ACH-1007
+2025.02.15,Payroll Transfer,-28500.00,ACH-1008
+2025.02.18,Client Payment - Innovation Labs,19500.00,WIRE-2003
+2025.02.20,Office Cleaning Services,-450.00,ACH-1009
+2025.02.22,Software Licenses,-2100.00,ACH-1010
+2025.02.25,Client Payment - Future Systems,14200.00,CHK-4530
+2025.02.27,Miscellaneous Expenses,-680.00,CHK-4531
+2025.02.28,Bank Service Charges,-45.00,FEE-002
+2025.03.01,Client Payment - Digital Solutions,27800.00,WIRE-2004
+2025.03.03,Legal Services,-4500.00,CHK-4532
+2025.03.05,Equipment Rental,-1200.00,ACH-1011
+2025.03.08,Client Payment - CloudTech,-16750.00,CHK-4533
+2025.03.10,Training & Development,-850.00,CHK-4534
+2025.03.12,Office Furniture,-3200.00,CHK-4535
+2025.03.15,Payroll Transfer,-28500.00,ACH-1012
+2025.03.18,Client Payment - DataCorp,24600.00,WIRE-2005
+2025.03.20,Vehicle Expenses,-1100.00,CHK-4536
+2025.03.22,Consulting Fees,-2750.00,CHK-4537
+2025.03.25,Client Payment - WebDev Pro,13900.00,CHK-4538
+2025.03.27,Office Maintenance,-580.00,ACH-1013
+2025.03.28,Advertising Expenses,-1400.00,CHK-4539
+2025.03.30,Client Payment - TechStart,18250.00,WIRE-2006
+2025.03.31,Bank Service Charges,-45.00,FEE-003
+2025.03.31,Month End Transfer to Savings,-50000.00,TRANSFER-001
+2025.03.31,Interest Earned,124.50,INT-001

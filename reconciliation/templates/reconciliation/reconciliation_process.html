@@ -37,6 +37,161 @@
   .sticky-side { position:sticky; top:1rem; }
 
   .badge-soft { background:#eaf2ff; color:#2563eb; border:1px solid #cfe0ff; }
+
+  /* Smart Details Link Styling */
+  .btn-link.text-muted {
+    border: none;
+    transition: all 0.2s ease;
+  }
+  .btn-link.text-muted:hover {
+    color: #2563eb !important;
+    background-color: rgba(37, 99, 235, 0.05);
+    text-decoration: none;
+    border-radius: 4px;
+  }
+  .btn-link.text-muted:focus {
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  }
+
+  /* Hybrid Input Styling (Account & Tax) */
+  .hybrid-input {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+  }
+  
+  /* Hide datalist dropdown arrow to avoid duplication */
+  .hybrid-input::-webkit-calendar-picker-indicator,
+  .hybrid-input::-webkit-list-button {
+    display: none !important;
+  }
+  
+  .hybrid-input::-moz-list-bullet {
+    display: none !important;
+  }
+  
+  .input-group .hybrid-dropdown-btn {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-left: none;
+    width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  
+  /* Ensure no Bootstrap dropdown arrows */
+  .hybrid-dropdown-btn::after {
+    display: none !important;
+  }
+  
+  .hybrid-dropdown-btn .bi-chevron-down {
+    font-size: 0.875rem;
+    color: #6c757d;
+    transition: color 0.2s ease;
+  }
+  
+  .hybrid-dropdown-btn:hover .bi-chevron-down {
+    color: #495057;
+  }
+  
+  /* Fixed positioning for dropdowns */
+  .hybrid-dropdown {
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1050 !important;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 0.375rem;
+    background: white;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    animation: slideDown 0.15s ease-out;
+    margin-top: 2px;
+  }
+  
+  .hybrid-dropdown .dropdown-item {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    border-bottom: 1px solid #f8f9fa;
+  }
+  
+  .hybrid-dropdown .dropdown-item:hover {
+    background-color: #f8f9fa;
+  }
+  
+  .hybrid-dropdown .dropdown-item:active {
+    background-color: #e9ecef;
+  }
+  
+  .hybrid-dropdown .category-header {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.375rem 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+    position: sticky;
+    top: 0;
+  }
+  
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Balance Validation Styling */
+  #balanceValidationRow {
+    background-color: #f8f9fa;
+  }
+  
+  .balance-matched {
+    background-color: #d1e7dd !important;
+    color: #0a3622 !important;
+    border: 1px solid #a3cfbb !important;
+  }
+  
+  .balance-unmatched {
+    background-color: #f8d7da !important;
+    color: #58151c !important;
+    border: 1px solid #f1aeb5 !important;
+  }
+  
+  .balance-warning {
+    background-color: #fff3cd !important;
+    color: #664d03 !important;
+    border: 1px solid #ffecb5 !important;
+  }
+  
+  #balanceDifference.positive {
+    color: #dc3545;
+    font-weight: 600;
+  }
+  
+  #balanceDifference.negative {
+    color: #dc3545;
+    font-weight: 600;
+  }
+  
+  #balanceDifference.zero {
+    color: #198754;
+    font-weight: 600;
+  }
+
+  .pulse {
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+  }
 </style>
 {% endblock %}
 
@@ -65,6 +220,82 @@
     </div>
   </div>
 
+  <!-- ======= Matched Transactions Section ======= -->
+  {% if matched_transactions %}
+  <div class="card mb-3">
+    <div class="card-header bg-success text-white">
+      <div class="d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-check-circle me-2"></i>
+          <h6 class="mb-0">Matched Transactions ({{ matched_transactions|length }})</h6>
+        </div>
+        <button class="btn btn-sm btn-outline-light" onclick="toggleMatchedSection()">
+          <i class="bi bi-chevron-down" id="matchedToggleIcon"></i>
+        </button>
+      </div>
+    </div>
+    <div class="card-body p-0" id="matchedTransactionsSection" style="display: none;">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th width="8%">Date</th>
+              <th width="25%">Description</th>
+              <th width="12%">Amount</th>
+              <th width="15%">Contact</th>
+              <th width="20%">GL Account</th>
+              <th width="12%">Tax</th>
+              <th width="8%">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for match in matched_transactions %}
+            <tr id="matchedRow_{{ match.id }}">
+              <td class="text-muted small">{{ match.bank_transaction.date|date:"M d" }}</td>
+              <td>
+                <div class="fw-medium">{{ match.bank_transaction.description|truncatechars:40 }}</div>
+                <small class="text-muted">{{ match.description|default:"No notes"|truncatechars:30 }}</small>
+              </td>
+              <td>
+                <span class="{% if match.bank_transaction.amount >= 0 %}text-success{% else %}text-danger{% endif %} fw-medium">
+                  {% if match.bank_transaction.amount >= 0 %}+{% endif %}${{ match.bank_transaction.amount|floatformat:2 }}
+                </span>
+              </td>
+              <td class="text-muted small">{{ match.contact|default:"—" }}</td>
+              <td>
+                {% if match.gl_account %}
+                <span class="fw-medium">{{ match.gl_account.code }}</span><br>
+                <small class="text-muted">{{ match.gl_account.name|truncatechars:25 }}</small>
+                {% elif match.is_split_transaction %}
+                <span class="badge bg-info">Split ({{ match.splits.count }} parts)</span>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="text-muted small">{{ match.tax_rate|default:"No Tax" }}</td>
+              <td>
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-primary btn-sm" 
+                          onclick="editTransactionMatch({{ match.id }})"
+                          title="Edit Match">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-outline-danger btn-sm" 
+                          onclick="unmatchTransaction({{ match.id }})"
+                          title="Remove Match">
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- ======= Tabs (Reconcile only) ======= -->
   <ul class="nav nav-tabs x-tabs mb-3" role="tablist">
     <li class="nav-item" role="presentation">
@@ -87,12 +318,26 @@
           <div class="small text-muted">Review your bank statement lines</div>
         </div>
         <div class="card-body p-0">
+          <!-- Debug: Show transaction count -->
+          <div class="alert alert-info m-3">
+            <strong>Debug Info:</strong> Found {{ transactions|length }} transactions to display.
+            {% if not transactions %}
+              <br>No transactions available.
+            {% endif %}
+          </div>
           <div class="transaction-list" style="max-height:70vh; overflow-y:auto;">
             {% for t in transactions %}
             <div class="transaction-item p-3 border-bottom {% if t.amount > 0 %}border-credit{% else %}border-debit{% endif %}" data-transaction-id="{{ t.id }}">
               <div class="row align-items-center">
+                <!-- Transaction Number -->
+                <div class="col-auto pe-2">
+                  <div class="transaction-number bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px; font-weight: 600; font-size: 0.9rem;">
+                    {{ forloop.counter }}
+                  </div>
+                </div>
+                
                 <!-- Left: Transaction Info -->
-                <div class="col-md-5">
+                <div class="col-md-4">
                   <div class="d-flex align-items-start justify-content-between">
                     <div class="flex-grow-1" style="min-width:0;">
                       <div class="small text-primary fw-semibold txn-date"><i class="bi bi-calendar me-1"></i>{{ t.date|date:"d M Y" }}</div>
@@ -132,16 +377,32 @@
                       </div>
                       <div class="col-6">
                         <label class="pillar-label text-warning mb-1"><i class="bi bi-graph-up me-1"></i>What *</label>
-                        <select class="form-select form-select-sm" name="what_{{ t.id }}" required onchange="checkOK({{ t.id }})">
-                          <option value="">Choose the account…</option>
-                          {% for group, accounts in coa_groups.items %}
-                            <optgroup label="{{ group }}">
+                        <div class="input-group input-group-sm position-relative">
+                          <input type="text" 
+                                 class="form-control hybrid-input" 
+                                 name="what_text_{{ t.id }}"
+                                 placeholder="Type account code or name..."
+                                 value="{% if t.id == 1 %}4100 — Service Revenue{% endif %}"
+                                 list="mainAccountSuggestions_{{ t.id }}"
+                                 oninput="handleMainAccountInput(this, {{ t.id }})"
+                                 onchange="checkOK({{ t.id }})"
+                                 autocomplete="off"
+                                 required>
+                          <input type="hidden" name="what_{{ t.id }}" id="what_hidden_{{ t.id }}" value="{% if t.id == 1 %}{{ accounts.0.id }}{% endif %}">
+                          <datalist id="mainAccountSuggestions_{{ t.id }}">
+                            {% for group, accounts in coa_groups.items %}
                               {% for acc in accounts %}
-                              <option value="{{ acc.id }}"{% if t.id == 1 and acc.code == '4100' %} selected{% endif %}>{{ acc.code }} — {{ acc.name }}</option>
+                              <option value="{{ acc.code }} — {{ acc.name }}" data-id="{{ acc.id }}">
                               {% endfor %}
-                            </optgroup>
-                          {% endfor %}
-                        </select>
+                            {% endfor %}
+                          </datalist>
+                          <button class="btn btn-outline-secondary hybrid-dropdown-btn" 
+                                  type="button" 
+                                  onclick="showMainAccountDropdown(this, {{ t.id }})"
+                                  title="Browse all accounts">
+                            <i class="bi bi-chevron-down"></i>
+                          </button>
+                        </div>
                       </div>
                     </div>
                     <div class="row">
@@ -151,14 +412,45 @@
                       </div>
                       <div class="col-6">
                         <label class="form-label small mb-1">Tax</label>
-                        <select class="form-select form-select-sm" name="tax_{{ t.id }}">
-                          <option value=""{% if t.id == 1 %} selected{% endif %}>Tax Exempt (0%)</option>
-                          {% for tx in tax_rates %}
-                          <option value="{{ tx.id }}">{{ tx.name }}</option>
-                          {% endfor %}
-                        </select>
+                        <div class="input-group input-group-sm position-relative">
+                          <input type="text" 
+                                 class="form-control hybrid-input" 
+                                 name="tax_text_{{ t.id }}"
+                                 placeholder="Type tax rate..."
+                                 value="{% if t.id == 1 %}Tax Exempt (0%){% endif %}"
+                                 list="mainTaxSuggestions_{{ t.id }}"
+                                 oninput="handleMainTaxInput(this, {{ t.id }})"
+                                 autocomplete="off">
+                          <input type="hidden" name="tax_{{ t.id }}" id="tax_hidden_{{ t.id }}" value="">
+                          <datalist id="mainTaxSuggestions_{{ t.id }}">
+                            <option value="Tax Exempt (0%)" data-id="">
+                            {% for tx in tax_rates %}
+                            <option value="{{ tx.name }}" data-id="{{ tx.id }}">
+                            {% endfor %}
+                          </datalist>
+                          <button class="btn btn-outline-secondary hybrid-dropdown-btn" 
+                                  type="button" 
+                                  onclick="showMainTaxDropdown(this, {{ t.id }})"
+                                  title="Browse all tax rates">
+                            <i class="bi bi-chevron-down"></i>
+                          </button>
+                        </div>
                       </div>
                     </div>
+                    
+                    <!-- Smart Details Link -->
+                    <div class="row mt-2">
+                      <div class="col-12 text-center">
+                        <a href="javascript:void(0)" 
+                           class="btn btn-link btn-sm text-muted px-2 py-1" 
+                           id="addDetails_{{ t.id }}"
+                           onclick="toggleSmartDetails({{ t.id }})"
+                           style="font-size: 0.85rem; text-decoration: none;">
+                          <i class="bi bi-plus-circle me-1"></i>Add Details
+                        </a>
+                      </div>
+                    </div>
+                    
                   </div>
                 </div>
               </div>
@@ -172,6 +464,36 @@
     </div>
   </div>
 </div>
+
+<script>
+  // Real COA Data from Django
+  const realCoaGroups = {
+    {% for group, accounts in coa_groups.items %}
+    "{{ group }}": [
+      {% for acc in accounts %}
+      {
+        id: "{{ acc.id }}",
+        code: "{{ acc.code }}",
+        name: "{{ acc.name }}",
+        display: "{{ acc.code }} — {{ acc.name }}"
+      }{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ]{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  };
+
+  // Real Tax Rates from Django  
+  const realTaxRates = [
+    { id: "", name: "Tax Exempt (0%)", description: "No tax applicable" },
+    {% for tx in tax_rates %}
+    {
+      id: "{{ tx.id }}",
+      name: "{{ tx.name }}",
+      description: "{{ tx.description|default:'Tax rate' }}"
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
+</script>
 
 <script>
   // ——— Balances diff badge ———
@@ -355,8 +677,1375 @@
     window.location.reload();
   }
 
+  // Smart Details Toggle Function - Split Transaction Modal
+  function toggleSmartDetails(transactionId) {
+    console.log('Opening split transaction modal for transaction:', transactionId);
+    
+    // Get transaction data from DOM elements
+    const transactionElement = document.querySelector(`[data-transaction-id="${transactionId}"]`);
+    
+    let transactionData = {
+      id: transactionId,
+      description: '',
+      amount: '0.00',
+      payee: '',
+      date: '',
+      reference: ''
+    };
+    
+    // Extract actual transaction data from the DOM
+    if (transactionElement) {
+      const descElement = transactionElement.querySelector('.txn-title');
+      const amountElement = transactionElement.querySelector('.amount-pos, .amount-neg');
+      const dateElement = transactionElement.querySelector('.txn-date');
+      const refElement = transactionElement.querySelector('.txn-meta');
+      const whoInput = transactionElement.querySelector(`input[name="who_${transactionId}"]`);
+      const whatInput = transactionElement.querySelector(`input[name="what_text_${transactionId}"]`);
+      const whyInput = transactionElement.querySelector(`input[name="why_${transactionId}"]`);
+      
+      if (descElement) transactionData.description = descElement.textContent.trim() || 'Split Transaction';
+      if (amountElement) transactionData.amount = amountElement.textContent.replace(/[+\-$,]/g, '').trim();
+      if (dateElement) {
+        // Extract date from "8 Sep 2024" format
+        const dateText = dateElement.textContent.trim();
+        const dateMatch = dateText.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/);
+        if (dateMatch) {
+          const months = {'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12};
+          const day = dateMatch[1].padStart(2, '0');
+          const month = months[dateMatch[2]].toString().padStart(2, '0');
+          const year = dateMatch[3];
+          transactionData.date = `${year}-${month}-${day}`;
+        }
+      }
+      if (refElement) {
+        const refText = refElement.textContent.trim();
+        transactionData.reference = refText.replace('Ref: ', '').replace('—', '').trim();
+      }
+      if (whoInput) transactionData.payee = whoInput.value || '';
+      if (whatInput) transactionData.whatAccount = whatInput.value || '';
+      if (whyInput) transactionData.description = whyInput.value || transactionData.description;
+    }
+    
+    // Show the split transaction modal
+    showSplitTransactionModal(transactionData);
+  }
+
+  // Show Split Transaction Modal (Prototype Only - No Functionality)
+  function showSplitTransactionModal(transactionData) {
+    // Create modal backdrop
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    backdrop.style.zIndex = '1040';
+    
+    // Create modal container
+    const modal = document.createElement('div');
+    modal.className = 'modal fade show';
+    modal.style.display = 'block';
+    modal.style.zIndex = '1050';
+    modal.setAttribute('tabindex', '-1');
+    
+    // Modal content with split transaction interface
+    modal.innerHTML = `
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <!-- Modal Header -->
+          <div class="modal-header bg-light">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-diagram-3 me-2 text-primary" style="font-size: 1.2rem;"></i>
+              <h5 class="modal-title mb-0">Split Transaction Details</h5>
+            </div>
+            <button type="button" class="btn-close" onclick="closeSplitModal()"></button>
+          </div>
+
+          <!-- Modal Body -->
+          <div class="modal-body">
+            <div class="container-fluid">
+              <!-- Transaction Info Header -->
+              <div class="alert alert-info mb-4">
+                <div class="row">
+                  <div class="col-md-8">
+                    <strong>Transaction:</strong> ${transactionData.description}<br>
+                    <small class="text-muted">Split this transaction into multiple GL codes with proper accounting allocation</small>
+                  </div>
+                  <div class="col-md-4 text-end">
+                    <div class="fs-5 fw-bold text-primary" id="originalAmount">$${transactionData.amount}</div>
+                  </div>
+                </div>
+                <!-- Hidden transaction ID for form submission -->
+                <input type="hidden" id="transactionId" value="${transactionData.id}">
+              </div>
+
+              <!-- Header fields -->
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <label class="form-label">Date:</label>
+                  <input type="date" class="form-control" value="${transactionData.date || new Date().toISOString().split('T')[0]}" readonly>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label"><i class="bi bi-person me-1"></i>Who (Payee):</label>
+                  <input type="text" class="form-control who-input" value="${transactionData.payee || ''}" placeholder="e.g., XYZ Corp">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label"><i class="bi bi-chat-text me-1"></i>Why (Description):</label>
+                  <input type="text" class="form-control" id="splitDescription" value="${transactionData.description || ''}" placeholder="Enter description for this split transaction">
+                </div>
+              </div>
+
+              <!-- Split Lines Table -->
+              <div class="table-responsive">
+                <table class="table table-bordered align-middle" id="splitLinesTable">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="min-width:300px">Description</th>
+                      <th style="min-width:250px">Account</th>
+                      <th style="min-width:150px">Tax Rate</th>
+                      <th style="min-width:150px" class="text-end">Amount</th>
+                      <th style="width:50px"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="splitLineBody">
+                    <!-- Default split lines will be added here -->
+                  </tbody>
+                  <tfoot>
+                    <tr class="table-secondary">
+                      <td colspan="3" class="text-end fw-semibold">Split Total:</td>
+                      <td class="text-end fw-semibold" id="splitTotalAmount">$0.00</td>
+                      <td></td>
+                    </tr>
+                    <tr id="balanceValidationRow" class="border-top-0">
+                      <td colspan="3" class="text-end">
+                        <div class="d-flex justify-content-end align-items-center gap-3">
+                          <div>
+                            <small class="text-muted">Original Amount:</small>
+                            <span class="fw-semibold" id="originalAmount">$0.00</span>
+                          </div>
+                          <div>
+                            <small class="text-muted">Difference:</small>
+                            <span class="fw-semibold" id="balanceDifference">$0.00</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="text-end">
+                        <span class="badge" id="balanceStatus">
+                          <i class="bi bi-circle"></i> Checking...
+                        </span>
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <button class="btn btn-outline-primary btn-sm" onclick="addSplitLine()">
+                <i class="bi bi-plus me-1"></i>Add Split Line
+              </button>
+            </div>
+          </div>
+
+          <!-- Modal Footer -->
+          <div class="modal-footer">
+            <div class="me-auto">
+              <span class="badge bg-info">Prototype Only</span>
+              <small class="text-muted ms-2">No data will be saved</small>
+            </div>
+            <button type="button" class="btn btn-success" onclick="saveSplitTransaction()">
+              <i class="bi bi-check me-1"></i>Apply Split
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="closeSplitModal()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Add modal to DOM
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modal);
+    document.body.classList.add('modal-open');
+
+    // Initialize split lines with transaction data
+    initializeSplitLines(transactionData.amount, transactionData);
+  }
+
+  // Initialize split lines with transaction-specific data or blank lines
+  function initializeSplitLines(totalAmount, transactionData = {}) {
+    const amount = parseFloat(totalAmount) || 0;
+    
+    // Set original amount for balance validation
+    document.getElementById('originalAmount').textContent = '$' + amount.toFixed(2);
+    
+    // Create split lines based on actual transaction data or provide blank template
+    const splitLines = [];
+    
+    // If we have existing account data from the main form, use it as first split line
+    if (transactionData.whatAccount && transactionData.whatAccount.trim() !== '') {
+      splitLines.push({
+        description: transactionData.description || 'Split Item 1',
+        account: transactionData.whatAccount,
+        taxRate: 'Tax Exempt (0%)',
+        amount: amount.toFixed(2)
+      });
+    } else {
+      // Provide blank split lines for user to fill in
+      splitLines.push({
+        description: transactionData.description || '',
+        account: '',
+        taxRate: 'Tax Exempt (0%)',
+        amount: amount.toFixed(2)
+      });
+      
+      // Add a second blank line if amount is significant (suggest potential split)
+      if (amount > 100) {
+        splitLines.push({
+          description: '',
+          account: '',
+          taxRate: 'Tax Exempt (0%)',
+          amount: '0.00'
+        });
+      }
+    }
+
+    const tbody = document.getElementById('splitLineBody');
+    tbody.innerHTML = '';
+
+    splitLines.forEach((line, index) => {
+      addSplitLineRow(line, index);
+    });
+
+    updateSplitTotal();
+  }
+
+  // Add split line row
+  function addSplitLineRow(preset = {}, index = 0) {
+    const tbody = document.getElementById('splitLineBody');
+    const row = document.createElement('tr');
+    
+    row.innerHTML = `
+      <td>
+        <input type="text" class="form-control form-control-sm" 
+               value="${preset.description || ''}" 
+               placeholder="Line description">
+      </td>
+      <td>
+        <div class="input-group input-group-sm position-relative">
+          <input type="text" 
+                 class="form-control hybrid-input" 
+                 placeholder="Type account code or name..."
+                 value="${preset.account || ''}"
+                 list="accountSuggestions_${index}"
+                 oninput="handleSplitAccountInput(this, ${index})"
+                 autocomplete="off">
+          <input type="hidden" id="split_account_hidden_${index}" value="${preset.account_id || ''}">
+          <datalist id="accountSuggestions_${index}">
+            {% for group, accounts in coa_groups.items %}
+              {% for acc in accounts %}
+              <option value="{{ acc.code }} — {{ acc.name }}" data-id="{{ acc.id }}">
+              {% endfor %}
+            {% endfor %}
+          </datalist>
+          <button class="btn btn-outline-secondary hybrid-dropdown-btn" 
+                  type="button" 
+                  onclick="showSplitAccountDropdown(this, ${index})"
+                  title="Browse all accounts">
+            <i class="bi bi-chevron-down"></i>
+          </button>
+        </div>
+      </td>
+      <td>
+        <div class="input-group input-group-sm position-relative">
+          <input type="text" 
+                 class="form-control hybrid-input" 
+                 placeholder="Type tax rate..."
+                 value="${preset.taxRate || ''}"
+                 list="taxSuggestions_${index}"
+                 oninput="handleSplitTaxInput(this, ${index})"
+                 autocomplete="off">
+          <input type="hidden" id="split_tax_hidden_${index}" value="${preset.tax_id || ''}">
+          <datalist id="taxSuggestions_${index}">
+            <option value="Tax Exempt (0%)" data-id="">
+            {% for tx in tax_rates %}
+            <option value="{{ tx.name }}" data-id="{{ tx.id }}">
+            {% endfor %}
+          </datalist>
+          <button class="btn btn-outline-secondary hybrid-dropdown-btn" 
+                  type="button" 
+                  onclick="showSplitTaxDropdown(this, ${index})"
+                  title="Browse all tax rates">
+            <i class="bi bi-chevron-down"></i>
+          </button>
+        </div>
+      </td>
+      <td>
+        <input type="number" class="form-control form-control-sm text-end split-amount" 
+               value="${preset.amount || ''}" 
+               step="0.01" 
+               placeholder="0.00"
+               oninput="updateSplitTotal()"
+               onchange="updateSplitTotal()">
+      </td>
+      <td>
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSplitLine(this)">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    `;
+
+    tbody.appendChild(row);
+  }
+
+  // Add new split line
+  function addSplitLine() {
+    addSplitLineRow();
+    updateSplitTotal();
+  }
+
+  // Remove split line
+  function removeSplitLine(button) {
+    button.closest('tr').remove();
+    updateSplitTotal();
+  }
+
+  // Update split total with balance validation
+  function updateSplitTotal() {
+    const amounts = document.querySelectorAll('.split-amount');
+    let splitTotal = 0;
+    
+    amounts.forEach(input => {
+      splitTotal += parseFloat(input.value) || 0;
+    });
+
+    // Get original transaction amount
+    const originalAmountElement = document.getElementById('originalAmount');
+    const originalAmount = parseFloat(originalAmountElement.textContent.replace(/[$,]/g, '')) || 0;
+    
+    // Calculate difference
+    const difference = splitTotal - originalAmount;
+    const absDifference = Math.abs(difference);
+    
+    // Update display
+    document.getElementById('splitTotalAmount').textContent = '$' + splitTotal.toFixed(2);
+    document.getElementById('balanceDifference').textContent = (difference >= 0 ? '+' : '') + '$' + difference.toFixed(2);
+    
+    // Update balance status and styling
+    const statusBadge = document.getElementById('balanceStatus');
+    const differenceElement = document.getElementById('balanceDifference');
+    const validationRow = document.getElementById('balanceValidationRow');
+    
+    if (absDifference === 0) {
+      // Perfect balance
+      statusBadge.className = 'badge balance-matched';
+      statusBadge.innerHTML = '<i class="bi bi-check-circle"></i> Balanced';
+      differenceElement.className = 'fw-semibold zero';
+      validationRow.className = 'border-top-0';
+    } else if (absDifference <= 0.01) {
+      // Minor rounding difference (acceptable)
+      statusBadge.className = 'badge balance-warning';
+      statusBadge.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Minor Diff';
+      differenceElement.className = 'fw-semibold';
+      validationRow.className = 'border-top-0';
+    } else {
+      // Significant imbalance
+      statusBadge.className = 'badge balance-unmatched pulse';
+      statusBadge.innerHTML = '<i class="bi bi-exclamation-circle"></i> Unbalanced';
+      differenceElement.className = difference > 0 ? 'fw-semibold positive' : 'fw-semibold negative';
+      validationRow.className = 'border-top-0';
+    }
+    
+    // Update save button state
+    updateSaveButtonState(absDifference);
+  }
+  
+  // Update save button based on balance status
+  function updateSaveButtonState(difference) {
+    const saveButton = document.querySelector('button[onclick="saveSplitTransaction()"]');
+    if (!saveButton) return;
+    
+    if (difference === 0) {
+      saveButton.disabled = false;
+      saveButton.className = 'btn btn-success';
+      saveButton.innerHTML = '<i class="bi bi-check me-1"></i>Apply Split';
+    } else if (difference <= 0.01) {
+      saveButton.disabled = false;
+      saveButton.className = 'btn btn-warning text-dark';
+      saveButton.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>Apply (Minor Diff)';
+    } else {
+      saveButton.disabled = true;
+      saveButton.className = 'btn btn-danger';
+      saveButton.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Balance Required';
+    }
+  }
+
+  // Handle account input with smart suggestions
+  function handleAccountInput(input) {
+    const value = input.value.toLowerCase();
+    
+    // Simple prototype suggestion logic
+    if (value.includes('1400') || value.includes('equipment') || value.includes('asset')) {
+      console.log('Suggesting: Equipment/Asset accounts');
+    } else if (value.includes('2300') || value.includes('gst') || value.includes('tax')) {
+      console.log('Suggesting: GST/Tax accounts');
+    } else if (value.includes('6200') || value.includes('rent')) {
+      console.log('Suggesting: Rent expense accounts');
+    }
+    
+    // In production, this would trigger smart suggestions based on:
+    // - Account code matching
+    // - Account name fuzzy matching  
+    // - Previous transaction patterns
+    // - ML-based recommendations
+  }
+
+  // Show account dropdown menu
+  function showAccountDropdown(button) {
+    // Close any existing dropdowns
+    closeAllDropdowns();
+    
+    const inputGroup = button.parentElement;
+    const input = inputGroup.querySelector('.hybrid-input');
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'hybrid-dropdown account-dropdown';
+
+    // Use real COA data from Django
+    let dropdownHTML = '';
+    Object.entries(realCoaGroups).forEach(([groupName, accounts]) => {
+      if (accounts.length > 0) {
+        dropdownHTML += `<div class="category-header">${groupName}</div>`;
+        accounts.forEach(acc => {
+          dropdownHTML += `
+            <div class="dropdown-item" onclick="selectHybridValue('${acc.display}', this)">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-semibold text-primary">${acc.code}</span>
+                <span class="text-muted">${acc.name}</span>
+              </div>
+            </div>
+          `;
+        });
+      }
+    });
+
+    dropdown.innerHTML = dropdownHTML;
+    inputGroup.appendChild(dropdown);
+
+    // Add click outside listener
+    setTimeout(() => {
+      document.addEventListener('click', function closeDropdown(e) {
+        if (!dropdown.contains(e.target) && e.target !== button) {
+          dropdown.remove();
+          document.removeEventListener('click', closeDropdown);
+        }
+      });
+    }, 100);
+  }
+
+  // Show tax dropdown menu
+  function showTaxDropdown(button) {
+    // Close any existing dropdowns
+    closeAllDropdowns();
+    
+    const inputGroup = button.parentElement;
+    const input = inputGroup.querySelector('.hybrid-input');
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'hybrid-dropdown tax-dropdown';
+
+    // Group tax rates logically using real data
+    const standardRates = realTaxRates.filter(tax => 
+      tax.name.includes('Tax Exempt') || tax.name.includes('GST')
+    );
+    const otherRates = realTaxRates.filter(tax => 
+      !tax.name.includes('Tax Exempt') && !tax.name.includes('GST')
+    );
+
+    let dropdownHTML = '';
+    
+    // Standard rates section
+    if (standardRates.length > 0) {
+      dropdownHTML += `<div class="category-header">Standard Rates</div>`;
+      standardRates.forEach(tax => {
+        dropdownHTML += `
+          <div class="dropdown-item" onclick="selectHybridValue('${tax.name}', this)">
+            <div class="d-flex flex-column">
+              <div class="fw-semibold text-success">${tax.name}</div>
+              <small class="text-muted">${tax.description}</small>
+            </div>
+          </div>
+        `;
+      });
+    }
+    
+    // Other rates section
+    if (otherRates.length > 0) {
+      dropdownHTML += `<div class="category-header">Other Tax Rates</div>`;
+      otherRates.forEach(tax => {
+        dropdownHTML += `
+          <div class="dropdown-item" onclick="selectHybridValue('${tax.name}', this)">
+            <div class="d-flex flex-column">
+              <div class="fw-semibold text-success">${tax.name}</div>
+              <small class="text-muted">${tax.description}</small>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    dropdown.innerHTML = dropdownHTML;
+    inputGroup.appendChild(dropdown);
+
+    // Add click outside listener
+    setTimeout(() => {
+      document.addEventListener('click', function closeDropdown(e) {
+        if (!dropdown.contains(e.target) && e.target !== button) {
+          dropdown.remove();
+          document.removeEventListener('click', closeDropdown);
+        }
+      });
+    }, 100);
+  }
+
+  // Handle tax input with suggestions
+  function handleTaxInput(input) {
+    const value = input.value.toLowerCase();
+    
+    // Simple tax suggestion logic
+    if (value.includes('gst') || value.includes('10')) {
+      console.log('Suggesting: GST 10%');
+    } else if (value.includes('exempt') || value.includes('0')) {
+      console.log('Suggesting: Tax Exempt');
+    } else if (value.includes('input') || value.includes('financial')) {
+      console.log('Suggesting: Input Taxed');
+    }
+  }
+
+  // Universal select function for hybrid dropdowns
+  function selectHybridValue(value, element) {
+    const dropdown = element.closest('.hybrid-dropdown');
+    const inputGroup = dropdown.parentElement;
+    const input = inputGroup.querySelector('.hybrid-input');
+    
+    input.value = value;
+    dropdown.remove();
+    
+    // Trigger events
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  // Close all open dropdowns
+  function closeAllDropdowns() {
+    document.querySelectorAll('.hybrid-dropdown').forEach(dropdown => {
+      dropdown.remove();
+    });
+  }
+
+  // ========== MAIN RECONCILIATION HYBRID INPUTS ==========
+  
+  // Handle main account input
+  function handleMainAccountInput(input, transactionId) {
+    const value = input.value;
+    const hiddenInput = document.getElementById(`what_hidden_${transactionId}`);
+    
+    // Try to find matching account from datalist
+    const datalist = document.getElementById(`mainAccountSuggestions_${transactionId}`);
+    const options = datalist.querySelectorAll('option');
+    
+    let foundMatch = false;
+    options.forEach(option => {
+      if (option.value === value) {
+        hiddenInput.value = option.getAttribute('data-id') || '';
+        foundMatch = true;
+      }
+    });
+    
+    if (!foundMatch) {
+      hiddenInput.value = '';
+    }
+    
+    // Simple suggestion logic
+    const lowerValue = value.toLowerCase();
+    if (lowerValue.includes('4100') || lowerValue.includes('revenue') || lowerValue.includes('service')) {
+      console.log('Suggesting: Revenue accounts');
+    } else if (lowerValue.includes('6200') || lowerValue.includes('rent')) {
+      console.log('Suggesting: Rent expense accounts');
+    } else if (lowerValue.includes('6300') || lowerValue.includes('phone') || lowerValue.includes('telecom')) {
+      console.log('Suggesting: Telecommunications accounts');
+    }
+  }
+
+  // Handle main tax input  
+  function handleMainTaxInput(input, transactionId) {
+    const value = input.value;
+    const hiddenInput = document.getElementById(`tax_hidden_${transactionId}`);
+    
+    // Try to find matching tax from datalist
+    const datalist = document.getElementById(`mainTaxSuggestions_${transactionId}`);
+    const options = datalist.querySelectorAll('option');
+    
+    let foundMatch = false;
+    options.forEach(option => {
+      if (option.value === value) {
+        hiddenInput.value = option.getAttribute('data-id') || '';
+        foundMatch = true;
+      }
+    });
+    
+    if (!foundMatch) {
+      hiddenInput.value = '';
+    }
+    
+    // Simple suggestion logic
+    const lowerValue = value.toLowerCase();
+    if (lowerValue.includes('gst') || lowerValue.includes('10')) {
+      console.log('Suggesting: GST 10%');
+    } else if (lowerValue.includes('exempt') || lowerValue.includes('0')) {
+      console.log('Suggesting: Tax Exempt');
+    }
+  }
+
+  // Show main account dropdown
+  function showMainAccountDropdown(button, transactionId) {
+    closeAllDropdowns();
+    
+    const inputGroup = button.parentElement;
+    const input = inputGroup.querySelector('.hybrid-input');
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'hybrid-dropdown main-account-dropdown';
+
+    // Use real COA data from Django
+    let dropdownHTML = '';
+    Object.entries(realCoaGroups).forEach(([groupName, accounts]) => {
+      if (accounts.length > 0) {
+        dropdownHTML += `<div class="category-header">${groupName}</div>`;
+        accounts.forEach(acc => {
+          dropdownHTML += `
+            <div class="dropdown-item" onclick="selectMainAccount('${acc.display}', '${acc.id}', ${transactionId})">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-semibold text-primary">${acc.code}</span>
+                <span class="text-muted">${acc.name}</span>
+              </div>
+            </div>
+          `;
+        });
+      }
+    });
+
+    dropdown.innerHTML = dropdownHTML;
+    inputGroup.appendChild(dropdown);
+
+    // Add click outside listener
+    setTimeout(() => {
+      document.addEventListener('click', function closeDropdown(e) {
+        if (!dropdown.contains(e.target) && e.target !== button) {
+          dropdown.remove();
+          document.removeEventListener('click', closeDropdown);
+        }
+      });
+    }, 100);
+  }
+
+  // Show main tax dropdown
+  function showMainTaxDropdown(button, transactionId) {
+    closeAllDropdowns();
+    
+    const inputGroup = button.parentElement;
+    const input = inputGroup.querySelector('.hybrid-input');
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'hybrid-dropdown main-tax-dropdown';
+
+    // Group tax rates logically
+    const standardRates = realTaxRates.filter(tax => 
+      tax.name.includes('Tax Exempt') || tax.name.includes('GST')
+    );
+    const otherRates = realTaxRates.filter(tax => 
+      !tax.name.includes('Tax Exempt') && !tax.name.includes('GST')
+    );
+
+    let dropdownHTML = '';
+    
+    // Standard rates section
+    if (standardRates.length > 0) {
+      dropdownHTML += `<div class="category-header">Standard Rates</div>`;
+      standardRates.forEach(tax => {
+        dropdownHTML += `
+          <div class="dropdown-item" onclick="selectMainTax('${tax.name}', '${tax.id}', ${transactionId})">
+            <div class="d-flex flex-column">
+              <div class="fw-semibold text-success">${tax.name}</div>
+              <small class="text-muted">${tax.description}</small>
+            </div>
+          </div>
+        `;
+      });
+    }
+    
+    // Other rates section
+    if (otherRates.length > 0) {
+      dropdownHTML += `<div class="category-header">Other Tax Rates</div>`;
+      otherRates.forEach(tax => {
+        dropdownHTML += `
+          <div class="dropdown-item" onclick="selectMainTax('${tax.name}', '${tax.id}', ${transactionId})">
+            <div class="d-flex flex-column">
+              <div class="fw-semibold text-success">${tax.name}</div>
+              <small class="text-muted">${tax.description}</small>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    dropdown.innerHTML = dropdownHTML;
+    inputGroup.appendChild(dropdown);
+
+    // Add click outside listener
+    setTimeout(() => {
+      document.addEventListener('click', function closeDropdown(e) {
+        if (!dropdown.contains(e.target) && e.target !== button) {
+          dropdown.remove();
+          document.removeEventListener('click', closeDropdown);
+        }
+      });
+    }, 100);
+  }
+
+  // Select main account
+  function selectMainAccount(accountText, accountId, transactionId) {
+    const input = document.querySelector(`input[name="what_text_${transactionId}"]`);
+    const hiddenInput = document.getElementById(`what_hidden_${transactionId}`);
+    
+    input.value = accountText;
+    hiddenInput.value = accountId;
+    
+    closeAllDropdowns();
+    
+    // Trigger validation
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    checkOK(transactionId);
+  }
+
+  // Select main tax
+  function selectMainTax(taxText, taxId, transactionId) {
+    const input = document.querySelector(`input[name="tax_text_${transactionId}"]`);
+    const hiddenInput = document.getElementById(`tax_hidden_${transactionId}`);
+    
+    input.value = taxText;
+    hiddenInput.value = taxId;
+    
+    closeAllDropdowns();
+    
+    // Trigger events
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  // Save split transaction - Full Backend Integration
+  function saveSplitTransaction() {
+    // Check balance before saving
+    const originalAmount = parseFloat(document.getElementById('originalAmount').textContent.replace(/[$,]/g, '')) || 0;
+    const splitTotal = parseFloat(document.getElementById('splitTotalAmount').textContent.replace(/[$,]/g, '')) || 0;
+    const difference = Math.abs(splitTotal - originalAmount);
+    
+    if (difference > 0.01) {
+      showAlert('⚠️ Balance Validation Failed\n\nSplit total ($' + splitTotal.toFixed(2) + ') does not match original amount ($' + originalAmount.toFixed(2) + ').\n\nPlease adjust the split amounts to balance the transaction.', 'error');
+      return;
+    }
+    
+    // Get transaction data from modal
+    const transactionId = document.getElementById('transactionId').value;
+    const contactInput = document.querySelector('.who-input');
+    const contact = contactInput ? contactInput.value : '';
+    const descriptionInput = document.getElementById('splitDescription');
+    const description = descriptionInput ? descriptionInput.value : '';
+    
+    // Collect and validate split data
+    const splits = [];
+    let hasErrors = false;
+    
+    document.querySelectorAll('#splitLineBody tr').forEach((row, index) => {
+      const descInput = row.querySelector('input[type="text"]');
+      const accountInput = row.querySelector('.hybrid-input');
+      const taxInput = row.querySelectorAll('.hybrid-input')[1];
+      const amountInput = row.querySelector('.split-amount');
+      
+      const rowDescription = descInput ? descInput.value.trim() : '';
+      const accountText = accountInput ? accountInput.value.trim() : '';
+      const taxText = taxInput ? taxInput.value.trim() : '';
+      const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
+      
+      // Get account ID from hidden input
+      const accountHidden = row.querySelector('input[type="hidden"][id*="split_account_hidden"]');
+      const glAccountId = accountHidden ? accountHidden.value : null;
+      
+      // Get tax rate from hidden input  
+      const taxHidden = row.querySelector('input[type="hidden"][id*="split_tax_hidden"]');
+      const taxRate = taxHidden ? taxHidden.value : '';
+      
+      if (amount > 0) {
+        if (!glAccountId) {
+          showAlert(`Split ${index + 1}: Please select a valid GL account`, 'error');
+          hasErrors = true;
+          return;
+        }
+        
+        splits.push({
+          description: rowDescription,
+          gl_account_id: parseInt(glAccountId),
+          tax_rate: taxRate || '0%',
+          amount: amount
+        });
+      }
+    });
+    
+    if (hasErrors) return;
+    
+    if (splits.length < 2) {
+      showAlert('At least 2 split lines with amounts are required', 'error');
+      return;
+    }
+    
+    // Show loading state
+    const saveBtn = document.querySelector('.btn-success[onclick="saveSplitTransaction()"]');
+    const originalText = saveBtn.textContent;
+    saveBtn.textContent = 'Saving...';
+    saveBtn.disabled = true;
+    
+    // Prepare data for API
+    const requestData = {
+      transaction_id: parseInt(transactionId),
+      contact: contact,
+      description: description,
+      splits: splits
+    };
+    
+    // Send to backend
+    fetch('{% url "reconciliation:create_split_transaction" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showAlert(`✅ Success!\n\nSplit transaction created with ${data.total_splits} splits.\nJournal entry #${data.journal_id} has been generated.`, 'success');
+        
+        // Update the transaction row in the table to show it's matched
+        updateTransactionRowAsMatched(transactionId, true);
+        
+        // Close modal
+        closeSplitModal();
+        
+        // Refresh the page or update progress
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+        
+      } else {
+        showAlert('❌ Error creating split transaction:\n\n' + data.error, 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Split transaction error:', error);
+      showAlert('❌ Network error creating split transaction. Please try again.', 'error');
+    })
+    .finally(() => {
+      // Reset button
+      saveBtn.textContent = originalText;
+      saveBtn.disabled = false;
+    });
+  }
+  
+  // Helper function to show alerts
+  function showAlert(message, type = 'info') {
+    // Use Bootstrap alert or simple alert
+    if (typeof bootstrap !== 'undefined') {
+      // Create Bootstrap alert
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`;
+      alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+      alertDiv.innerHTML = `
+        ${message.replace(/\n/g, '<br>')}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+      document.body.appendChild(alertDiv);
+      
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => {
+        alertDiv.remove();
+      }, 5000);
+    } else {
+      // Fallback to simple alert
+      alert(message);
+    }
+  }
+  
+  // Helper function to update transaction row
+  function updateTransactionRowAsMatched(transactionId, isSplit = false) {
+    const row = document.querySelector(`tr[data-transaction-id="${transactionId}"]`);
+    if (row) {
+      const actionCell = row.querySelector('.text-end');
+      if (actionCell) {
+        actionCell.innerHTML = `
+          <span class="badge bg-success">
+            <i class="bi bi-check-circle me-1"></i>
+            ${isSplit ? 'Split Match' : 'Matched'}
+          </span>
+        `;
+      }
+    }
+  }
+  
+  // Helper function to get CSRF token
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Close split modal
+  function closeSplitModal() {
+    const modals = document.querySelectorAll('.modal, .modal-backdrop');
+    modals.forEach(modal => modal.remove());
+    document.body.classList.remove('modal-open');
+  }
+
+  // Split transaction input handlers
+  function handleSplitAccountInput(input, splitIndex) {
+    const value = input.value;
+    const hiddenInput = document.getElementById(`split_account_hidden_${splitIndex}`);
+    
+    // Check if the input matches an option in the datalist
+    const datalist = document.getElementById(`accountSuggestions_${splitIndex}`);
+    const options = datalist.querySelectorAll('option');
+    
+    let matchedId = '';
+    for (const option of options) {
+      if (option.value === value) {
+        matchedId = option.getAttribute('data-id') || '';
+        break;
+      }
+    }
+    
+    if (hiddenInput) {
+      hiddenInput.value = matchedId;
+    }
+    
+    // Update split totals when account changes
+    updateSplitTotal();
+  }
+  
+  function handleSplitTaxInput(input, splitIndex) {
+    const value = input.value;
+    const hiddenInput = document.getElementById(`split_tax_hidden_${splitIndex}`);
+    
+    // Check if the input matches an option in the datalist  
+    const datalist = document.getElementById(`taxSuggestions_${splitIndex}`);
+    const options = datalist.querySelectorAll('option');
+    
+    let matchedId = '';
+    for (const option of options) {
+      if (option.value === value) {
+        matchedId = option.getAttribute('data-id') || '';
+        break;
+      }
+    }
+    
+    if (hiddenInput) {
+      hiddenInput.value = matchedId;
+    }
+  }
+  
+  function showSplitAccountDropdown(button, splitIndex) {
+    // Close any existing dropdowns
+    closeAllDropdowns();
+    
+    const inputGroup = button.parentElement;
+    const input = inputGroup.querySelector('.hybrid-input');
+    const hiddenInput = document.getElementById(`split_account_hidden_${splitIndex}`);
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'hybrid-dropdown account-dropdown';
+
+    // Use real COA data from Django
+    let dropdownHTML = '<div class="dropdown-header">Chart of Accounts</div>';
+    
+    {% for group, accounts in coa_groups.items %}
+    dropdownHTML += '<div class="dropdown-header">{{ group }}</div>';
+    {% for acc in accounts %}
+    dropdownHTML += `<div class="dropdown-item" onclick="selectSplitAccount('{{ acc.code }} — {{ acc.name }}', '{{ acc.id }}', ${splitIndex})">
+      <div class="d-flex justify-content-between">
+        <span>{{ acc.code }} — {{ acc.name }}</span>
+        <small class="text-muted">{{ acc.account_type }}</small>
+      </div>
+    </div>`;
+    {% endfor %}
+    {% endfor %}
+
+    dropdown.innerHTML = dropdownHTML;
+    
+    // Position dropdown
+    inputGroup.appendChild(dropdown);
+    
+    // Add click outside listener
+    setTimeout(() => {
+      document.addEventListener('click', function closeDropdown(e) {
+        if (!inputGroup.contains(e.target)) {
+          dropdown.remove();
+          document.removeEventListener('click', closeDropdown);
+        }
+      });
+    }, 10);
+  }
+  
+  function showSplitTaxDropdown(button, splitIndex) {
+    // Close any existing dropdowns
+    closeAllDropdowns();
+    
+    const inputGroup = button.parentElement;
+    const input = inputGroup.querySelector('.hybrid-input');
+    const hiddenInput = document.getElementById(`split_tax_hidden_${splitIndex}`);
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'hybrid-dropdown tax-dropdown';
+
+    let dropdownHTML = '<div class="dropdown-header">Tax Rates</div>';
+    
+    // Tax Exempt option
+    dropdownHTML += `<div class="dropdown-item" onclick="selectSplitTax('Tax Exempt (0%)', '', ${splitIndex})">
+      <div class="d-flex justify-content-between">
+        <span>Tax Exempt (0%)</span>
+        <small class="text-muted">No Tax</small>
+      </div>
+    </div>`;
+    
+    // Real tax rates from Django
+    {% for tx in tax_rates %}
+    dropdownHTML += `<div class="dropdown-item" onclick="selectSplitTax('{{ tx.name }}', '{{ tx.id }}', ${splitIndex})">
+      <div class="d-flex justify-content-between">
+        <span>{{ tx.name }}</span>
+        <small class="text-muted">{{ tx.rate }}%</small>
+      </div>
+    </div>`;
+    {% endfor %}
+
+    dropdown.innerHTML = dropdownHTML;
+    
+    // Position dropdown
+    inputGroup.appendChild(dropdown);
+    
+    // Add click outside listener
+    setTimeout(() => {
+      document.addEventListener('click', function closeDropdown(e) {
+        if (!inputGroup.contains(e.target)) {
+          dropdown.remove();
+          document.removeEventListener('click', closeDropdown);
+        }
+      });
+    }, 10);
+  }
+  
+  function selectSplitAccount(accountText, accountId, splitIndex) {
+    const input = document.querySelector(`#splitLineBody tr:nth-child(${splitIndex + 1}) .hybrid-input`);
+    const hiddenInput = document.getElementById(`split_account_hidden_${splitIndex}`);
+    
+    if (input) {
+      input.value = accountText;
+    }
+    if (hiddenInput) {
+      hiddenInput.value = accountId;
+    }
+    
+    // Close dropdown
+    closeAllDropdowns();
+    
+    // Trigger events
+    if (input) {
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+  
+  function selectSplitTax(taxText, taxId, splitIndex) {
+    const taxInputs = document.querySelectorAll(`#splitLineBody tr:nth-child(${splitIndex + 1}) .hybrid-input`);
+    const taxInput = taxInputs[1]; // Second hybrid input is tax
+    const hiddenInput = document.getElementById(`split_tax_hidden_${splitIndex}`);
+    
+    if (taxInput) {
+      taxInput.value = taxText;
+    }
+    if (hiddenInput) {
+      hiddenInput.value = taxId;
+    }
+    
+    // Close dropdown
+    closeAllDropdowns();
+    
+    // Trigger events
+    if (taxInput) {
+      taxInput.dispatchEvent(new Event('input', { bubbles: true }));
+      taxInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     updateDiffBadge();
   });
+
+  // ============= EDIT FUNCTIONALITY =============
+  
+  function toggleMatchedSection() {
+    const section = document.getElementById('matchedTransactionsSection');
+    const icon = document.getElementById('matchedToggleIcon');
+    
+    if (section.style.display === 'none') {
+      section.style.display = 'block';
+      icon.className = 'bi bi-chevron-up';
+    } else {
+      section.style.display = 'none';
+      icon.className = 'bi bi-chevron-down';
+    }
+  }
+
+  async function editTransactionMatch(matchId) {
+    try {
+      // Fetch current match details
+      const response = await fetch(`/reconciliation/ajax/get-match/${matchId}/`);
+      const result = await response.json();
+      
+      if (!result.success) {
+        alert('Error loading transaction details: ' + result.error);
+        return;
+      }
+      
+      const match = result.match;
+      showEditModal(match);
+      
+    } catch (error) {
+      console.error('Error fetching match details:', error);
+      alert('Error loading transaction details. Please try again.');
+    }
+  }
+
+  function showEditModal(match) {
+    // Create modal backdrop
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    backdrop.style.zIndex = '1040';
+    
+    // Create modal container
+    const modal = document.createElement('div');
+    modal.className = 'modal fade show';
+    modal.style.display = 'block';
+    modal.style.zIndex = '1050';
+    modal.setAttribute('tabindex', '-1');
+    modal.id = 'editMatchModal';
+    
+    // Modal content
+    modal.innerHTML = `
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="bi bi-pencil me-2"></i>Edit Transaction Match
+            </h5>
+            <button type="button" class="btn-close" onclick="closeEditModal()"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <strong>Transaction:</strong> ${match.description}<br>
+              <small class="text-muted">Amount: $${match.amount} | Date: ${match.date}</small>
+            </div>
+            
+            <form id="editMatchForm">
+              <input type="hidden" id="editMatchId" value="${match.match_id}">
+              
+              <div class="row mb-3">
+                <div class="col-6">
+                  <label class="form-label">Contact (WHO)</label>
+                  <input type="text" class="form-control" id="editContact" 
+                         value="${match.contact || ''}" placeholder="Enter contact name...">
+                </div>
+                <div class="col-6">
+                  <label class="form-label">GL Account (WHAT) *</label>
+                  <select class="form-select" id="editGLAccount" required>
+                    <option value="">Select an account...</option>
+                    {% for group, accounts in coa_groups.items %}
+                      <optgroup label="{{ group }}">
+                        {% for acc in accounts %}
+                        <option value="{{ acc.id }}">{{ acc.code }} — {{ acc.name }}</option>
+                        {% endfor %}
+                      </optgroup>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+              
+              <div class="row mb-3">
+                <div class="col-6">
+                  <label class="form-label">Description (WHY)</label>
+                  <textarea class="form-control" id="editDescription" rows="2" 
+                            placeholder="Enter description...">${match.match_description || ''}</textarea>
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Tax Treatment</label>
+                  <select class="form-select" id="editTaxRate">
+                    <option value="">No Tax</option>
+                    <option value="gst_10">GST 10%</option>
+                    <option value="gst_free">GST Free</option>
+                    <option value="input_taxed">Input Taxed</option>
+                    <option value="no_gst">Tax Exempt</option>
+                  </select>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="saveEditMatch()">
+              <i class="bi bi-check me-1"></i>Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add to DOM
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modal);
+    
+    // Set current values
+    if (match.gl_account_id) {
+      document.getElementById('editGLAccount').value = match.gl_account_id;
+    }
+    if (match.tax_rate) {
+      document.getElementById('editTaxRate').value = match.tax_rate;
+    }
+    
+    // Store backdrop and modal references
+    modal.backdrop = backdrop;
+  }
+
+  function closeEditModal() {
+    const modal = document.getElementById('editMatchModal');
+    if (modal) {
+      if (modal.backdrop) {
+        modal.backdrop.remove();
+      }
+      modal.remove();
+    }
+  }
+
+  async function saveEditMatch() {
+    const matchId = document.getElementById('editMatchId').value;
+    const contact = document.getElementById('editContact').value;
+    const accountId = document.getElementById('editGLAccount').value;
+    const description = document.getElementById('editDescription').value;
+    const taxRate = document.getElementById('editTaxRate').value;
+    
+    if (!accountId) {
+      alert('Please select a GL Account');
+      return;
+    }
+    
+    try {
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      
+      const response = await fetch(`/reconciliation/ajax/edit-match/${matchId}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+          contact: contact,
+          account_id: accountId,
+          tax_treatment: taxRate,
+          notes: description
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Update the UI
+        const row = document.getElementById(`matchedRow_${matchId}`);
+        if (row) {
+          // Refresh the page to show updated data
+          window.location.reload();
+        }
+        
+        closeEditModal();
+        
+        // Show success message
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        alert.style.top = '20px';
+        alert.style.right = '20px';
+        alert.style.zIndex = '1055';
+        alert.innerHTML = `
+          <i class="bi bi-check-circle me-2"></i>Transaction match updated successfully!
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+          alert.remove();
+        }, 3000);
+        
+      } else {
+        alert('Error updating match: ' + result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error saving match:', error);
+      alert('Error saving changes. Please try again.');
+    }
+  }
+
+  async function unmatchTransaction(matchId) {
+    if (!confirm('Are you sure you want to remove this transaction match? This will move the transaction back to unmatched.')) {
+      return;
+    }
+    
+    try {
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      
+      const response = await fetch('/reconciliation/ajax/unmatch-transaction/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+          match_id: matchId
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Refresh the page to show updated data
+        window.location.reload();
+      } else {
+        alert('Error removing match: ' + result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error removing match:', error);
+      alert('Error removing match. Please try again.');
+    }
+  }
 </script>
 {% endblock %}

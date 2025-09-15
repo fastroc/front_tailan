@@ -21,7 +21,7 @@ class UserCompanyAccessInline(admin.TabularInline):
     extra = 0
     verbose_name = '🏢 Company Access'
     verbose_name_plural = '🏢 Company Access & Roles'
-    fields = ('company', 'role', 'is_active', 'created_at')
+    fields = ('company', 'role', 'created_at')
     readonly_fields = ('created_at',)
     raw_id_fields = ('company',)
 
@@ -170,8 +170,6 @@ class UserAdmin(BaseUserAdmin):
             html_parts.append('<p><strong>📋 Company Access:</strong></p><ul style="margin: 5px 0;">')
             
             for access in access_records:
-                status_color = '#28a745' if hasattr(access, 'is_active') and access.is_active else '#dc3545'
-                status_text = '✅ Active' if hasattr(access, 'is_active') and access.is_active else '✅ Active'
                 role_color = {
                     'owner': '#6f42c1',
                     'admin': '#dc3545', 
@@ -185,13 +183,11 @@ class UserAdmin(BaseUserAdmin):
                     '<strong>{}</strong> - '
                     '<span style="background: {}; color: white; padding: 1px 6px; border-radius: 3px; font-size: 0.8em;">'
                     '{}</span> '
-                    '<span style="color: {}; font-weight: bold;">{}</span>'
+                    '<span style="color: #28a745; font-weight: bold;">✅ Active</span>'
                     '</li>'.format(
                         access.company.name,
                         role_color,
-                        access.get_role_display(),
-                        status_color,
-                        status_text
+                        access.get_role_display()
                     )
                 )
             

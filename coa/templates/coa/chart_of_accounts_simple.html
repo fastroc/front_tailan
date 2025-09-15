@@ -76,7 +76,13 @@
                                 <td>
                                     <span class="badge bg-secondary">{{ account.get_account_type_display }}</span>
                                 </td>
-                                <td>{{ account.tax_rate.name|default:"—" }}</td>
+                                <td>
+                                    {% if account.tax_rate %}
+                                        {{ account.tax_rate.name }}
+                                    {% else %}
+                                        <span class="text-muted">No Tax</span>
+                                    {% endif %}
+                                </td>
                                 <td class="text-end">
                                     <span class="fw-bold {% if account.ytd_balance >= 0 %}text-success{% else %}text-danger{% endif %}">
                                         ${{ account.ytd_balance|floatformat:2 }}
@@ -90,8 +96,23 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <a href="{% url 'coa:account_detail' account.id %}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'coa:account_detail' account.id %}" 
+                                           class="btn btn-sm btn-outline-primary" 
+                                           title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{% url 'coa:edit_account' account.id %}" 
+                                           class="btn btn-sm btn-outline-secondary" 
+                                           title="Edit Account">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{% url 'coa:delete_account' account.id %}" 
+                                           class="btn btn-sm btn-outline-danger" 
+                                           title="Delete Account">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
                                     </a>
                                 </td>
                             </tr>

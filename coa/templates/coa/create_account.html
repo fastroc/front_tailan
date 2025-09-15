@@ -97,33 +97,41 @@
                             </label>
                             <select class="form-select form-select-lg" id="account_type" name="account_type" required>
                                 <option value="">Select account type...</option>
-                                <optgroup label="ASSETS">
+                                <optgroup label="📊 ASSETS" data-category="assets">
                                     <option value="CURRENT_ASSET">Current Asset</option>
                                     <option value="FIXED_ASSET">Fixed Asset</option>
                                     <option value="INVENTORY">Inventory</option>
                                     <option value="NON_CURRENT_ASSET">Non-current Asset</option>
                                     <option value="PREPAYMENT">Prepayment</option>
                                 </optgroup>
-                                <optgroup label="LIABILITIES">
+                                <optgroup label="💰 LIABILITIES" data-category="liabilities">
                                     <option value="CURRENT_LIABILITY">Current Liability</option>
                                     <option value="LIABILITY">Liability</option>
                                     <option value="NON_CURRENT_LIABILITY">Non-current Liability</option>
                                 </optgroup>
-                                <optgroup label="EQUITY">
+                                <optgroup label="🏛️ EQUITY" data-category="equity">
                                     <option value="EQUITY">Equity</option>
                                 </optgroup>
-                                <optgroup label="REVENUE">
+                                <optgroup label="💵 REVENUE" data-category="revenue">
                                     <option value="OTHER_INCOME">Other Income</option>
                                     <option value="REVENUE">Revenue</option>
                                     <option value="SALES">Sales</option>
                                 </optgroup>
-                                <optgroup label="EXPENSES">
+                                <optgroup label="💸 EXPENSES" data-category="expenses">
                                     <option value="DEPRECIATION">Depreciation</option>
                                     <option value="DIRECT_COST">Direct Cost</option>
                                     <option value="EXPENSE">Expense</option>
                                     <option value="OVERHEAD">Overhead</option>
                                 </optgroup>
                             </select>
+                            <div class="form-text">
+                                <strong>Categories:</strong> 
+                                <span class="badge bg-success bg-opacity-10 text-success me-1">📊 Assets</span>
+                                <span class="badge bg-danger bg-opacity-10 text-danger me-1">💰 Liabilities</span>
+                                <span class="badge bg-primary bg-opacity-10 text-primary me-1">🏛️ Equity</span>
+                                <span class="badge bg-info bg-opacity-10 text-info me-1">💵 Revenue</span>
+                                <span class="badge bg-warning bg-opacity-10 text-warning me-1">💸 Expenses</span>
+                            </div>
                         </div>
                         
                         <div class="col-md-6">
@@ -294,8 +302,38 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (type) {
             const selectedOption = typeSelect.options[typeSelect.selectedIndex];
-            previewType.textContent = selectedOption.text;
+            const optgroup = selectedOption.closest('optgroup');
+            let categoryInfo = selectedOption.text;
+            
+            if (optgroup) {
+                const categoryLabel = optgroup.label;
+                categoryInfo = `${categoryLabel} → ${selectedOption.text}`;
+            }
+            
+            previewType.textContent = categoryInfo;
+            
+            // Add category indicator
+            typeSelect.style.borderLeft = getCategoryBorderColor(type);
+        } else {
+            previewType.textContent = '--';
+            typeSelect.style.borderLeft = '';
         }
+    }
+    
+    function getCategoryBorderColor(accountType) {
+        const assetTypes = ['CURRENT_ASSET', 'FIXED_ASSET', 'INVENTORY', 'NON_CURRENT_ASSET', 'PREPAYMENT'];
+        const liabilityTypes = ['CURRENT_LIABILITY', 'LIABILITY', 'NON_CURRENT_LIABILITY'];
+        const equityTypes = ['EQUITY'];
+        const revenueTypes = ['OTHER_INCOME', 'REVENUE', 'SALES'];
+        const expenseTypes = ['DEPRECIATION', 'DIRECT_COST', 'EXPENSE', 'OVERHEAD'];
+        
+        if (assetTypes.includes(accountType)) return '4px solid #059669';
+        if (liabilityTypes.includes(accountType)) return '4px solid #dc2626';
+        if (equityTypes.includes(accountType)) return '4px solid #7c3aed';
+        if (revenueTypes.includes(accountType)) return '4px solid #0891b2';
+        if (expenseTypes.includes(accountType)) return '4px solid #ea580c';
+        
+        return '';
     }
     
     codeInput.addEventListener('input', updatePreview);
@@ -350,13 +388,55 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 optgroup {
-    font-weight: 600;
-    color: #374151;
+    font-weight: 700;
+    color: #1f2937;
+    background-color: #f3f4f6;
+    font-size: 0.95rem;
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 optgroup option {
     font-weight: 400;
-    padding-left: 1rem;
+    padding-left: 1.5rem;
+    color: #4b5563;
+    background-color: white;
+    font-size: 0.9rem;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+optgroup option:hover {
+    background-color: #f8fafc;
+}
+
+/* Category-specific colors for optgroups */
+optgroup[data-category="assets"] {
+    color: #059669;
+    background-color: #ecfdf5;
+}
+
+optgroup[data-category="liabilities"] {
+    color: #dc2626;
+    background-color: #fef2f2;
+}
+
+optgroup[data-category="equity"] {
+    color: #7c3aed;
+    background-color: #f5f3ff;
+}
+
+optgroup[data-category="revenue"] {
+    color: #0891b2;
+    background-color: #f0f9ff;
+}
+
+optgroup[data-category="expenses"] {
+    color: #ea580c;
+    background-color: #fff7ed;
 }
 
 /* Preview styling */

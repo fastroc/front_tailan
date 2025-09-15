@@ -34,7 +34,35 @@
                         
                         <div class="mb-3">
                             <label for="{{ form.account_type.id_for_label }}" class="form-label">Account Type</label>
-                            {{ form.account_type }}
+                            <select class="form-select" id="{{ form.account_type.id_for_label }}" name="account_type" required>
+                                <option value="">Select account type...</option>
+                                <optgroup label="📊 ASSETS">
+                                    <option value="CURRENT_ASSET">Current Asset</option>
+                                    <option value="FIXED_ASSET">Fixed Asset</option>
+                                    <option value="INVENTORY">Inventory</option>
+                                    <option value="NON_CURRENT_ASSET">Non-current Asset</option>
+                                    <option value="PREPAYMENT">Prepayment</option>
+                                </optgroup>
+                                <optgroup label="💰 LIABILITIES">
+                                    <option value="CURRENT_LIABILITY">Current Liability</option>
+                                    <option value="LIABILITY">Liability</option>
+                                    <option value="NON_CURRENT_LIABILITY">Non-current Liability</option>
+                                </optgroup>
+                                <optgroup label="🏛️ EQUITY">
+                                    <option value="EQUITY">Equity</option>
+                                </optgroup>
+                                <optgroup label="💵 REVENUE">
+                                    <option value="OTHER_INCOME">Other Income</option>
+                                    <option value="REVENUE">Revenue</option>
+                                    <option value="SALES">Sales</option>
+                                </optgroup>
+                                <optgroup label="💸 EXPENSES">
+                                    <option value="DEPRECIATION">Depreciation</option>
+                                    <option value="DIRECT_COST">Direct Cost</option>
+                                    <option value="EXPENSE">Expense</option>
+                                    <option value="OVERHEAD">Overhead</option>
+                                </optgroup>
+                            </select>
                             {% if form.account_type.errors %}
                                 <div class="text-danger">{{ form.account_type.errors }}</div>
                             {% endif %}
@@ -45,14 +73,6 @@
                             {{ form.tax_rate }}
                             {% if form.tax_rate.errors %}
                                 <div class="text-danger">{{ form.tax_rate.errors }}</div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.parent_account.id_for_label }}" class="form-label">Parent Account (Optional)</label>
-                            {{ form.parent_account }}
-                            {% if form.parent_account.errors %}
-                                <div class="text-danger">{{ form.parent_account.errors }}</div>
                             {% endif %}
                         </div>
                         
@@ -74,4 +94,30 @@
         </div>
     </div>
 </div>
+
+<style>
+optgroup {
+    font-weight: 700;
+    color: #1f2937;
+    background-color: #f3f4f6;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+optgroup option {
+    font-weight: 400;
+    color: #4b5563;
+    background-color: white;
+    font-size: 0.9rem;
+    text-transform: none;
+    letter-spacing: normal;
+    padding-left: 1rem;
+}
+
+.form-select:focus {
+    border-color: #1e3a8a;
+    box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.1);
+}
+</style>
 {% endblock %}

@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ report_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">{{ report_title }}</h1>
+                    <p class="text-muted">{{ company.name }}</p>
+                </div>
+                <div class="text-end">
+                    <a href="{% url 'assets:reports_menu' %}" class="btn btn-outline-secondary btn-sm">
+                        ← Back to Reports
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Parameters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body py-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <strong>As of Date:</strong> {{ as_of_date|date:"F d, Y" }}
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="?as_of_date={{ as_of_date|date:'Y-m-d' }}&format=pdf" class="btn btn-outline-danger">
+                                    📄 PDF
+                                </a>
+                                <a href="?as_of_date={{ as_of_date|date:'Y-m-d' }}&format=excel" class="btn btn-outline-success">
+                                    📊 Excel
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trial Balance Report -->
+    <div class="row">
+        <div class="col-lg-10 offset-lg-1">
+            <div class="card">
+                <div class="card-body">
+                    <!-- Company Header -->
+                    <div class="text-center mb-4">
+                        <h4>{{ company.name }}</h4>
+                        <h5>TRIAL BALANCE - FIXED ASSETS</h5>
+                        <h6>As of {{ as_of_date|date:"F d, Y" }}</h6>
+                    </div>
+
+                    <!-- Trial Balance Table -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered trial-balance-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Account Code</th>
+                                    <th>Account Name</th>
+                                    <th class="text-end">Debit</th>
+                                    <th class="text-end">Credit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for account in report_data.accounts %}
+                                <tr>
+                                    <td>{{ account.account_code }}</td>
+                                    <td>{{ account.account_name }}</td>
+                                    <td class="text-end">
+                                        {% if account.debit > 0 %}
+                                            {{ account.debit|floatformat:2 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if account.credit > 0 %}
+                                            {{ account.credit|floatformat:2 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                
+                                <!-- Totals Row -->
+                                <tr class="table-secondary">
+                                    <td colspan="2"><strong>TOTAL FIXED ASSETS</strong></td>
+                                    <td class="text-end"><strong>{{ report_data.totals.total_debits|floatformat:2 }}</strong></td>
+                                    <td class="text-end"><strong>{{ report_data.totals.total_credits|floatformat:2 }}</strong></td>
+                                </tr>
+                                
+                                <!-- Net Assets Row -->
+                                <tr class="table-success">
+                                    <td colspan="2"><strong>NET FIXED ASSETS</strong></td>
+                                    <td colspan="2" class="text-end"><strong>{{ report_data.totals.net_assets|floatformat:2 }}</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Account Type Breakdown -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">Asset Accounts (Debit Balances)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm">
+                                        {% for account in report_data.accounts %}
+                                        {% if account.balance_type == 'asset' %}
+                                        <tr>
+                                            <td>{{ account.account_code }}</td>
+                                            <td>{{ account.account_name }}</td>
+                                            <td class="text-end">${{ account.debit|floatformat:0 }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endfor %}
+                                        <tr class="table-light">
+                                            <td colspan="2"><strong>Total</strong></td>
+                                            <td class="text-end"><strong>${{ report_data.totals.total_debits|floatformat:0 }}</strong></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-warning">
+                                    <h6 class="mb-0">Accumulated Depreciation (Credit Balances)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm">
+                                        {% for account in report_data.accounts %}
+                                        {% if account.balance_type == 'contra_asset' %}
+                                        <tr>
+                                            <td>{{ account.account_code }}</td>
+                                            <td>{{ account.account_name }}</td>
+                                            <td class="text-end">${{ account.credit|floatformat:0 }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endfor %}
+                                        <tr class="table-light">
+                                            <td colspan="2"><strong>Total</strong></td>
+                                            <td class="text-end"><strong>${{ report_data.totals.total_credits|floatformat:0 }}</strong></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Integration Notes -->
+                    <div class="alert alert-info mt-4">
+                        <h6>📝 Trial Balance Integration Notes:</h6>
+                        <ul class="mb-0">
+                            <li>These balances should be included in your main trial balance</li>
+                            <li>Asset accounts have debit balances and increase total assets</li>
+                            <li>Accumulated depreciation accounts have credit balances and reduce total assets</li>
+                            <li>Net fixed assets: ${{ report_data.totals.net_assets|floatformat:0 }} appears on the balance sheet</li>
+                        </ul>
+                    </div>
+
+                    <!-- Report Footer -->
+                    <div class="text-center mt-4 pt-3 border-top">
+                        <small class="text-muted">
+                            Generated on {{ "now"|date:"F d, Y \a\\t g:i A" }} | 
+                            {{ report_data.accounts|length }} GL accounts | 
+                            Net Fixed Assets: ${{ report_data.totals.net_assets|floatformat:0 }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">Total Debits</h5>
+                    <h3 class="text-primary">${{ report_data.totals.total_debits|floatformat:0 }}</h3>
+                    <small class="text-muted">Asset Accounts</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">Total Credits</h5>
+                    <h3 class="text-warning">${{ report_data.totals.total_credits|floatformat:0 }}</h3>
+                    <small class="text-muted">Accumulated Depreciation</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-success">Net Assets</h5>
+                    <h3 class="text-success">${{ report_data.totals.net_assets|floatformat:0 }}</h3>
+                    <small class="text-muted">For Balance Sheet</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.trial-balance-table {
+    font-family: 'Courier New', monospace;
+}
+
+.trial-balance-table th {
+    background-color: #343a40 !important;
+    color: white !important;
+    border: 1px solid #454d55;
+}
+
+.trial-balance-table td {
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
+}
+
+.trial-balance-table tr.table-secondary td {
+    border-top: 2px solid #000;
+    font-weight: bold;
+}
+
+.trial-balance-table tr.table-success td {
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
+    font-weight: bold;
+    background-color: #d1edff !important;
+}
+
+@media print {
+    .btn, .card-header, .alert {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+}
+</style>
+{% endblock %}

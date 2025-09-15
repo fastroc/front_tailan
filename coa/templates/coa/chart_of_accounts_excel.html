@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+
+{% block title %}Chart of Accounts - {{ active_company.name|default:"Accounting System" }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h4 mb-1 fw-bold">Chart of Accounts</h1>
+            <small class="text-muted">{{ active_company.name|default:"No Company Selected" }}</small>
+        </div>
+        <div>
+            <a href="{% url 'coa:create_account' %}" class="btn btn-success btn-sm">
+                <i class="bi bi-plus"></i> New Account
+            </a>
+        </div>
+    </div>
+
+    <!-- Excel-like Table -->
+    <div class="excel-table-container">
+        <table class="table excel-table">
+            <thead>
+                <tr>
+                    <th style="width: 10%">Code</th>
+                    <th style="width: 35%">Account Name</th>
+                    <th style="width: 20%">Account Type</th>
+                    <th style="width: 15%">Tax Rate</th>
+                    <th style="width: 15%" class="text-end">Balance</th>
+                    <th style="width: 5%" class="text-center">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% regroup accounts by get_account_category as account_groups %}
+                {% for category in account_groups %}
+                    <!-- Category Header -->
+                    <tr class="category-header">
+                        <td colspan="6" class="category-title">
+                            <strong>{{ category.grouper|upper }}</strong>
+                        </td>
+                    </tr>
+                    
+                    <!-- Accounts in Category -->
+                    {% for account in category.list %}
+                    <tr class="account-row">
+                        <td class="code-cell">{{ account.code }}</td>
+                        <td class="name-cell">{{ account.name }}</td>
+                        <td class="type-cell">{{ account.get_account_type_display }}</td>
+                        <td class="tax-cell">
+                            {% if account.tax_rate %}
+                                {{ account.tax_rate.name }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="balance-cell text-end">
+                            {% if account.ytd_balance != 0 %}
+                                <span class="{% if account.ytd_balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ${{ account.ytd_balance|floatformat:2|default:"0.00" }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">$0.00</span>
+                            {% endif %}
+                        </td>
+                        <td class="status-cell text-center">
+                            {% if account.is_active %}
+                                <span class="status-active">●</span>
+                            {% else %}
+                                <span class="status-inactive">○</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    
+                    <!-- Category Spacer -->
+                    <tr class="category-spacer">
+                        <td colspan="6"></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Summary Footer -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="summary-card">
+                <h6 class="text-muted">Total Accounts: <strong>{{ accounts.count }}</strong></h6>
+            </div>
+        </div>
+        <div class="col-md-6 text-end">
+            <small class="text-muted">Last updated: {{ accounts.first.updated_at|date:"M j, Y g:i A"|default:"—" }}</small>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Excel-like Table Styling */
+.excel-table-container {
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.excel-table {
+    margin: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header Styling */
+.excel-table thead th {
+    background: #f8f9fa;
+    border: 1px solid #e5e7eb;
+    border-top: none;
+    padding: 12px 16px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.excel-table thead th:first-child {
+    border-left: none;
+}
+
+.excel-table thead th:last-child {
+    border-right: none;
+}
+
+/* Category Headers */
+.category-header td {
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-left: none;
+    border-right: none;
+    padding: 10px 16px;
+    font-weight: 700;
+    color: #1f2937;
+    font-size: 0.9rem;
+}
+
+.category-title {
+    color: #059669;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+/* Account Rows */
+.account-row td {
+    background: white;
+    border: 1px solid #f3f4f6;
+    border-left: none;
+    border-right: none;
+    padding: 10px 16px;
+    vertical-align: middle;
+    transition: background-color 0.2s ease;
+}
+
+.account-row:hover td {
+    background: #f9fafb;
+}
+
+/* Cell-specific styling */
+.code-cell {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #6b7280;
+    font-size: 0.85rem;
+}
+
+.name-cell {
+    font-weight: 500;
+    color: #111827;
+}
+
+.type-cell {
+    color: #6b7280;
+    font-size: 0.85rem;
+}
+
+.tax-cell {
+    color: #6b7280;
+    font-size: 0.85rem;
+}
+
+.balance-cell {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.status-cell {
+    font-size: 1.2rem;
+}
+
+.status-active {
+    color: #10b981;
+}
+
+.status-inactive {
+    color: #d1d5db;
+}
+
+/* Category Spacer */
+.category-spacer td {
+    padding: 8px;
+    border: none;
+    background: transparent;
+}
+
+/* Summary Card */
+.summary-card {
+    background: #f9fafb;
+    padding: 12px 16px;
+    border-radius: 6px;
+    border-left: 4px solid #3b82f6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .excel-table {
+        font-size: 0.8rem;
+    }
+    
+    .excel-table td, .excel-table th {
+        padding: 8px 10px;
+    }
+    
+    .category-title {
+        font-size: 0.8rem;
+    }
+}
+
+/* Print-friendly styling */
+@media print {
+    .excel-table-container {
+        box-shadow: none;
+        border: 1px solid #000;
+    }
+    
+    .account-row:hover td {
+        background: white !important;
+    }
+    
+    .category-header td {
+        background: #f0f0f0 !important;
+    }
+}
+</style>
+{% endblock %}

@@ -8,7 +8,10 @@ urlpatterns = [
     path("", views.chart_of_accounts_view, name="chart_of_accounts"),
     path("account/<int:account_id>/", views.account_detail_view, name="account_detail"),
     path("account/create/", views.create_account_view, name="create_account"),
+    path("account/<int:account_id>/edit/", views.edit_account_view, name="edit_account"),
+    path("account/<int:account_id>/delete/", views.delete_account_view, name="delete_account"),
     path("api/account-search/", views.account_search_api, name="account_search_api"),
+    path("api/check-code/", views.check_code_availability_api, name="check_code_api"),
     # Tax Rates
     path("tax-rates/", views.tax_rate_list_view, name="tax_rates"),
     path("tax-rates/new/", views.tax_rate_create_view, name="tax_rate_new"),

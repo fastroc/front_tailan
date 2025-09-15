@@ -94,7 +94,109 @@ class TransactionMatch(models.Model):
         ordering = ['-matched_at']
         
     def __str__(self):
-        return f"Match: {self.bank_transaction.description[:50]} -> {self.gl_account.name}"
+        description = self.bank_transaction.description[:50]
+        if self.gl_account:
+            return f"Match: {description} -> {self.gl_account.name}"
+        else:
+            # Check for splits without triggering extra query if possible
+            try:
+                split_count = self.splits.count() if hasattr(self, 'splits') else 0
+                if split_count > 0:
+                    return f"Split Match: {description} -> {split_count} splits"
+                else:
+                    return f"Match: {description} -> No GL Account"
+            except Exception:
+                return f"Match: {description} -> Processing..."
+    
+    @property
+    def is_split_transaction(self):
+        """Check if this transaction has splits"""
+        return self.splits.exists()
+    
+    @property
+    def total_split_amount(self):
+        """Calculate total amount across all splits"""
+        return self.splits.aggregate(total=models.Sum('amount'))['total'] or 0
+    
+    @property
+    def split_balance_status(self):
+        """Check if split amounts match bank transaction amount"""
+        if not self.is_split_transaction:
+            return 'no_splits'
+        
+        bank_amount = abs(self.bank_transaction.amount)
+        split_total = abs(self.total_split_amount)
+        difference = abs(bank_amount - split_total)
+        
+        if difference < 0.01:  # Within 1 cent
+            return 'balanced'
+        elif split_total < bank_amount:
+            return 'under_allocated'
+        else:
+            return 'over_allocated'
+    
+    @property
+    def remaining_amount(self):
+        """Calculate remaining amount to be allocated"""
+        bank_amount = abs(self.bank_transaction.amount)
+        split_total = abs(self.total_split_amount)
+        return bank_amount - split_total
+
+
+class TransactionSplit(models.Model):
+    """Enhanced model for split transaction functionality"""
+    
+    # Parent transaction match
+    transaction_match = models.ForeignKey(TransactionMatch, on_delete=models.CASCADE, related_name='splits')
+    
+    # Split details
+    split_number = models.PositiveIntegerField(help_text="Split sequence number (1, 2, 3...)")
+    amount = models.DecimalField(max_digits=15, decimal_places=2, help_text="Amount for this split")
+    
+    # WHO/WHAT/WHY/TAX for this split
+    contact = models.CharField(max_length=255, blank=True, help_text="WHO - Contact/Payee for this split")
+    gl_account = models.ForeignKey(Account, on_delete=models.CASCADE, help_text="WHAT - GL Account for this split")
+    description = models.TextField(blank=True, help_text="WHY - Description for this split")
+    tax_rate = models.CharField(max_length=50, blank=True, help_text="TAX - GST/Tax rate for this split")
+    
+    # Tax calculations
+    tax_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Tax amount for this split")
+    net_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0, help_text="Net amount (amount - tax)")
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    
+    class Meta:
+        ordering = ['split_number']
+        unique_together = ['transaction_match', 'split_number']
+        
+    def __str__(self):
+        return f"Split {self.split_number}: {self.amount} -> {self.gl_account.name}"
+    
+    def save(self, *args, **kwargs):
+        """Auto-calculate tax amounts on save"""
+        from decimal import Decimal
+        
+        if self.tax_rate and self.amount:
+            # Parse tax rate (e.g., "10%" -> 0.10)
+            try:
+                if self.tax_rate.endswith('%'):
+                    rate = Decimal(self.tax_rate[:-1]) / Decimal('100')
+                else:
+                    rate = Decimal(self.tax_rate) / Decimal('100')
+                
+                # Calculate tax (assuming tax-inclusive)
+                self.tax_amount = self.amount * rate / (Decimal('1') + rate)
+                self.net_amount = self.amount - self.tax_amount
+            except (ValueError, ZeroDivisionError, TypeError):
+                self.tax_amount = Decimal('0')
+                self.net_amount = self.amount
+        else:
+            self.tax_amount = Decimal('0')
+            self.net_amount = self.amount
+            
+        super().save(*args, **kwargs)
 
 
 class ReconciliationReport(models.Model):

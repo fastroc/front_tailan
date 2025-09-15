@@ -1,0 +1,396 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Asset Details - {{ asset.name|default:"Fixed Asset" }} - {{ active_company.name|default:"Professional Accounting System" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .asset-detail-card { border: 1px solid #e5e7eb; border-radius: 0.5rem; }
+  .asset-header { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 0.5rem 0.5rem 0 0; }
+  .detail-label { font-weight: 600; color: #374151; font-size: 0.875rem; }
+  .detail-value { color: #111827; font-size: 0.9rem; }
+  .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+  .status-active { background: #dcfce7; color: #166534; }
+  .status-disposed { background: #fee2e2; color: #991b1b; }
+  .btn-outline-primary { border-color: #2563eb; color: #2563eb; }
+  .btn-outline-primary:hover { background: #2563eb; border-color: #2563eb; }
+  .section-header { border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; margin-bottom: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Company Context Header -->
+{% if active_company %}
+<div class="company-context-header mb-3">
+    <div class="d-flex align-items-center">
+        <div class="company-logo-small me-3">
+            {% if active_company.logo %}
+                <img src="{{ active_company.logo.url }}" alt="{{ active_company.name }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
+            {% else %}
+                <div class="bg-primary rounded d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; color: white; font-weight: 600;">
+                    {{ active_company.name|first|upper }}
+                </div>
+            {% endif %}
+        </div>
+        <div>
+            <h6 class="text-muted mb-0">
+                <i class="bi bi-building me-1"></i>
+                {{ active_company.name }}
+            </h6>
+            <small class="text-muted">Fixed Asset Details</small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Breadcrumb Navigation -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        {% if active_company %}
+            <li class="breadcrumb-item">{{ active_company.name }}</li>
+        {% endif %}
+        <li class="breadcrumb-item">
+            <a href="{% url 'assets:list' %}" class="text-decoration-none">
+                <i class="bi bi-building me-1"></i>Fixed Assets
+            </a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">
+            {% if asset %}{{ asset.name|truncatechars:30 }}{% else %}Asset Detail{% endif %}
+        </li>
+    </ol>
+</nav>
+
+<div class="container-fluid">
+    {% if asset %}
+    <!-- Asset Header -->
+    <div class="asset-detail-card mb-4">
+        <div class="asset-header p-4">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h2 class="mb-1">{{ asset.name }}</h2>
+                    <p class="text-muted mb-2">{{ asset.description|default:"No description provided" }}</p>
+                    <div class="d-flex gap-2">
+                        {% if asset.status == 'active' %}
+                            <span class="status-badge status-active">
+                                <i class="bi bi-check-circle me-1"></i>Active
+                            </span>
+                        {% elif asset.status == 'disposed' %}
+                            <span class="status-badge status-disposed">
+                                <i class="bi bi-x-circle me-1"></i>Disposed
+                            </span>
+                        {% else %}
+                            <span class="status-badge" style="background: #f3f4f6; color: #374151;">
+                                <i class="bi bi-dash-circle me-1"></i>{{ asset.status|title }}
+                            </span>
+                        {% endif %}
+                        
+                        {% if asset.asset_type %}
+                            <span class="badge bg-secondary">{{ asset.asset_type.name }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <div class="btn-group" role="group">
+                        <a href="{% url 'assets:edit' asset.id %}" class="btn btn-outline-primary">
+                            <i class="bi bi-pencil me-1"></i>Edit
+                        </a>
+                        <a href="{% url 'assets:list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Back to List
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asset Details -->
+    <div class="row">
+        <!-- Basic Information -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="section-header mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Basic Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div class="detail-label">Asset Number</div>
+                            <div class="detail-value">{{ asset.number|default:"Not assigned" }}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Serial Number</div>
+                            <div class="detail-value">{{ asset.serial_number|default:"Not provided" }}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Location</div>
+                            <div class="detail-value">{{ asset.location|default:"Not specified" }}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Supplier</div>
+                            <div class="detail-value">{{ asset.supplier|default:"Not specified" }}</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="detail-label">Description</div>
+                            <div class="detail-value">{{ asset.description|default:"No description provided" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Information -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="section-header mb-0">
+                        <i class="bi bi-currency-dollar me-2"></i>Financial Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div class="detail-label">Purchase Price</div>
+                            <div class="detail-value">
+                                {% if asset.purchase_price %}
+                                    ${{ asset.purchase_price|floatformat:2 }}
+                                {% else %}
+                                    Not specified
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Residual Value</div>
+                            <div class="detail-value">
+                                {% if asset.residual_value %}
+                                    ${{ asset.residual_value|floatformat:2 }}
+                                {% else %}
+                                    $0.00
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Purchase Date</div>
+                            <div class="detail-value">{{ asset.purchase_date|date:"M d, Y"|default:"Not specified" }}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Warranty Expiry</div>
+                            <div class="detail-value">{{ asset.warranty_expiry|date:"M d, Y"|default:"Not specified" }}</div>
+                        </div>
+                        {% if asset.cost_limit %}
+                        <div class="col-sm-6">
+                            <div class="detail-label">Cost Limit</div>
+                            <div class="detail-value">${{ asset.cost_limit|floatformat:2 }}</div>
+                        </div>
+                        {% endif %}
+                        {% if asset.estimated_disposal_value %}
+                        <div class="col-sm-6">
+                            <div class="detail-label">Estimated Disposal Value</div>
+                            <div class="detail-value">${{ asset.estimated_disposal_value|floatformat:2 }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Depreciation Information -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="section-header mb-0">
+                        <i class="bi bi-graph-down me-2"></i>Depreciation Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div class="detail-label">Depreciation Method</div>
+                            <div class="detail-value">{{ asset.get_depreciation_method_display|default:"Not specified" }}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Averaging Method</div>
+                            <div class="detail-value">{{ asset.get_averaging_method_display|default:"Not specified" }}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Depreciation Start Date</div>
+                            <div class="detail-value">{{ asset.depreciation_start_date|date:"M d, Y"|default:"Not specified" }}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Depreciation Basis</div>
+                            <div class="detail-value">{{ asset.get_depreciation_basis_display|default:"Not specified" }}</div>
+                        </div>
+                        {% if asset.depreciation_rate %}
+                        <div class="col-sm-6">
+                            <div class="detail-label">Depreciation Rate</div>
+                            <div class="detail-value">{{ asset.depreciation_rate }}% per year</div>
+                        </div>
+                        {% endif %}
+                        {% if asset.effective_life %}
+                        <div class="col-sm-6">
+                            <div class="detail-label">Effective Life</div>
+                            <div class="detail-value">{{ asset.effective_life }} years</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Depreciation Status -->
+        {% if depreciation_status %}
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="section-header mb-0">
+                        <i class="bi bi-calculator me-2"></i>Depreciation Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div class="detail-label">Current Book Value</div>
+                            <div class="detail-value">
+                                {% if depreciation_status.current_book_value %}
+                                    ${{ depreciation_status.current_book_value|floatformat:2 }}
+                                {% else %}
+                                    Not calculated
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Total Depreciation</div>
+                            <div class="detail-value">
+                                {% if depreciation_status.total_depreciation %}
+                                    ${{ depreciation_status.total_depreciation|floatformat:2 }}
+                                {% else %}
+                                    $0.00
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Annual Depreciation</div>
+                            <div class="detail-value">
+                                {% if depreciation_status.annual_depreciation %}
+                                    ${{ depreciation_status.annual_depreciation|floatformat:2 }}
+                                {% else %}
+                                    Not calculated
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="detail-label">Remaining Life</div>
+                            <div class="detail-value">
+                                {% if depreciation_status.remaining_life %}
+                                    {{ depreciation_status.remaining_life|floatformat:1 }} years
+                                {% else %}
+                                    Not calculated
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Tax Depreciation (if separate) -->
+        {% if asset.separate_tax_depreciation %}
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="section-header mb-0">
+                        <i class="bi bi-receipt me-2"></i>Tax Depreciation
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="detail-label">Tax Depreciation Method</div>
+                            <div class="detail-value">{{ asset.get_tax_depreciation_method_display|default:"Not specified" }}</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                This asset uses separate tax depreciation calculations.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recent Transactions -->
+        {% if transactions %}
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="section-header mb-0">
+                        <i class="bi bi-clock-history me-2"></i>Recent Transactions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in transactions %}
+                                <tr>
+                                    <td>{{ transaction.created_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ transaction.transaction_type|title }}</span>
+                                    </td>
+                                    <td>{{ transaction.description|default:"No description" }}</td>
+                                    <td class="text-end">
+                                        {% if transaction.amount %}
+                                            ${{ transaction.amount|floatformat:2 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% else %}
+    <!-- Fallback message when asset data is not available -->
+    <div class="card">
+        <div class="card-body text-center">
+            <div class="py-5">
+                <i class="bi bi-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+                <h4 class="mt-3">Asset Details Unavailable</h4>
+                <p class="text-muted">{{ message|default:"The requested asset could not be found or loaded." }}</p>
+                <a href="{% url 'assets:list' %}" class="btn btn-primary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Assets List
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add any specific JavaScript for asset detail page
+    console.log('Asset detail page loaded');
+});
+</script>
+{% endblock %}

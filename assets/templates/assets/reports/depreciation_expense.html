@@ -1,0 +1,498 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Depreciation Expense Report - Fixed Assets{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-header {
+        background: linear-gradient(135deg, #fd7e14 0%, #e83e8c 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+    }
+    
+    .report-actions {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    
+    .summary-card {
+        background: white;
+        border: 1px solid #e3e6f0;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    }
+    
+    .table-responsive {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        overflow: hidden;
+    }
+    
+    .table thead th {
+        background-color: #5a5c69;
+        color: white;
+        border: none;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+        padding: 1rem 0.75rem;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fc;
+    }
+    
+    .currency {
+        font-family: 'Courier New', monospace;
+        text-align: right;
+    }
+    
+    .department-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-weight: 500;
+        background-color: #e9ecef;
+        color: #495057;
+    }
+    
+    .depreciation-section {
+        border-left: 4px solid #fd7e14;
+        padding-left: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .section-title {
+        color: #5a5c69;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .total-row {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-top: 2px solid #5a5c69;
+    }
+    
+    .period-filter {
+        background: white;
+        border: 2px solid #e3e6f0;
+        border-radius: 8px;
+        padding: 0.5rem;
+        color: #5a5c69;
+    }
+    
+    .btn-export {
+        background: linear-gradient(45deg, #fd7e14, #e83e8c);
+        border: none;
+        color: white;
+        font-weight: 500;
+    }
+    
+    .btn-export:hover {
+        background: linear-gradient(45deg, #e8690b, #d91a72);
+        color: white;
+    }
+    
+    .asset-link {
+        color: #fd7e14;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .asset-link:hover {
+        color: #e83e8c;
+        text-decoration: underline;
+    }
+    
+    .monthly-breakdown {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .month-card {
+        background: white;
+        border: 1px solid #e3e6f0;
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    
+    .depreciation-chart {
+        height: 300px;
+        background: white;
+        border: 1px solid #e3e6f0;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Report Header -->
+    <div class="report-header text-center">
+        <h1 class="mb-2">
+            <i class="fas fa-chart-line"></i>
+            Depreciation Expense Report
+        </h1>
+        <p class="mb-0">
+            Period: {{ period_start|date:"M Y" }} - {{ period_end|date:"M Y" }} | 
+            Generated on {{ report_date|date:"F j, Y" }} at {{ report_date|time:"g:i A" }}
+        </p>
+    </div>
+
+    <!-- Report Actions -->
+    <div class="report-actions">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <form method="get" class="d-flex align-items-center flex-wrap">
+                    <div class="me-3 mb-2">
+                        <label for="period_start" class="form-label mb-1 fw-bold">From:</label>
+                        <input type="month" name="period_start" id="period_start" 
+                               class="form-control period-filter" 
+                               value="{{ period_start|date:'Y-m' }}" style="width: auto;">
+                    </div>
+                    <div class="me-3 mb-2">
+                        <label for="period_end" class="form-label mb-1 fw-bold">To:</label>
+                        <input type="month" name="period_end" id="period_end" 
+                               class="form-control period-filter" 
+                               value="{{ period_end|date:'Y-m' }}" style="width: auto;">
+                    </div>
+                    <div class="me-3 mb-2">
+                        <label for="department" class="form-label mb-1 fw-bold">Department:</label>
+                        <select name="department" id="department" class="form-select period-filter" style="width: auto;">
+                            <option value="">All Departments</option>
+                            {% for dept in departments %}
+                                <option value="{{ dept }}" {% if dept == selected_department %}selected{% endif %}>{{ dept }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-filter"></i> Filter
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="btn-group">
+                    <a href="{% url 'assets:export_report' 'depreciation_expense' %}?period_start={{ period_start|date:'Y-m' }}&period_end={{ period_end|date:'Y-m' }}&department={{ selected_department }}" 
+                       class="btn btn-export">
+                        <i class="fas fa-file-excel"></i> Export Excel
+                    </a>
+                    <a href="{% url 'assets:export_report' 'depreciation_expense' %}?period_start={{ period_start|date:'Y-m' }}&period_end={{ period_end|date:'Y-m' }}&department={{ selected_department }}&format=pdf" 
+                       class="btn btn-export">
+                        <i class="fas fa-file-pdf"></i> Export PDF
+                    </a>
+                    <button onclick="window.print()" class="btn btn-outline-secondary">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="summary-card text-center">
+                <h5 class="text-primary">Total Assets</h5>
+                <h3 class="mb-0">{{ total_assets|floatformat:0 }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="summary-card text-center">
+                <h5 class="text-warning">Period Depreciation</h5>
+                <h3 class="mb-0 currency">${{ summary.total_depreciation|floatformat:2|intcomma }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="summary-card text-center">
+                <h5 class="text-success">Monthly Average</h5>
+                <h3 class="mb-0 currency">${{ summary.monthly_average|floatformat:2|intcomma }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="summary-card text-center">
+                <h5 class="text-info">Annual Projection</h5>
+                <h3 class="mb-0 currency">${{ summary.annual_projection|floatformat:2|intcomma }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Breakdown -->
+    {% if monthly_breakdown %}
+    <div class="depreciation-section">
+        <h3 class="section-title">
+            <i class="fas fa-calendar-alt"></i> 
+            Monthly Depreciation Breakdown
+        </h3>
+        
+        <div class="monthly-breakdown">
+            <div class="row">
+                {% for month_data in monthly_breakdown %}
+                <div class="col-md-3 col-sm-6">
+                    <div class="month-card">
+                        <h6 class="text-primary">{{ month_data.month|date:"M Y" }}</h6>
+                        <h4 class="currency mb-1">${{ month_data.depreciation|floatformat:2|intcomma }}</h4>
+                        <small class="text-muted">{{ month_data.asset_count }} assets</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Depreciation by Asset -->
+    <div class="depreciation-section">
+        <h3 class="section-title">
+            <i class="fas fa-list-alt"></i> 
+            Depreciation Expense by Asset
+        </h3>
+        
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">Asset Code</th>
+                        <th style="width: 25%;">Asset Description</th>
+                        <th style="width: 10%;">Department</th>
+                        <th style="width: 8%;">Method</th>
+                        <th style="width: 10%;">Cost Basis</th>
+                        <th style="width: 10%;">Useful Life</th>
+                        <th style="width: 10%;">Monthly Depreciation</th>
+                        <th style="width: 10%;">Period Depreciation</th>
+                        <th style="width: 5%;">GL Account</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense in depreciation_expenses %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'assets:detail' expense.asset.id %}" class="asset-link">
+                                <strong>{{ expense.asset.asset_code }}</strong>
+                            </a>
+                        </td>
+                        <td>
+                            <div>
+                                <strong>{{ expense.asset.name }}</strong>
+                                {% if expense.asset.location %}
+                                    <br><small class="text-muted">{{ expense.asset.location }}</small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if expense.asset.department %}
+                                <span class="department-badge">{{ expense.asset.department }}</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <small>{{ expense.asset.get_depreciation_method_display|truncatechars:10 }}</small>
+                        </td>
+                        <td class="currency">${{ expense.asset.cost|floatformat:2|intcomma }}</td>
+                        <td class="text-center">
+                            {% if expense.asset.useful_life_years %}
+                                {{ expense.asset.useful_life_years }}y
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="currency">${{ expense.monthly_depreciation|floatformat:2|intcomma }}</td>
+                        <td class="currency text-warning">
+                            <strong>${{ expense.period_depreciation|floatformat:2|intcomma }}</strong>
+                        </td>
+                        <td class="text-center">
+                            {% if expense.asset.gl_account_depreciation_expense %}
+                                <small>{{ expense.asset.gl_account_depreciation_expense.account_number }}</small>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">
+                            <i class="fas fa-info-circle"></i>
+                            No depreciation expenses found for the selected period
+                            {% if selected_department %} and department{% endif %}.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    
+                    {% if depreciation_expenses %}
+                    <tr class="total-row">
+                        <td colspan="6" class="text-end"><strong>TOTALS:</strong></td>
+                        <td class="currency"><strong>${{ summary.total_monthly|floatformat:2|intcomma }}</strong></td>
+                        <td class="currency text-warning"><strong>${{ summary.total_depreciation|floatformat:2|intcomma }}</strong></td>
+                        <td></td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Depreciation by Department -->
+    {% if department_summary %}
+    <div class="depreciation-section">
+        <h4 class="section-title">
+            <i class="fas fa-building"></i> 
+            Depreciation by Department
+        </h4>
+        
+        <div class="row">
+            {% for dept in department_summary %}
+            <div class="col-md-4 col-sm-6">
+                <div class="summary-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-primary mb-0">{{ dept.department|default:"Unassigned" }}</h6>
+                        <span class="department-badge">{{ dept.asset_count }} asset{{ dept.asset_count|pluralize }}</span>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted">Monthly:</small>
+                            <div class="currency"><strong>${{ dept.monthly_depreciation|floatformat:2|intcomma }}</strong></div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Period:</small>
+                            <div class="currency"><strong>${{ dept.period_depreciation|floatformat:2|intcomma }}</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- GL Account Summary -->
+    {% if gl_account_summary %}
+    <div class="depreciation-section">
+        <h4 class="section-title">
+            <i class="fas fa-book"></i> 
+            Depreciation by GL Account
+        </h4>
+        
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>GL Account</th>
+                        <th>Account Name</th>
+                        <th class="text-end">Asset Count</th>
+                        <th class="text-end">Monthly Depreciation</th>
+                        <th class="text-end">Period Depreciation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for account in gl_account_summary %}
+                    <tr>
+                        <td><strong>{{ account.account_number }}</strong></td>
+                        <td>{{ account.account_name }}</td>
+                        <td class="text-end">{{ account.asset_count }}</td>
+                        <td class="currency">${{ account.monthly_depreciation|floatformat:2|intcomma }}</td>
+                        <td class="currency"><strong>${{ account.period_depreciation|floatformat:2|intcomma }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Journal Entry Template -->
+    {% if journal_entry_template %}
+    <div class="depreciation-section">
+        <h4 class="section-title">
+            <i class="fas fa-journal-whills"></i> 
+            Suggested Journal Entry Template
+        </h4>
+        
+        <div class="summary-card">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>GL Account</th>
+                            <th class="text-end">Debit</th>
+                            <th class="text-end">Credit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in journal_entry_template %}
+                        <tr>
+                            <td>{{ entry.description }}</td>
+                            <td>{{ entry.account_number }} - {{ entry.account_name }}</td>
+                            <td class="currency">
+                                {% if entry.debit %}${{ entry.debit|floatformat:2|intcomma }}{% endif %}
+                            </td>
+                            <td class="currency">
+                                {% if entry.credit %}${{ entry.credit|floatformat:2|intcomma }}{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="total-row">
+                            <td colspan="2"><strong>TOTALS:</strong></td>
+                            <td class="currency"><strong>${{ summary.total_depreciation|floatformat:2|intcomma }}</strong></td>
+                            <td class="currency"><strong>${{ summary.total_depreciation|floatformat:2|intcomma }}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Footer Information -->
+    <div class="text-center text-muted mt-4 py-3 border-top">
+        <small>
+            <i class="fas fa-info-circle"></i>
+            This depreciation expense report is calculated based on the assets' depreciation methods and schedules.
+            Use this report for monthly journal entries and expense recognition.
+            <br>
+            Generated from Fixed Asset Management System on {{ report_date|date:"F j, Y" }} at {{ report_date|time:"g:i A" }}
+        </small>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit form when period changes
+    const periodInputs = document.querySelectorAll('#period_start, #period_end, #department');
+    periodInputs.forEach(function(input) {
+        input.addEventListener('change', function() {
+            setTimeout(function() {
+                input.closest('form').submit();
+            }, 300);
+        });
+    });
+    
+    // Add tooltips for GL accounts
+    const tooltips = document.querySelectorAll('[title]');
+    if (typeof bootstrap !== 'undefined') {
+        tooltips.forEach(function(element) {
+            new bootstrap.Tooltip(element);
+        });
+    }
+});
+</script>
+{% endblock %}

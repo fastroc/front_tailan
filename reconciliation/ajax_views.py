@@ -231,7 +231,6 @@ def get_unmatched_transactions(request, account_id):
         # Get unmatched transactions
         unmatched = ReconciliationService.get_unmatched_transactions(account)
         
-        # Convert to JSON serializable format
         transactions = []
         for transaction in unmatched:
             transactions.append({
@@ -239,7 +238,6 @@ def get_unmatched_transactions(request, account_id):
                 'date': transaction.date.strftime('%Y-%m-%d'),
                 'description': transaction.description,
                 'reference': transaction.reference or '',
-                'memo': transaction.memo or '',
                 'amount': float(transaction.amount)
             })
         
@@ -318,6 +316,204 @@ def restart_reconciliation(request):
                 'error': result['message']
             }, status=500)
             
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Unexpected error: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_matched_transactions(request, account_id):
+    """AJAX endpoint for getting matched transactions for an account"""
+    try:
+        # Get the account
+        company_id = request.session.get('active_company_id')
+        if not company_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'No active company selected'
+            }, status=400)
+            
+        company = get_object_or_404(Company, id=company_id)
+        account = get_object_or_404(Account, id=account_id, company=company)
+        
+        # Get matched transactions (ordered by transaction date - oldest first)
+        matched_transactions = TransactionMatch.objects.filter(
+            bank_transaction__coa_account=account,
+            is_reconciled=True
+        ).select_related(
+            'bank_transaction', 'gl_account', 'reconciliation_session'
+        ).order_by('bank_transaction__date')
+        
+        # Convert to JSON serializable format
+        transactions = []
+        for match in matched_transactions:
+            bank_tx = match.bank_transaction
+            transactions.append({
+                'match_id': match.id,
+                'id': bank_tx.id,
+                'date': bank_tx.date.strftime('%Y-%m-%d'),
+                'description': bank_tx.description,
+                'reference': bank_tx.reference or '',
+                'amount': float(bank_tx.amount),
+                'contact': match.contact,
+                'gl_account_id': match.gl_account.id if match.gl_account else None,
+                'gl_account_name': f"{match.gl_account.code} — {match.gl_account.name}" if match.gl_account else '',
+                'match_description': match.description,
+                'tax_rate': match.tax_rate,
+                'match_type': match.match_type,
+                'matched_at': match.matched_at.strftime('%Y-%m-%d %H:%M') if match.matched_at else '',
+                'is_split': match.is_split_transaction
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'transactions': transactions,
+            'count': len(transactions)
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Error getting matched transactions: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_transaction_match(request, match_id):
+    """AJAX endpoint for getting details of a specific transaction match"""
+    try:
+        # Get the transaction match
+        match = get_object_or_404(
+            TransactionMatch.objects.select_related(
+                'bank_transaction', 'gl_account', 'reconciliation_session'
+            ), 
+            id=match_id
+        )
+        
+        bank_tx = match.bank_transaction
+        
+        match_data = {
+            'match_id': match.id,
+            'transaction_id': bank_tx.id,
+            'date': bank_tx.date.strftime('%Y-%m-%d'),
+            'description': bank_tx.description,
+            'reference': bank_tx.reference or '',
+            'amount': float(bank_tx.amount),
+            'contact': match.contact,
+            'gl_account_id': match.gl_account.id if match.gl_account else None,
+            'gl_account_code': match.gl_account.code if match.gl_account else '',
+            'gl_account_name': match.gl_account.name if match.gl_account else '',
+            'match_description': match.description,
+            'tax_rate': match.tax_rate,
+            'match_type': match.match_type,
+            'matched_at': match.matched_at.strftime('%Y-%m-%d %H:%M') if match.matched_at else '',
+            'is_split': match.is_split_transaction,
+            'notes': match.notes
+        }
+        
+        # If it's a split transaction, get split details
+        if match.is_split_transaction:
+            splits = []
+            for split in match.splits.all().order_by('split_number'):
+                splits.append({
+                    'id': split.id,
+                    'split_number': split.split_number,
+                    'amount': float(split.amount),
+                    'contact': split.contact,
+                    'gl_account_id': split.gl_account.id,
+                    'gl_account_code': split.gl_account.code,
+                    'gl_account_name': split.gl_account.name,
+                    'description': split.description,
+                    'tax_rate': split.tax_rate,
+                    'tax_amount': float(split.tax_amount),
+                    'net_amount': float(split.net_amount)
+                })
+            match_data['splits'] = splits
+        
+        return JsonResponse({
+            'success': True,
+            'match': match_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Error getting transaction match: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def edit_transaction_match(request, match_id):
+    """AJAX endpoint for editing an existing transaction match"""
+    try:
+        data = json.loads(request.body)
+        
+        # Get the transaction match
+        match = get_object_or_404(TransactionMatch, id=match_id)
+        
+        # Extract data from request
+        contact = data.get('contact', '')
+        account_id = data.get('account_id')
+        tax_treatment = data.get('tax_treatment', 'no_gst')
+        notes = data.get('notes', '')
+        
+        # Validate required fields
+        if not account_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Missing required field: account_id'
+            }, status=400)
+        
+        # Validate the chart of accounts entry exists
+        try:
+            coa_account = get_object_or_404(Account, id=account_id)
+        except Account.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': f'Chart of Accounts entry not found with ID: {account_id}'
+            }, status=404)
+        
+        # Update the match
+        match.contact = contact
+        match.gl_account = coa_account
+        match.description = notes
+        match.tax_rate = tax_treatment
+        match.save()
+        
+        # Update associated journal entry if it exists
+        if match.journal_entry:
+            from .reconciliation_service import ReconciliationService
+            ReconciliationService.update_journal_entry(match)
+        
+        bank_tx = match.bank_transaction
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Transaction match updated successfully',
+            'match_id': match.id,
+            'transaction': {
+                'id': bank_tx.id,
+                'description': bank_tx.description,
+                'amount': float(bank_tx.amount),
+                'contact': match.contact,
+                'gl_account_name': f"{coa_account.code} — {coa_account.name}",
+                'match_description': match.description,
+                'tax_rate': match.tax_rate
+            }
+        })
+        
     except json.JSONDecodeError:
         return JsonResponse({
             'success': False,

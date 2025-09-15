@@ -26,12 +26,6 @@
     background: #f0fdf4;
     border-style: solid;
   }
-  .dropzone-content {
-    pointer-events: none;
-  }
-  .dropzone-content .btn {
-    pointer-events: all;
-  }
   .file-preview {
     display: none;
   }
@@ -43,12 +37,6 @@
   }
   .upload-history-item:hover {
     background-color: #f8fafc;
-  }
-  .file-name-display {
-    max-width: 300px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 </style>
 {% endblock %}
@@ -73,21 +61,6 @@
         Upload your bank statement as CSV file. Expected format: <strong>Date, Amount, Payee, Description, Reference</strong>
       </p>
       
-      <!-- Current File Display -->
-      <div id="currentFileDisplay" class="alert alert-info d-none mb-3">
-        <div class="d-flex align-items-center">
-          <i class="fas fa-file-csv fa-2x text-info me-3"></i>
-          <div class="flex-grow-1">
-            <div class="fw-bold">Selected File:</div>
-            <div id="selectedFileName" class="text-primary"></div>
-            <small class="text-muted" id="selectedFileSize"></small>
-          </div>
-          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearSelectedFile()">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-      </div>
-      
       <!-- Format Example -->
       <div class="alert alert-info mb-3">
         <strong>📋 Expected CSV Format:</strong><br>
@@ -99,25 +72,38 @@
         • Reference: Transaction reference number</small>
       </div>
 
-      <form method="post" enctype="multipart/form-data">
+      <form method="post" enctype="multipart/form-data" id="uploadForm">
         {% csrf_token %}
-        <div class="dropzone mb-2" id="dropzone">
-          <div class="dropzone-content">
+        
+        <!-- Single Dropzone Area -->
+        <div class="dropzone mb-3" id="dropzone">
+          <div id="dropzoneContent">
             <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
-            <div>Drag and drop your CSV file here</div>
-            <div class="mt-2">
-              <button class="btn btn-outline-primary btn-sm" type="button" id="selectFileBtn">
-                <i class="fas fa-folder-open me-1"></i>Select File
-              </button>
-            </div>
+            <div class="mb-2">Drag and drop your CSV file here</div>
+            <div class="text-muted small mb-3">or</div>
+            <button class="btn btn-outline-primary" type="button" id="selectFileBtn">
+              <i class="fas fa-folder-open me-1"></i>Select File
+            </button>
           </div>
-          <input type="file" id="file" name="statement_file" class="d-none" accept=".csv"/>
         </div>
-        <div class="small text-muted mb-3">File should be CSV format</div>
+        
+        <input type="file" id="fileInput" name="statement_file" class="d-none" accept=".csv"/>
+        
+        <div class="small text-muted mb-3">File should be CSV format, maximum 10MB</div>
 
-        <div class="d-flex justify-content-end">
-          <a href="{% url 'bank_accounts:dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
-          <button type="submit" class="btn btn-primary ms-2" id="uploadBtn">Upload & Process</button>
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-between align-items-center">
+          <a href="{% url 'bank_accounts:dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Accounts
+          </a>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-warning d-none" id="clearBtn">
+              <i class="fas fa-times me-1"></i>Clear File
+            </button>
+            <button type="submit" class="btn btn-primary" id="uploadBtn" disabled>
+              <i class="fas fa-upload me-1"></i>Upload & Process
+            </button>
+          </div>
         </div>
       </form>
     </div>
@@ -251,26 +237,37 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const dropzone = document.getElementById('dropzone');
-  const fileInput = document.getElementById('file');
+  const fileInput = document.getElementById('fileInput');
   const selectBtn = document.getElementById('selectFileBtn');
   const uploadBtn = document.getElementById('uploadBtn');
-  const form = document.querySelector('form');
+  const clearBtn = document.getElementById('clearBtn');
+  const form = document.getElementById('uploadForm');
+  const dropzoneContent = document.getElementById('dropzoneContent');
   
-  // File select button click
+  // Single file select handler
   selectBtn.addEventListener('click', function(e) {
     e.preventDefault();
-    e.stopPropagation();
     fileInput.click();
   });
   
-  // Dropzone click (but not button)
+  // Dropzone click handler
   dropzone.addEventListener('click', function(e) {
-    if (e.target !== selectBtn && !selectBtn.contains(e.target)) {
+    if (e.target === dropzone || e.target === dropzoneContent) {
       fileInput.click();
     }
   });
   
-  // Form submission validation
+  // File input change handler
+  fileInput.addEventListener('change', function() {
+    handleFileSelection();
+  });
+  
+  // Clear file handler
+  clearBtn.addEventListener('click', function() {
+    clearFile();
+  });
+  
+  // Form submission handler
   form.addEventListener('submit', function(e) {
     if (!fileInput.files || fileInput.files.length === 0) {
       e.preventDefault();
@@ -285,172 +282,192 @@ document.addEventListener('DOMContentLoaded', function() {
       return false;
     }
     
-    // Show loading state
+    // Show uploading state with progress
     uploadBtn.disabled = true;
+    clearBtn.style.display = 'none';
+    
+    // Update dropzone to show upload progress
+    dropzoneContent.innerHTML = `
+      <div class="text-primary">
+        <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-primary"></i>
+        <div class="fw-bold fs-6 mb-2">Uploading ${file.name}</div>
+        <div class="alert alert-primary py-2 mb-3">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            <span class="fw-bold">Processing file...</span>
+          </div>
+          <div class="progress" style="height: 10px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+              <span class="visually-hidden">Uploading...</span>
+            </div>
+          </div>
+          <small class="text-muted mt-1 d-block">
+            <i class="fas fa-info-circle me-1"></i>Uploading and processing transactions...
+          </small>
+        </div>
+      </div>
+    `;
+    
     uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
   });
   
-  // Drag and drop functionality
+  // Drag and drop handlers
   dropzone.addEventListener('dragover', function(e) { 
     e.preventDefault(); 
-    dropzone.style.background = '#f8fafc';
-    dropzone.style.borderColor = '#3b82f6';
+    dropzone.classList.add('border-primary');
   });
   
   dropzone.addEventListener('dragleave', function(e) { 
     e.preventDefault();
-    dropzone.style.background = ''; 
-    dropzone.style.borderColor = '#cbd5e1';
+    dropzone.classList.remove('border-primary');
   });
   
   dropzone.addEventListener('drop', function(e) { 
     e.preventDefault(); 
-    dropzone.style.background = ''; 
-    dropzone.style.borderColor = '#cbd5e1';
+    dropzone.classList.remove('border-primary');
     
     if (e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
       if (file.name.toLowerCase().endsWith('.csv')) {
         fileInput.files = e.dataTransfer.files; 
-        updateDropzoneContent(file);
+        handleFileSelection();
       } else {
         alert('Please drop a CSV file.');
       }
     }
   });
   
-  // File input change
-  fileInput.addEventListener('change', function(e) {
-    if (fileInput.files.length > 0) {
-      const file = fileInput.files[0];
-      if (file.name.toLowerCase().endsWith('.csv')) {
-        updateDropzoneContent(file);
-      } else {
-        alert('Please select a CSV file.');
-        fileInput.value = ''; // Clear the invalid file
-      }
+  // Handle file selection and update UI
+  function handleFileSelection() {
+    if (fileInput.files.length === 0) return;
+    
+    const file = fileInput.files[0];
+    
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      alert('Please select a CSV file.');
+      fileInput.value = '';
+      return;
     }
-  });
-  
-  // Update dropzone content when file is selected
-  function updateDropzoneContent(file) {
+    
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB.');
+      fileInput.value = '';
+      return;
+    }
+    
     const fileSize = (file.size / 1024).toFixed(1) + ' KB';
-    const fileType = file.name.toLowerCase().endsWith('.csv') ? 'CSV' : 'Unknown';
+    if (file.size > 1024 * 1024) {
+      fileSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+    }
     
-    // Show current file display at top
-    const currentFileDisplay = document.getElementById('currentFileDisplay');
-    const selectedFileName = document.getElementById('selectedFileName');
-    const selectedFileSize = document.getElementById('selectedFileSize');
-    
-    selectedFileName.textContent = file.name;
-    selectedFileSize.textContent = `${fileSize} • ${fileType} File`;
-    currentFileDisplay.classList.remove('d-none');
-    
-    // Update dropzone
+    // Show file preparation progress first
     dropzone.classList.add('file-selected');
-    dropzone.innerHTML = `
-      <div class="text-success">
-        <div class="d-flex justify-content-center mb-3">
-          <div class="bg-success bg-opacity-10 rounded-circle p-3">
-            <i class="fas fa-file-csv fa-3x text-success"></i>
+    dropzoneContent.innerHTML = `
+      <div class="text-info">
+        <i class="fas fa-file-csv fa-3x mb-3 text-info"></i>
+        <div class="fw-bold fs-6 mb-2">${file.name}</div>
+        <div class="alert alert-info py-2 mb-3">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            <span class="fw-bold">Preparing file...</span>
           </div>
-        </div>
-        <div class="fw-bold fs-5 mb-2 file-name-display">${file.name}</div>
-        <div class="row justify-content-center mb-3">
-          <div class="col-auto">
-            <small class="badge bg-light text-dark">
-              <i class="fas fa-weight me-1"></i>${fileSize}
-            </small>
+          <div class="progress" style="height: 8px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="prepProgress">
+            </div>
           </div>
-          <div class="col-auto">
-            <small class="badge bg-light text-dark">
-              <i class="fas fa-file-alt me-1"></i>${fileType}
-            </small>
-          </div>
-        </div>
-        <div class="alert alert-success py-2 mb-3" role="alert">
-          <i class="fas fa-check-circle me-2"></i>
-          <strong>File ready for upload!</strong> Click "Upload & Process" to continue.
-        </div>
-        <div class="d-flex gap-2 justify-content-center">
-          <button class="btn btn-outline-secondary btn-sm" type="button" onclick="clearSelectedFile()">
-            <i class="fas fa-times me-1"></i>Remove File
-          </button>
-          <button class="btn btn-success btn-sm" type="button" onclick="document.getElementById('uploadBtn').click()">
-            <i class="fas fa-upload me-1"></i>Upload Now
-          </button>
+          <small class="text-muted mt-1 d-block">Validating file format and size...</small>
         </div>
       </div>
-      <input type="file" id="file" name="statement_file" class="d-none" accept=".csv"/>
     `;
     
-    // Re-attach the file to the new input
-    const newFileInput = document.getElementById('file');
-    const dt = new DataTransfer();
-    dt.items.add(file);
-    newFileInput.files = dt.files;
-    
-    // Update upload button text
-    const uploadBtnEl = document.getElementById('uploadBtn');
-    uploadBtnEl.innerHTML = '<i class="fas fa-upload me-2"></i>Upload "' + (file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name) + '"';
-    uploadBtnEl.classList.remove('btn-primary');
-    uploadBtnEl.classList.add('btn-success');
+    // Animate progress to 100% over 1 second
+    const progressBar = document.getElementById('prepProgress');
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 10;
+      progressBar.style.width = progress + '%';
+      progressBar.setAttribute('aria-valuenow', progress);
+      
+      if (progress >= 100) {
+        clearInterval(interval);
+        // Show final ready state after animation completes
+        setTimeout(() => showFileReady(file, fileSize), 200);
+      }
+    }, 80); // 10 steps over 800ms
   }
   
-  // Global function to reset file input
-  window.resetFileInput = function() {
-    location.reload(); // Simple way to reset the form
-  };
-  
-  // Global function to clear selected file
-  window.clearSelectedFile = function() {
-    const currentFileDisplay = document.getElementById('currentFileDisplay');
-    const uploadBtn = document.getElementById('uploadBtn');
-    
-    // Hide current file display
-    currentFileDisplay.classList.add('d-none');
-    
-    // Reset upload button
-    uploadBtn.innerHTML = '<i class="fas fa-upload me-2"></i>Upload & Process';
-    uploadBtn.classList.remove('btn-success');
-    uploadBtn.classList.add('btn-primary');
-    
-    // Reset file input
-    fileInput.value = '';
-    
-    // Reset dropzone
-    dropzone.classList.remove('file-selected');
-    dropzone.innerHTML = `
-      <div class="dropzone-content">
-        <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
-        <div>Drag and drop your CSV file here</div>
-        <div class="mt-2">
-          <button class="btn btn-outline-primary btn-sm" type="button" id="selectFileBtn">
-            <i class="fas fa-folder-open me-1"></i>Select File
-          </button>
+  // Show file ready state
+  function showFileReady(file, fileSize) {
+    dropzoneContent.innerHTML = `
+      <div class="text-success">
+        <i class="fas fa-file-csv fa-3x mb-3 text-success"></i>
+        <div class="fw-bold fs-6 mb-2">${file.name}</div>
+        <div class="small text-muted mb-3">
+          <span class="badge bg-light text-dark me-2">
+            <i class="fas fa-weight me-1"></i>${fileSize}
+          </span>
+          <span class="badge bg-light text-dark">
+            <i class="fas fa-file-alt me-1"></i>CSV File
+          </span>
+        </div>
+        <div class="alert alert-success py-2 mb-3">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fas fa-check-circle me-2"></i>
+            <span class="fw-bold">File ready for upload</span>
+          </div>
+          <div class="progress" style="height: 8px;">
+            <div class="progress-bar bg-success" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+              <span class="visually-hidden">100% Complete</span>
+            </div>
+          </div>
+          <small class="text-muted mt-1 d-block">
+            <i class="fas fa-info-circle me-1"></i>File validated and ready to process
+          </small>
         </div>
       </div>
-      <input type="file" id="file" name="statement_file" class="d-none" accept=".csv"/>
     `;
     
-    // Re-attach event listeners
+    // Enable upload button and show clear button
+    uploadBtn.disabled = false;
+    uploadBtn.innerHTML = `<i class="fas fa-upload me-1"></i>Upload "${file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name}"`;
+    clearBtn.classList.remove('d-none');
+  }
+  
+  // Clear file selection
+  function clearFile() {
+    fileInput.value = '';
+    dropzone.classList.remove('file-selected');
+    dropzoneContent.innerHTML = `
+      <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
+      <div class="mb-2">Drag and drop your CSV file here</div>
+      <div class="text-muted small mb-3">or</div>
+      <button class="btn btn-outline-primary" type="button" id="selectFileBtn">
+        <i class="fas fa-folder-open me-1"></i>Select File
+      </button>
+    `;
+    
+    // Re-attach select button event
     document.getElementById('selectFileBtn').addEventListener('click', function(e) {
       e.preventDefault();
-      e.stopPropagation();
-      document.getElementById('file').click();
+      fileInput.click();
     });
-  };
+    
+    // Reset buttons
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Upload & Process';
+    clearBtn.classList.add('d-none');
+  }
   
-  // Global function to confirm and delete upload
+  // Global function for delete confirmation
   window.confirmDelete = function(uploadId, filename, transactionCount) {
     const message = `Are you sure you want to delete "${filename}"?\n\nThis will remove ${transactionCount} transactions from this account.`;
     if (confirm(message)) {
-      // Create a form to submit the delete request
       const form = document.createElement('form');
       form.method = 'post';
       form.action = '{% url "bank_accounts:delete_upload" account.id 0 %}'.replace('0', uploadId);
       
-      // Add CSRF token
       const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
       const csrfInput = document.createElement('input');
       csrfInput.type = 'hidden';

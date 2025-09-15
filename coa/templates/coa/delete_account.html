@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Account{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Delete Account</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <h5 class="alert-heading">⚠️ Confirm Account Deletion</h5>
+                <p>You are about to delete the following account:</p>
+                <hr>
+                <strong>Code:</strong> {{ object.code }}<br>
+                <strong>Name:</strong> {{ object.name }}<br>
+                <strong>Type:</strong> {{ object.get_account_type_display }}<br>
+                <strong>Balance:</strong> ${{ object.ytd_balance|floatformat:2 }}
+            </div>
+            
+            {% if not can_delete %}
+                <div class="alert alert-danger">
+                    <h6>❌ Cannot Delete Account</h6>
+                    <p>{{ delete_reason }}</p>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <a href="{% url 'coa:chart_of_accounts' %}" class="btn btn-secondary">Back to Chart of Accounts</a>
+                    <a href="{% url 'coa:edit_account' object.id %}" class="btn btn-primary">Edit Account Instead</a>
+                </div>
+            {% else %}
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="alert alert-info">
+                        <h6>ℹ️ What happens when you delete this account?</h6>
+                        <ul class="mb-0">
+                            <li>The account will be <strong>deactivated</strong> (not permanently deleted)</li>
+                            <li>It will no longer appear in account lists</li>
+                            <li>Historical data will be preserved</li>
+                            <li>You can reactivate it later if needed</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Deactivate Account
+                        </button>
+                        <a href="{% url 'coa:chart_of_accounts' %}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.card {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.alert {
+    border-radius: 8px;
+}
+
+.btn {
+    border-radius: 6px;
+}
+</style>
+{% endblock %}

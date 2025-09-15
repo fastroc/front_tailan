@@ -1,0 +1,681 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Financial Dashboard - {{ company.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Xero-Style Dashboard CSS */
+.xero-dashboard {
+    background: #f8fafc;
+    min-height: 100vh;
+}
+
+.dashboard-header {
+    background: linear-gradient(135deg, #13b5ea 0%, #1e40af 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+
+.period-selector {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    color: white;
+    padding: 0.5rem 1rem;
+}
+
+.period-selector:focus {
+    background: rgba(255,255,255,0.2);
+    border-color: rgba(255,255,255,0.3);
+    color: white;
+    box-shadow: none;
+}
+
+.metric-card {
+    background: white;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+}
+
+.metric-label {
+    font-size: 0.9rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.metric-change {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.metric-change.positive {
+    color: #059669;
+}
+
+.metric-change.negative {
+    color: #dc2626;
+}
+
+.report-card {
+    background: white;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.report-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.report-header {
+    display: flex;
+    align-items: center;
+    justify-content: between;
+    margin-bottom: 1.5rem;
+}
+
+.report-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-right: 1rem;
+}
+
+.report-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+.report-subtitle {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.status-badge {
+    background: #dcfce7;
+    color: #166534;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.balance-sheet-preview {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9rem;
+}
+
+.financial-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.financial-row.total {
+    font-weight: 700;
+    border-top: 2px solid #1e293b;
+    border-bottom: 2px solid #1e293b;
+    background: #f8fafc;
+}
+
+.financial-amount {
+    text-align: right;
+    min-width: 120px;
+}
+
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.quick-action {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-decoration: none;
+    color: #1e293b;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+}
+
+.quick-action:hover {
+    border-color: #13b5ea;
+    color: #1e293b;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.quick-action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-right: 1rem;
+}
+
+.profit-loss-chart {
+    height: 200px;
+    background: linear-gradient(90deg, #059669 0%, #0891b2 100%);
+    border-radius: 8px;
+    position: relative;
+    display: flex;
+    align-items: end;
+    padding: 1rem;
+    color: white;
+}
+
+.outstanding-items {
+    background: #fff7ed;
+    border: 1px solid #fb923c;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.section-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.section-title i {
+    margin-right: 0.5rem;
+    color: #13b5ea;
+}
+
+@media (max-width: 768px) {
+    .metric-value {
+        font-size: 2rem;
+    }
+    
+    .dashboard-header {
+        padding: 1rem 0;
+    }
+    
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="xero-dashboard">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="h2 mb-1">{{ company.name }}</h1>
+                    <p class="mb-0 opacity-90">Financial Dashboard - {{ report_date|date:"F j, Y" }}</p>
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <select class="form-select period-selector" id="periodSelector">
+                        <option>This Month</option>
+                        <option>This Quarter</option>
+                        <option>This Year</option>
+                        <option>Last Month</option>
+                        <option>Last Quarter</option>
+                        <option>Last Year</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <!-- Key Metrics Row -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="card metric-card">
+                    <div class="card-body text-center">
+                        <div class="metric-value text-success">
+                            ${{ key_metrics.total_cash|floatformat:0|intcomma }}
+                        </div>
+                        <div class="metric-label">Total Cash</div>
+                        <div class="metric-change positive">
+                            <i class="bi bi-arrow-up"></i> Available Funds
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card metric-card">
+                    <div class="card-body text-center">
+                        <div class="metric-value text-primary">
+                            ${{ key_metrics.net_profit|floatformat:0|intcomma }}
+                        </div>
+                        <div class="metric-label">Net Profit (YTD)</div>
+                        <div class="metric-change {% if key_metrics.net_profit >= 0 %}positive{% else %}negative{% endif %}">
+                            <i class="bi bi-{% if key_metrics.net_profit >= 0 %}arrow-up{% else %}arrow-down{% endif %}"></i> 
+                            {{ key_metrics.profit_margin|floatformat:1 }}% Margin
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card metric-card">
+                    <div class="card-body text-center">
+                        <div class="metric-value text-info">
+                            ${{ key_metrics.total_assets|floatformat:0|intcomma }}
+                        </div>
+                        <div class="metric-label">Total Assets</div>
+                        <div class="metric-change positive">
+                            <i class="bi bi-building"></i> Asset Base
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6">
+                <div class="card metric-card">
+                    <div class="card-body text-center">
+                        <div class="metric-value text-warning">
+                            ${{ key_metrics.net_worth|floatformat:0|intcomma }}
+                        </div>
+                        <div class="metric-label">Net Worth</div>
+                        <div class="metric-change {% if key_metrics.net_worth >= 0 %}positive{% else %}negative{% endif %}">
+                            <i class="bi bi-{% if key_metrics.net_worth >= 0 %}arrow-up{% else %}arrow-down{% endif %}"></i> 
+                            Equity Position
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Reports Section -->
+        <div class="row g-4 mb-4">
+            <!-- Balance Sheet Preview -->
+            <div class="col-lg-6">
+                <div class="card report-card">
+                    <div class="card-body">
+                        <div class="report-header">
+                            <div class="d-flex align-items-center">
+                                <div class="report-icon" style="background: #dbeafe; color: #1e40af;">
+                                    <i class="bi bi-building"></i>
+                                </div>
+                                <div>
+                                    <h3 class="report-title">Balance Sheet</h3>
+                                    <p class="report-subtitle">As at {{ report_date|date:"F j, Y" }}</p>
+                                </div>
+                            </div>
+                            <span class="status-badge">LIVE</span>
+                        </div>
+                        
+                        <div class="balance-sheet-preview">
+                            <div class="financial-row">
+                                <span>Current Assets</span>
+                                <span class="financial-amount">${{ balance_sheet.total_assets|floatformat:0|intcomma }}</span>
+                            </div>
+                            <div class="financial-row">
+                                <span>Fixed Assets</span>
+                                <span class="financial-amount">${{ fixed_assets.net_book_value|floatformat:0|intcomma }}</span>
+                            </div>
+                            <div class="financial-row total">
+                                <span>Total Assets</span>
+                                <span class="financial-amount">${{ balance_sheet.total_assets|floatformat:0|intcomma }}</span>
+                            </div>
+                            <div style="height: 1rem;"></div>
+                            <div class="financial-row">
+                                <span>Current Liabilities</span>
+                                <span class="financial-amount">${{ balance_sheet.total_liabilities|floatformat:0|intcomma }}</span>
+                            </div>
+                            <div class="financial-row">
+                                <span>Equity</span>
+                                <span class="financial-amount">${{ balance_sheet.total_equity|floatformat:0|intcomma }}</span>
+                            </div>
+                            <div class="financial-row total">
+                                <span>Total Liabilities & Equity</span>
+                                <span class="financial-amount">${{ balance_sheet.total_liabilities|add:balance_sheet.total_equity|floatformat:0|intcomma }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid mt-3">
+                            <a href="{% url 'reports:balance_sheet' %}" class="btn btn-outline-primary">
+                                <i class="bi bi-eye me-2"></i>View Full Report
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profit & Loss Preview -->
+            <div class="col-lg-6">
+                <div class="card report-card">
+                    <div class="card-body">
+                        <div class="report-header">
+                            <div class="d-flex align-items-center">
+                                <div class="report-icon" style="background: #dcfce7; color: #166534;">
+                                    <i class="bi bi-graph-up"></i>
+                                </div>
+                                <div>
+                                    <h3 class="report-title">Profit & Loss</h3>
+                                    <p class="report-subtitle">{{ period.current_month }}</p>
+                                </div>
+                            </div>
+                            <span class="status-badge">LIVE</span>
+                        </div>
+                        
+                        <div class="profit-loss-chart">
+                            <div>
+                                <div style="font-size: 1.8rem; font-weight: bold;">
+                                    ${{ profit_loss.net_profit|floatformat:0|intcomma }}
+                                </div>
+                                <div style="opacity: 0.9;">Net Profit This Year</div>
+                                <div style="font-size: 0.9rem; margin-top: 0.5rem;">
+                                    Revenue: ${{ profit_loss.total_revenue|floatformat:0|intcomma }} | 
+                                    Expenses: ${{ profit_loss.total_expenses|floatformat:0|intcomma }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid mt-3">
+                            <a href="{% url 'reports:profit_loss' %}" class="btn btn-outline-success">
+                                <i class="bi bi-eye me-2"></i>View Full Report
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Secondary Reports Row -->
+        <div class="row g-4 mb-4">
+            <!-- Fixed Assets Summary -->
+            <div class="col-lg-4">
+                <div class="card report-card">
+                    <div class="card-body">
+                        <div class="report-header">
+                            <div class="d-flex align-items-center">
+                                <div class="report-icon" style="background: #fef3c7; color: #92400e;">
+                                    <i class="bi bi-building-gear"></i>
+                                </div>
+                                <div>
+                                    <h4 class="report-title">Fixed Assets</h4>
+                                    <p class="report-subtitle">{{ fixed_assets.total_assets }} assets</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="fw-bold text-primary">${{ fixed_assets.total_cost|floatformat:0|intcomma }}</div>
+                                <div class="small text-muted">Cost</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="fw-bold text-success">${{ fixed_assets.net_book_value|floatformat:0|intcomma }}</div>
+                                <div class="small text-muted">Net Value</div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid mt-3">
+                            <a href="{% url 'assets:list' %}" class="btn btn-outline-warning btn-sm">
+                                <i class="bi bi-list me-2"></i>View Assets
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cash Flow Summary -->
+            <div class="col-lg-4">
+                <div class="card report-card">
+                    <div class="card-body">
+                        <div class="report-header">
+                            <div class="d-flex align-items-center">
+                                <div class="report-icon" style="background: #e0e7ff; color: #4338ca;">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </div>
+                                <div>
+                                    <h4 class="report-title">Cash Flow</h4>
+                                    <p class="report-subtitle">This Month</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="fw-bold text-info">${{ cash_flow.opening_balance|floatformat:0|intcomma }}</div>
+                                <div class="small text-muted">Opening</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="fw-bold {% if cash_flow.net_change >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ${{ cash_flow.net_change|floatformat:0|intcomma }}
+                                </div>
+                                <div class="small text-muted">Net Change</div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid mt-3">
+                            <button class="btn btn-outline-info btn-sm">
+                                <i class="bi bi-graph-up me-2"></i>View Cash Flow
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journal Entries Summary -->
+            <div class="col-lg-4">
+                <div class="card report-card">
+                    <div class="card-body">
+                        <div class="report-header">
+                            <div class="d-flex align-items-center">
+                                <div class="report-icon" style="background: #fee2e2; color: #991b1b;">
+                                    <i class="bi bi-journal-text"></i>
+                                </div>
+                                <div>
+                                    <h4 class="report-title">Journal Entries</h4>
+                                    <p class="report-subtitle">This Month</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="fw-bold text-success">{{ journal_summary.posted_journals }}</div>
+                                <div class="small text-muted">Posted</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="fw-bold text-warning">{{ journal_summary.draft_journals }}</div>
+                                <div class="small text-muted">Draft</div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid mt-3">
+                            <a href="{% url 'journal:manual_journal' %}" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-list me-2"></i>View Journals
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Outstanding Items & Quick Actions -->
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <h2 class="section-title">
+                    <i class="bi bi-lightning-charge"></i>
+                    Quick Actions
+                </h2>
+                <div class="quick-actions">
+                    <a href="{% url 'journal:new_journal' %}" class="quick-action">
+                        <div class="quick-action-icon" style="background: #dbeafe; color: #1e40af;">
+                            <i class="bi bi-plus-circle"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">New Journal Entry</div>
+                            <div class="small text-muted">Record transactions</div>
+                        </div>
+                    </a>
+                    
+                    <a href="{% url 'assets:new' %}" class="quick-action">
+                        <div class="quick-action-icon" style="background: #dcfce7; color: #166534;">
+                            <i class="bi bi-building-add"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">Add Fixed Asset</div>
+                            <div class="small text-muted">Register new asset</div>
+                        </div>
+                    </a>
+                    
+                    <a href="{% url 'coa:chart_of_accounts' %}" class="quick-action">
+                        <div class="quick-action-icon" style="background: #fef3c7; color: #92400e;">
+                            <i class="bi bi-list-task"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">Chart of Accounts</div>
+                            <div class="small text-muted">Manage accounts</div>
+                        </div>
+                    </a>
+                    
+                    <a href="{% url 'reports:trial_balance' %}" class="quick-action">
+                        <div class="quick-action-icon" style="background: #e0e7ff; color: #4338ca;">
+                            <i class="bi bi-calculator"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">Trial Balance</div>
+                            <div class="small text-muted">Account balances</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <h2 class="section-title">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Attention Required
+                </h2>
+                
+                <div class="outstanding-items">
+                    <h5 class="mb-3">Outstanding Items</h5>
+                    
+                    {% if outstanding_items.unbalanced_journals > 0 %}
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Unbalanced Journals</span>
+                        <span class="badge bg-warning">{{ outstanding_items.unbalanced_journals }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if outstanding_items.pending_reconciliation > 0 %}
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Pending Reconciliation</span>
+                        <span class="badge bg-info">{{ outstanding_items.pending_reconciliation }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if outstanding_items.inactive_accounts > 0 %}
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Inactive Accounts</span>
+                        <span class="badge bg-secondary">{{ outstanding_items.inactive_accounts }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if outstanding_items.unbalanced_journals == 0 and outstanding_items.pending_reconciliation == 0 %}
+                    <div class="text-center text-success">
+                        <i class="bi bi-check-circle fs-4"></i>
+                        <div class="mt-2">All up to date!</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Dashboard interactivity
+document.addEventListener('DOMContentLoaded', function() {
+    // Period selector functionality
+    const periodSelector = document.getElementById('periodSelector');
+    if (periodSelector) {
+        periodSelector.addEventListener('change', function() {
+            // In a real implementation, this would update the dashboard data
+            console.log('Period changed to:', this.value);
+        });
+    }
+    
+    // Add hover effects to metric cards
+    const metricCards = document.querySelectorAll('.metric-card');
+    metricCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-4px)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+    
+    // Animate metrics on page load
+    setTimeout(() => {
+        const metricValues = document.querySelectorAll('.metric-value');
+        metricValues.forEach(value => {
+            value.style.opacity = '0';
+            value.style.transform = 'translateY(20px)';
+            value.style.transition = 'all 0.6s ease';
+            
+            setTimeout(() => {
+                value.style.opacity = '1';
+                value.style.transform = 'translateY(0)';
+            }, Math.random() * 200);
+        });
+    }, 100);
+});
+</script>
+{% endblock %}

@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
+from django.db.models import Q
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from coa.models import Account
@@ -40,10 +41,20 @@ def dashboard(request):
             'no_company': True
         })
     
+    # Show accounts that are configured as bank accounts:
+    # 1. Current asset accounts with bank-related keywords in name
+    # 2. This includes accounts created through both COA and bank_accounts interfaces
     accounts = Account.objects.filter(
         company=company,
-        account_type='Bank'
-    ).order_by('code')  # Use 'code' instead of 'gl_code'
+        account_type='CURRENT_ASSET'
+    ).filter(
+        Q(name__icontains='bank') |      # Contains 'bank' in name
+        Q(name__icontains='transactions') |  # Contains 'transactions' in name  
+        Q(name__icontains='checking') |   # Contains 'checking' in name
+        Q(name__icontains='savings') |    # Contains 'savings' in name
+        Q(name__icontains='cash') |       # Contains 'cash' in name
+        Q(description__icontains='bank')  # Contains 'bank' in description
+    ).distinct().order_by('code')
     
     # Add upload information for each account
     accounts_with_uploads = []
@@ -102,19 +113,99 @@ def add_account(request):
     
     if request.method == 'POST':
         try:
+            name = request.POST.get('name', '').strip()
+            code = request.POST.get('code', '').strip()
+            
+            # Validate name
+            if not name:
+                messages.error(request, "Account name is required.")
+                return render(request, 'bank_accounts/add_account.html', {'company': company})
+            
+            # Validate and suggest code if provided
+            if code:
+                # Check if code already exists
+                existing_account = Account.objects.filter(
+                    company=company,
+                    code=code
+                ).first()
+                
+                if existing_account:
+                    # Generate suggestion
+                    suggested_code = _generate_bank_code_suggestion(code, company)
+                    messages.warning(
+                        request, 
+                        f'⚠️ Account code "{code}" is already used by "{existing_account.name}". '
+                        f'Try "{suggested_code}" instead.'
+                    )
+                    return render(request, 'bank_accounts/add_account.html', {
+                        'company': company,
+                        'form_data': {
+                            'name': name,
+                            'code': code,
+                            'suggested_code': suggested_code
+                        }
+                    })
+            
+            # Create the account
             account = Account.objects.create(
                 company=company,
-                name=request.POST['name'],
-                account_type='Bank',
-                code=request.POST.get('code', ''),  # Use 'code' instead of 'gl_code'
-                created_by=request.user
+                name=name,
+                account_type='CURRENT_ASSET',  # Use proper account type instead of 'Bank'
+                code=code if code else _generate_auto_bank_code(company),
+                created_by=request.user,
+                updated_by=request.user,
+                ytd_balance=0.00,
+                current_balance=0.00
             )
+            
             messages.success(request, f"Bank account '{account.name}' created successfully!")
             return redirect('bank_accounts:dashboard')
+            
         except Exception as e:
             messages.error(request, f"Error creating bank account: {str(e)}")
+            return render(request, 'bank_accounts/add_account.html', {
+                'company': company,
+                'form_data': {
+                    'name': request.POST.get('name', ''),
+                    'code': request.POST.get('code', '')
+                }
+            })
     
     return render(request, 'bank_accounts/add_account.html', {'company': company})
+
+
+def _generate_bank_code_suggestion(attempted_code, company):
+    """Generate a suggested alternative code for bank accounts."""
+    try:
+        base_num = int(attempted_code)
+        for i in range(1, 10):
+            suggested_code = str(base_num + i)
+            if not Account.objects.filter(company=company, code=suggested_code).exists():
+                return suggested_code
+    except ValueError:
+        for suffix in ['A', 'B', 'C', '1', '2']:
+            suggested_code = f"{attempted_code}{suffix}"[:10]
+            if not Account.objects.filter(company=company, code=suggested_code).exists():
+                return suggested_code
+    
+    return f"{attempted_code[:8]}01"
+
+
+def _generate_auto_bank_code(company):
+    """Auto-generate a bank account code."""
+    # Find the next available code in 10xx series
+    for code_num in range(1001, 1100):
+        code = str(code_num)
+        if not Account.objects.filter(company=company, code=code).exists():
+            return code
+    
+    # Fallback to 11xx series
+    for code_num in range(1101, 1200):
+        code = str(code_num)
+        if not Account.objects.filter(company=company, code=code).exists():
+            return code
+    
+    return "1999"  # Last resort
 
 
 @login_required
@@ -131,7 +222,13 @@ def upload_transactions(request, account_id):
         messages.error(request, "Please select a company first.")
         return redirect('dashboard')
     
-    account = get_object_or_404(Account, id=account_id, company=company, account_type='Bank')
+    # Get account - remove restrictive name filter to allow all bank accounts
+    account = get_object_or_404(
+        Account, 
+        id=account_id, 
+        company=company, 
+        account_type='CURRENT_ASSET'
+    )
     
     if request.method == 'POST' and request.FILES.get('statement_file'):
         csv_file = request.FILES['statement_file']
@@ -178,9 +275,14 @@ def upload_transactions(request, account_id):
                 error_count=0
             )
             
-            # Read and process CSV
+            # Read and process CSV - detect delimiter (comma or semicolon)
             decoded_file = file_content.decode('utf-8')
-            csv_data = csv.DictReader(io.StringIO(decoded_file))
+            
+            # Try to detect delimiter by checking the first line
+            first_line = decoded_file.split('\n')[0] if decoded_file else ''
+            delimiter = ';' if ';' in first_line and first_line.count(';') > first_line.count(',') else ','
+            
+            csv_data = csv.DictReader(io.StringIO(decoded_file), delimiter=delimiter)
             
             transactions_created = 0
             duplicates_skipped = 0
@@ -191,7 +293,7 @@ def upload_transactions(request, account_id):
                 for row_num, row in enumerate(csv_data, start=2):  # Start at 2 because of header
                     total_rows += 1
                     try:
-                        # Parse date (DD/MM/YYYY format)
+                        # Parse date (supports DD/MM/YYYY, MM/DD/YYYY, and YYYY.MM.DD formats)
                         date_str = row['Date'].strip()
                         try:
                             transaction_date = datetime.strptime(date_str, '%d/%m/%Y').date()
@@ -199,8 +301,11 @@ def upload_transactions(request, account_id):
                             try:
                                 transaction_date = datetime.strptime(date_str, '%m/%d/%Y').date()
                             except ValueError:
-                                errors.append(f"Row {row_num}: Invalid date format '{date_str}'")
-                                continue
+                                try:
+                                    transaction_date = datetime.strptime(date_str, '%Y.%m.%d').date()
+                                except ValueError:
+                                    errors.append(f"Row {row_num}: Invalid date format '{date_str}'. Supported formats: DD/MM/YYYY, MM/DD/YYYY, YYYY.MM.DD")
+                                    continue
                         
                         # Parse amount
                         amount_str = row['Amount'].strip().replace(',', '')
@@ -304,7 +409,13 @@ def delete_upload(request, account_id, upload_id):
         return redirect('dashboard')
     
     try:
-        account = get_object_or_404(Account, id=account_id, company=company, account_type='Bank')
+        # Get account - remove restrictive name filter to allow all bank accounts
+        account = get_object_or_404(
+            Account, 
+            id=account_id, 
+            company=company, 
+            account_type='CURRENT_ASSET'
+        )
         uploaded_file = get_object_or_404(UploadedFile, id=upload_id, account=account)
         
         if request.method == 'POST':

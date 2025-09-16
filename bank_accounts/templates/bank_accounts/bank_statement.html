@@ -1,0 +1,349 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{{ page_title }} - {{ company.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.bank-statement-container {
+    background: #f8fafc;
+    min-height: 100vh;
+    padding: 2rem 0;
+}
+
+.statement-header {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.account-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.statement-table {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.table-xero {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.table-xero th {
+    background: #1e293b;
+    color: white;
+    border: none;
+    padding: 1rem 0.75rem;
+    font-weight: 600;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.table-xero td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+}
+
+.table-xero tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.amount-spent {
+    color: #dc2626;
+    font-weight: 600;
+    text-align: right;
+}
+
+.amount-received {
+    color: #059669;
+    font-weight: 600;
+    text-align: right;
+}
+
+.amount-balance {
+    font-weight: 600;
+    text-align: right;
+}
+
+.status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-imported {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-reconciled {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.summary-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.summary-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.description-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.reference-cell {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.8rem;
+    }
+    
+    .description-cell,
+    .reference-cell {
+        max-width: 100px;
+    }
+    
+    .summary-cards {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bank-statement-container">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="statement-header">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-1">
+                            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'bank_accounts:dashboard' %}">Bank Accounts</a></li>
+                            <li class="breadcrumb-item active">{{ account.name }}</li>
+                        </ol>
+                    </nav>
+                    <h4 class="mb-0">Bank Statement - {{ account.name }}</h4>
+                </div>
+                <div class="toolbar">
+                    <a href="{% url 'bank_accounts:upload_transactions' account.id %}" class="btn btn-primary">
+                        <i class="fas fa-upload me-1"></i>Upload Statement
+                    </a>
+                    <a href="{% url 'reconciliation:account_detail' account.id %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-balance-scale me-1"></i>Reconcile
+                    </a>
+                </div>
+            </div>
+
+            <!-- Account Info -->
+            <div class="account-info">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h5 class="mb-1">{{ account.code }} - {{ account.name }}</h5>
+                        <p class="mb-0">{{ account.get_account_type_display }} • {{ company.name }}</p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="fs-5">
+                            <strong>Current Balance:</strong><br>
+                            <span class="fs-4">${{ current_balance|floatformat:2|intcomma }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <div class="summary-value text-success">${{ total_credits|floatformat:2|intcomma }}</div>
+                    <div class="text-muted">Total Received</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value text-danger">${{ total_debits|floatformat:2|intcomma }}</div>
+                    <div class="text-muted">Total Spent</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value text-primary">{{ transaction_count }}</div>
+                    <div class="text-muted">Transactions</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value text-info">{{ uploads.count }}</div>
+                    <div class="text-muted">Uploads</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statement Lines Table -->
+        <div class="statement-table">
+            <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                <h6 class="mb-0">Statement Lines</h6>
+                <span class="text-muted">{{ transaction_count }} transactions</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-xero">
+                    <thead>
+                        <tr>
+                            <th style="width: 10%;">Date</th>
+                            <th style="width: 8%;">Type</th>
+                            <th style="width: 15%;">Payee</th>
+                            <th style="width: 20%;">Particulars</th>
+                            <th style="width: 8%;">Code</th>
+                            <th style="width: 10%;">Reference</th>
+                            <th style="width: 10%;">Spent</th>
+                            <th style="width: 10%;">Received</th>
+                            <th style="width: 12%;">Balance</th>
+                            <th style="width: 7%;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in transactions %}
+                        <tr>
+                            <td>{{ item.transaction.date|date:"j M Y" }}</td>
+                            <td>
+                                <span class="badge {% if item.type == 'Credit' %}bg-success{% else %}bg-primary{% endif %}">
+                                    {{ item.type }}
+                                </span>
+                            </td>
+                            <td class="description-cell">
+                                {% if item.transaction.description %}
+                                    {{ item.transaction.description|truncatechars:20 }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="description-cell" title="{{ item.transaction.description }}">
+                                {{ item.transaction.description|default:"-" }}
+                            </td>
+                            <td>{{ account.code }}</td>
+                            <td class="reference-cell" title="{{ item.transaction.reference }}">
+                                {{ item.transaction.reference|default:"-" }}
+                            </td>
+                            <td class="amount-spent">
+                                {% if item.spent %}
+                                    ${{ item.spent|floatformat:2|intcomma }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="amount-received">
+                                {% if item.received %}
+                                    ${{ item.received|floatformat:2|intcomma }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="amount-balance">
+                                {% if item.balance >= 0 %}
+                                    ${{ item.balance|floatformat:2|intcomma }}
+                                {% else %}
+                                    (${{ item.balance|add:0|abs|floatformat:2|intcomma }})
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="status-badge status-imported">{{ item.status }}</span>
+                                {% if item.reconciled %}
+                                    <span class="status-badge status-reconciled">Reconciled</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center py-4">
+                                <div class="text-muted">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                                    <p>No transactions found for this account.</p>
+                                    <a href="{% url 'bank_accounts:upload_transactions' account.id %}" class="btn btn-primary">
+                                        Upload Bank Statement
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Upload History -->
+        {% if uploads %}
+        <div class="statement-table mt-3">
+            <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                <h6 class="mb-0">Upload History</h6>
+                <span class="text-muted">{{ uploads.count }} files</span>
+            </div>
+            <div class="p-3">
+                {% for upload in uploads %}
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <div>
+                        <strong>{{ upload.original_filename }}</strong>
+                        <div class="small text-muted">
+                            {{ upload.uploaded_at|date:"M j, Y g:i A" }} • 
+                            {{ upload.imported_count }} imported, 
+                            {{ upload.duplicate_count }} duplicates
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{% url 'bank_accounts:delete_upload' account.id upload.id %}" 
+                           class="btn btn-sm btn-outline-danger"
+                           onclick="return confirm('Are you sure you want to delete this upload and all associated transactions?')">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

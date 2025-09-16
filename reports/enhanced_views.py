@@ -258,13 +258,40 @@ def get_key_financial_metrics(company, as_of_date):
 
 
 def calculate_account_balance(account, as_of_date):
-    """Calculate account balance up to a specific date from journal entries only
+    """Calculate account balance up to a specific date including ALL data sources
     
-    Note: Bank transactions should be journalized before appearing on financial statements.
-    This ensures proper double-entry bookkeeping and balanced financial reports.
+    Includes:
+    1. Opening/conversion balances (from conversion system)
+    2. Journal entries up to the date
+    3. Bank transactions (for current asset bank accounts)
+    
+    This ensures trial balance includes all financial data for accurate reporting.
     """
     
+    # Start with conversion/opening balance if it exists
+    opening_balance = Decimal('0')
+    try:
+        from conversion.models import ConversionBalance
+        conversion_balance = ConversionBalance.objects.filter(
+            company=account.company,
+            account=account,
+            as_at_date__lte=as_of_date
+        ).order_by('-as_at_date').first()
+        
+        if conversion_balance:
+            # Convert to proper account balance based on account type
+            if account.account_type in ['CURRENT_ASSET', 'FIXED_ASSET', 'NON_CURRENT_ASSET', 'EXPENSE', 'DEPRECIATION', 'DIRECT_COST', 'OVERHEAD']:
+                # Debit accounts: debit amount is positive, credit amount is negative
+                opening_balance = conversion_balance.debit_amount - conversion_balance.credit_amount
+            else:
+                # Credit accounts: credit amount is positive, debit amount is negative  
+                opening_balance = conversion_balance.credit_amount - conversion_balance.debit_amount
+    except ImportError:
+        # Conversion app not available, skip opening balances
+        pass
+    
     # Get all journal lines for this account up to the date
+    from journal.models import JournalLine
     journal_lines = JournalLine.objects.filter(
         account_code=account.code,
         journal__date__lte=as_of_date,
@@ -277,13 +304,50 @@ def calculate_account_balance(account, as_of_date):
     total_debit = journal_lines['total_debit'] or Decimal('0')
     total_credit = journal_lines['total_credit'] or Decimal('0')
     
-    # Calculate balance based on account type (proper double-entry accounting)
+    # Calculate balance from journal entries based on account type
+    journal_balance = Decimal('0')
     if account.account_type in ['CURRENT_ASSET', 'FIXED_ASSET', 'NON_CURRENT_ASSET', 'EXPENSE', 'DEPRECIATION', 'DIRECT_COST', 'OVERHEAD']:
         # Debit accounts: Debit increases, Credit decreases
-        return total_debit - total_credit
+        journal_balance = total_debit - total_credit
     else:
         # Credit accounts: Credit increases, Debit decreases
-        return total_credit - total_debit
+        journal_balance = total_credit - total_debit
+    
+    # For bank accounts, also include bank transactions that may not be journalized yet
+    bank_balance = Decimal('0')
+    
+    # Check if this is a bank account (current asset with bank transactions)
+    has_bank_transactions = False
+    if account.account_type == 'CURRENT_ASSET':
+        try:
+            from bank_accounts.models import BankTransaction
+            bank_transaction_count = BankTransaction.objects.filter(
+                coa_account=account,
+                company=account.company
+            ).count()
+            has_bank_transactions = bank_transaction_count > 0
+            
+            if has_bank_transactions:
+                bank_transactions = BankTransaction.objects.filter(
+                    coa_account=account,
+                    company=account.company,
+                    date__lte=as_of_date
+                ).aggregate(
+                    total_amount=Sum('amount')
+                )
+                bank_balance = bank_transactions['total_amount'] or Decimal('0')
+        except (ImportError, AttributeError):
+            # Bank accounts app not available or no relationship
+            pass
+    
+    # Return combined balance: opening + journal entries + bank transactions
+    total_balance = opening_balance + journal_balance + bank_balance
+    
+    # For accounts with bank transactions, use account.current_balance as authoritative source
+    if hasattr(account, 'current_balance') and account.current_balance is not None and has_bank_transactions:
+        return account.current_balance
+    
+    return total_balance
 
 
 def generate_full_balance_sheet(company, as_of_date):
@@ -426,11 +490,25 @@ def calculate_period_balance(account, start_date, end_date):
 
 
 def generate_trial_balance(company, as_of_date):
-    """Generate trial balance for all accounts"""
+    """Generate trial balance for all accounts with Xero-style grouping"""
     
     accounts = Account.objects.filter(company=company, is_active=True).order_by('code')
     
-    trial_balance_accounts = []
+    # Group accounts by type (Xero-style)
+    account_groups = {
+        'REVENUE': {'name': 'Revenue', 'accounts': [], 'total_debit': Decimal('0'), 'total_credit': Decimal('0')},
+        'DIRECT_COST': {'name': 'Direct Costs', 'accounts': [], 'total_debit': Decimal('0'), 'total_credit': Decimal('0')},
+        'EXPENSE': {'name': 'Expense', 'accounts': [], 'total_debit': Decimal('0'), 'total_credit': Decimal('0')},
+        'OVERHEAD': {'name': 'Overhead', 'accounts': [], 'total_debit': Decimal('0'), 'total_credit': Decimal('0')},
+        'CURRENT_ASSET': {'name': 'Current Asset', 'accounts': [], 'total_debit': Decimal('0'), 'total_credit': Decimal('0')},
+        'FIXED_ASSET': {'name': 'Fixed Asset', 'accounts': [], 'total_debit': Decimal('0'), 'total_credit': Decimal('0')},
+        'NON_CURRENT_ASSET': {'name': 'Non-Current Asset', 'accounts': [], 'total_debit': Decimal('0'), 'total_credit': Decimal('0')},
+        'CURRENT_LIABILITY': {'name': 'Current Liability', 'accounts': [], 'total_debit': Decimal('0'), 'total_credit': Decimal('0')},
+        'LIABILITY': {'name': 'Liability', 'accounts': [], 'total_debit': Decimal('0'), 'total_credit': Decimal('0')},
+        'NON_CURRENT_LIABILITY': {'name': 'Non-Current Liability', 'accounts': [], 'total_debit': Decimal('0'), 'total_credit': Decimal('0')},
+        'EQUITY': {'name': 'Equity', 'accounts': [], 'total_debit': Decimal('0'), 'total_credit': Decimal('0')},
+    }
+    
     total_debits = Decimal('0')
     total_credits = Decimal('0')
     
@@ -438,27 +516,56 @@ def generate_trial_balance(company, as_of_date):
         balance = calculate_account_balance(account, as_of_date)
         
         if balance != 0:  # Only include accounts with balances
-            debit_amount = balance if balance > 0 else Decimal('0')
-            credit_amount = abs(balance) if balance < 0 else Decimal('0')
+            # Determine debit/credit display based on ACCOUNT TYPE, not just balance sign
+            # This ensures proper trial balance presentation
             
-            trial_balance_accounts.append({
+            if account.account_type in ['CURRENT_ASSET', 'FIXED_ASSET', 'NON_CURRENT_ASSET', 'EXPENSE', 'DEPRECIATION', 'DIRECT_COST', 'OVERHEAD']:
+                # DEBIT accounts: Show balance in debit column if positive, credit column if negative
+                if balance >= 0:
+                    debit_amount = balance
+                    credit_amount = Decimal('0')
+                else:
+                    debit_amount = Decimal('0')
+                    credit_amount = abs(balance)
+            else:
+                # CREDIT accounts (Revenue, Liability, Equity): Show balance in credit column if positive, debit column if negative
+                if balance >= 0:
+                    debit_amount = Decimal('0')
+                    credit_amount = balance
+                else:
+                    debit_amount = abs(balance)
+                    credit_amount = Decimal('0')
+            
+            account_data = {
                 'account': account,
                 'balance': balance,
                 'debit_amount': debit_amount,
                 'credit_amount': credit_amount,
-            })
+            }
+            
+            # Add to appropriate group
+            account_type = account.account_type
+            if account_type in account_groups:
+                account_groups[account_type]['accounts'].append(account_data)
+                account_groups[account_type]['total_debit'] += debit_amount
+                account_groups[account_type]['total_credit'] += credit_amount
             
             total_debits += debit_amount
             total_credits += credit_amount
     
+    # Remove empty groups
+    populated_groups = {k: v for k, v in account_groups.items() if v['accounts']}
+    
     return {
-        'accounts': trial_balance_accounts,
+        'account_groups': populated_groups,
         'totals': {
             'total_debits': total_debits,
             'total_credits': total_credits,
             'difference': total_debits - total_credits,
             'is_balanced': abs(total_debits - total_credits) < Decimal('0.01'),
-        }
+        },
+        # Legacy format for compatibility
+        'accounts': [acc for group in populated_groups.values() for acc in group['accounts']]
     }
 
 

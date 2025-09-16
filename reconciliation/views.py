@@ -68,18 +68,11 @@ def dashboard(request):
             return render(request, 'reconciliation/dashboard.html', context)
     
     # Get all bank accounts for this company from database
-    # Use same filtering logic as bank_accounts module
-    from django.db.models import Q
+    # Show all current asset accounts as potential bank accounts
     bank_accounts = Account.objects.filter(
         company=company,
         account_type='CURRENT_ASSET'
-    ).filter(
-        Q(name__icontains='bank') | 
-        Q(name__icontains='transactions') | 
-        Q(name__icontains='cash') |
-        Q(name__icontains='checking') |
-        Q(name__icontains='savings')
-    ).distinct().order_by('name')
+    ).order_by('name')
     
     # Prepare real data for each account
     accounts_data = []
@@ -233,18 +226,11 @@ def account_reconciliation(request, account_id):
     try:
         if isinstance(account_id, str) and account_id.isdigit():
             account_id = int(account_id)
-            # Use same filtering logic as dashboard
-            from django.db.models import Q
+            # Show all current asset accounts
             account = get_object_or_404(
                 Account.objects.filter(
                     company=company,
                     account_type='CURRENT_ASSET'
-                ).filter(
-                    Q(name__icontains='bank') | 
-                    Q(name__icontains='transactions') | 
-                    Q(name__icontains='cash') |
-                    Q(name__icontains='checking') |
-                    Q(name__icontains='savings')
                 ), 
                 id=account_id
             )
@@ -253,13 +239,7 @@ def account_reconciliation(request, account_id):
             bank_accounts = Account.objects.filter(
                 company=company,
                 account_type='CURRENT_ASSET'
-            ).filter(
-                Q(name__icontains='bank') | 
-                Q(name__icontains='transactions') | 
-                Q(name__icontains='cash') |
-                Q(name__icontains='checking') |
-                Q(name__icontains='savings')
-            ).distinct()
+            )
             
             # Map common identifiers
             account_map = {}

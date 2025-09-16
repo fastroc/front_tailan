@@ -39,6 +39,7 @@ urlpatterns = [
     path('assets/', include('assets.urls')),     # Fixed Assets management
     path('reports/', include('reports.urls')),     # New modular reports
     path('setup/', include('setup.urls')),
+    path('conversion/', include('conversion.urls')),  # Conversion balances (opening balances)
     # Fallback redirect for Django's default login URL
     path('accounts/login/', accounts_login_redirect),
     # Template testing routes - include the core URLs

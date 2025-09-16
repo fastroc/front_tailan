@@ -256,42 +256,22 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% regroup trial_balance.accounts by account.account_type as accounts_by_type %}
-                        
-                        {% for account_type in accounts_by_type %}
+                        {% for group_key, group_data in trial_balance.account_groups.items %}
                         <!-- Account Type Header -->
                         <tr class="account-type-header">
                             <td colspan="5">
-                                {% if account_type.grouper == 'current_asset' %}
-                                    CURRENT ASSETS
-                                {% elif account_type.grouper == 'fixed_asset' %}
-                                    FIXED ASSETS
-                                {% elif account_type.grouper == 'other_asset' %}
-                                    OTHER ASSETS
-                                {% elif account_type.grouper == 'current_liability' %}
-                                    CURRENT LIABILITIES
-                                {% elif account_type.grouper == 'long_term_liability' %}
-                                    LONG-TERM LIABILITIES
-                                {% elif account_type.grouper == 'equity' %}
-                                    EQUITY
-                                {% elif account_type.grouper == 'revenue' %}
-                                    REVENUE
-                                {% elif account_type.grouper == 'expense' %}
-                                    EXPENSES
-                                {% else %}
-                                    {{ account_type.grouper|upper }}
-                                {% endif %}
+                                <strong>{{ group_data.name|upper }}</strong>
                             </td>
                         </tr>
                         
                         <!-- Accounts in this type -->
-                        {% for account_data in account_type.list %}
+                        {% for account_data in group_data.accounts %}
                         <tr class="account-row">
                             <td class="account-code">{{ account_data.account.code }}</td>
                             <td class="account-name" style="padding-left: 1.5rem;">{{ account_data.account.name }}</td>
                             <td>
-                                <span class="account-type-badge badge-{% if account_data.account.account_type|slice:':5' == 'asset' or account_data.account.account_type == 'current_asset' or account_data.account.account_type == 'fixed_asset' or account_data.account.account_type == 'other_asset' %}asset{% elif 'liability' in account_data.account.account_type %}liability{% elif account_data.account.account_type == 'equity' %}equity{% elif account_data.account.account_type == 'revenue' %}revenue{% elif account_data.account.account_type == 'expense' %}expense{% endif %}">
-                                    {{ account_data.account.get_account_type_display|default:account_data.account.account_type }}
+                                <span class="account-type-badge badge-{% if account_data.account.account_type|slice:':5' == 'ASSET' or 'ASSET' in account_data.account.account_type %}asset{% elif 'LIABILITY' in account_data.account.account_type %}liability{% elif account_data.account.account_type == 'EQUITY' %}equity{% elif account_data.account.account_type == 'REVENUE' %}revenue{% elif account_data.account.account_type == 'EXPENSE' or account_data.account.account_type == 'DIRECT_COST' or account_data.account.account_type == 'OVERHEAD' %}expense{% endif %}">
+                                    {{ group_data.name }}
                                 </span>
                             </td>
                             <td class="amount-column">
@@ -311,65 +291,10 @@
                         </tr>
                         {% endfor %}
                         
-                        <!-- Subtotal for this account type -->
-                        <tr class="subtotal-row">
-                            <td colspan="3">
-                                <strong>
-                                    {% if account_type.grouper == 'current_asset' %}
-                                        Total Current Assets
-                                    {% elif account_type.grouper == 'fixed_asset' %}
-                                        Total Fixed Assets
-                                    {% elif account_type.grouper == 'other_asset' %}
-                                        Total Other Assets
-                                    {% elif account_type.grouper == 'current_liability' %}
-                                        Total Current Liabilities
-                                    {% elif account_type.grouper == 'long_term_liability' %}
-                                        Total Long-term Liabilities
-                                    {% elif account_type.grouper == 'equity' %}
-                                        Total Equity
-                                    {% elif account_type.grouper == 'revenue' %}
-                                        Total Revenue
-                                    {% elif account_type.grouper == 'expense' %}
-                                        Total Expenses
-                                    {% else %}
-                                        Total {{ account_type.grouper|title }}
-                                    {% endif %}
-                                </strong>
-                            </td>
-                            <td class="amount-column">
-                                <strong>
-                                    {% if account_type.list %}
-                                        {% with subtotal_debit=0 %}
-                                        {% for acc in account_type.list %}
-                                            {% if acc.debit_amount > 0 %}
-                                                {% if forloop.first %}
-                                                    ${{ acc.debit_amount|add:subtotal_debit|floatformat:2|intcomma }}
-                                                {% endif %}
-                                            {% endif %}
-                                        {% endfor %}
-                                        {% endwith %}
-                                    {% endif %}
-                                </strong>
-                            </td>
-                            <td class="amount-column">
-                                <strong>
-                                    {% if account_type.list %}
-                                        {% with subtotal_credit=0 %}
-                                        {% for acc in account_type.list %}
-                                            {% if acc.credit_amount > 0 %}
-                                                {% if forloop.first %}
-                                                    ${{ acc.credit_amount|add:subtotal_credit|floatformat:2|intcomma }}
-                                                {% endif %}
-                                            {% endif %}
-                                        {% endfor %}
-                                        {% endwith %}
-                                    {% endif %}
-                                </strong>
-                            </td>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No accounts with balances found.</td>
                         </tr>
-                        
-                        <!-- Spacing between account types -->
-                        <tr style="height: 1rem;"><td colspan="5"></td></tr>
                         {% endfor %}
                         
                         <!-- Grand Totals -->

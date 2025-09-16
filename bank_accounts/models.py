@@ -6,6 +6,7 @@ import hashlib
 class UploadedFile(models.Model):
     """Track CSV file uploads for bank accounts"""
     account = models.ForeignKey('coa.Account', on_delete=models.CASCADE, related_name='uploaded_files')
+    company = models.ForeignKey('company.Company', on_delete=models.CASCADE, related_name='uploaded_files', null=True, blank=True)
     original_filename = models.CharField(max_length=255)
     stored_filename = models.CharField(max_length=255)
     file_size = models.IntegerField()
@@ -31,6 +32,7 @@ class UploadedFile(models.Model):
 class BankTransaction(models.Model):
     """Bank transactions linked to COA accounts"""
     coa_account = models.ForeignKey('coa.Account', on_delete=models.CASCADE, related_name='bank_transactions')
+    company = models.ForeignKey('company.Company', on_delete=models.CASCADE, related_name='bank_transactions', null=True, blank=True, help_text="Company this transaction belongs to")
     # uploaded_file = models.ForeignKey(UploadedFile, on_delete=models.CASCADE, related_name='transactions', null=True, blank=True)
     
     date = models.DateField()

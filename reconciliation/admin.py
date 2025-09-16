@@ -14,15 +14,15 @@ class TransactionSplitInline(admin.TabularInline):
 @admin.register(TransactionMatch)
 class TransactionMatchAdmin(admin.ModelAdmin):
     """Enhanced admin for TransactionMatch with split support"""
-    list_display = ('id', 'transaction_description', 'transaction_amount', 'match_type_display', 'gl_account_display', 'is_reconciled', 'matched_at')
-    list_filter = ('match_type', 'is_reconciled', 'matched_at', 'reconciliation_session__account')
-    search_fields = ('bank_transaction__description', 'contact', 'description', 'gl_account__name')
+    list_display = ('id', 'transaction_description', 'company', 'transaction_amount', 'match_type_display', 'gl_account_display', 'is_reconciled', 'matched_at')
+    list_filter = ('match_type', 'company', 'is_reconciled', 'matched_at', 'reconciliation_session__account')
+    search_fields = ('bank_transaction__description', 'contact', 'description', 'gl_account__name', 'company__name')
     readonly_fields = ('match_confidence', 'matched_at', 'journal_entry')
     inlines = [TransactionSplitInline]
     
     fieldsets = (
         ('Transaction Details', {
-            'fields': ('bank_transaction', 'reconciliation_session', 'match_type', 'match_confidence')
+            'fields': ('bank_transaction', 'reconciliation_session', 'company', 'match_type', 'match_confidence')
         }),
         ('WHO/WHAT/WHY/TAX', {
             'fields': ('contact', 'gl_account', 'description', 'tax_rate')
@@ -114,14 +114,14 @@ class TransactionSplitAdmin(admin.ModelAdmin):
 @admin.register(ReconciliationSession)
 class ReconciliationSessionAdmin(admin.ModelAdmin):
     """Admin for reconciliation sessions"""
-    list_display = ('id', 'session_name', 'account', 'status', 'reconciliation_percentage', 'period_end', 'created_at')
-    list_filter = ('status', 'account', 'created_at')
-    search_fields = ('session_name', 'account__name')
+    list_display = ('id', 'session_name', 'account', 'company', 'status', 'reconciliation_percentage', 'period_end', 'created_at')
+    list_filter = ('status', 'company', 'account', 'created_at')
+    search_fields = ('session_name', 'account__name', 'company__name')
     readonly_fields = ('total_transactions', 'matched_transactions', 'unmatched_transactions', 'reconciliation_percentage', 'created_at')
     
     fieldsets = (
         ('Session Info', {
-            'fields': ('account', 'session_name', 'period_start', 'period_end')
+            'fields': ('account', 'company', 'session_name', 'period_start', 'period_end')
         }),
         ('Balances', {
             'fields': ('opening_balance', 'closing_balance', 'statement_balance')

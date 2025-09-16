@@ -47,3 +47,32 @@ def template_showcase(request):
     
     <p><strong>Next:</strong> <a href="/reconciliation/">Test Reconciliation Module</a> (when ready)</p>
     """)
+
+def debug_context_view(request):
+    """Debug Context Variables - No Login Required"""
+    context = {
+        'user_authenticated': request.user.is_authenticated,
+        'user': request.user if request.user.is_authenticated else None,
+    }
+    
+    if request.user.is_authenticated:
+        # Import here to avoid circular imports
+        from company.models import Company
+        from company.views import get_active_company
+        
+        # Get context the same way the context processor does
+        user_companies = Company.objects.filter(
+            user_access__user=request.user,
+            is_active=True
+        ).distinct().order_by('name')
+        
+        active_company = get_active_company(request)
+        
+        context.update({
+            'active_company': active_company,
+            'user_companies': user_companies,
+            'user_companies_list': list(user_companies.values('id', 'name')),
+            'context_processor_test': True,
+        })
+    
+    return render(request, 'debug_context.html', context)

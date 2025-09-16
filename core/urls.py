@@ -12,4 +12,5 @@ urlpatterns = [
     path('template-showcase/', views.template_showcase, name='template_showcase'),
     # Development database structure inspector
     path('db-structure/', database_structure_view, name='db_structure'),
+    path('debug-context/', views.debug_context_view, name='debug_context'),
 ]

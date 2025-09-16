@@ -351,12 +351,12 @@
                   </a>
                   <div class="row g-2">
                     <div class="col-6">
-                      <a href="#" class="btn btn-outline-success btn-sm w-100">
-                        <i class="fas fa-eye me-1"></i>View
+                      <a href="{% url 'bank_accounts:bank_statement' account_data.account.id %}" class="btn btn-outline-success btn-sm w-100">
+                        <i class="fas fa-eye me-1"></i>Statement
                       </a>
                     </div>
                     <div class="col-6">
-                      <a href="#" class="btn btn-outline-info btn-sm w-100">
+                      <a href="{% url 'reconciliation:account_detail' account_data.account.id %}" class="btn btn-outline-info btn-sm w-100">
                         <i class="fas fa-balance-scale me-1"></i>Reconcile
                       </a>
                     </div>

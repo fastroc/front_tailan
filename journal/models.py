@@ -13,6 +13,8 @@ class Journal(BaseModel):
         ('reversed', 'Reversed'),
     ]
     
+    company = models.ForeignKey('company.Company', on_delete=models.CASCADE, related_name='journals', null=True, blank=True, help_text="Company this journal belongs to")
+    
     narration = models.TextField(
         blank=True, 
         null=True,
@@ -93,6 +95,7 @@ class JournalLine(BaseModel):
         on_delete=models.CASCADE,
         related_name='lines'
     )
+    company = models.ForeignKey('company.Company', on_delete=models.CASCADE, related_name='journal_lines', null=True, blank=True, help_text="Company this journal line belongs to")
     
     description = models.CharField(
         max_length=255,

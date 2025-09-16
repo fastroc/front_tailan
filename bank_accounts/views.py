@@ -2,9 +2,6 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Q
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
 from coa.models import Account
 from company.models import Company
 from .models import BankTransaction, UploadedFile
@@ -41,20 +38,12 @@ def dashboard(request):
             'no_company': True
         })
     
-    # Show accounts that are configured as bank accounts:
-    # 1. Current asset accounts with bank-related keywords in name
-    # 2. This includes accounts created through both COA and bank_accounts interfaces
+    # Show all current asset accounts as potential bank accounts
+    # This includes both accounts created through COA and bank_accounts interfaces
     accounts = Account.objects.filter(
         company=company,
         account_type='CURRENT_ASSET'
-    ).filter(
-        Q(name__icontains='bank') |      # Contains 'bank' in name
-        Q(name__icontains='transactions') |  # Contains 'transactions' in name  
-        Q(name__icontains='checking') |   # Contains 'checking' in name
-        Q(name__icontains='savings') |    # Contains 'savings' in name
-        Q(name__icontains='cash') |       # Contains 'cash' in name
-        Q(description__icontains='bank')  # Contains 'bank' in description
-    ).distinct().order_by('code')
+    ).order_by('code')
     
     # Add upload information for each account
     accounts_with_uploads = []
@@ -209,6 +198,106 @@ def _generate_auto_bank_code(company):
 
 
 @login_required
+def bank_statement(request, account_id):
+    """Display bank statement lines similar to Xero format"""
+    company_id = request.session.get('active_company_id')
+    if not company_id:
+        messages.error(request, "Please select a company first.")
+        return redirect('dashboard')
+        
+    try:
+        company = Company.objects.get(id=company_id)
+    except Company.DoesNotExist:
+        messages.error(request, "Please select a company first.")
+        return redirect('dashboard')
+    
+    # Get account
+    account = get_object_or_404(
+        Account, 
+        id=account_id, 
+        company=company, 
+        account_type='CURRENT_ASSET'
+    )
+    
+    # Get all transactions for this account, ordered by date (newest first)
+    transactions = BankTransaction.objects.filter(
+        coa_account=account
+    ).order_by('-date', '-id')
+    
+    # Calculate running balance (like Xero)
+    # Start with opening balance from conversion system
+    opening_balance = Decimal('0')
+    try:
+        from conversion.models import ConversionBalance
+        conversion_balance = ConversionBalance.objects.filter(
+            company=company,
+            account=account
+        ).order_by('-as_at_date').first()
+        
+        if conversion_balance:
+            # For bank accounts, typically credit balances are positive
+            opening_balance = conversion_balance.credit_amount - conversion_balance.debit_amount
+    except ImportError:
+        pass
+    
+    # Prepare transactions with running balance
+    transaction_list = []
+    
+    # Process transactions in chronological order to calculate running balance correctly
+    transactions_chronological = list(transactions.order_by('date', 'id'))
+    running_balance = opening_balance
+    
+    for bank_transaction in transactions_chronological:
+        running_balance += bank_transaction.amount
+        
+        # Determine transaction type
+        if bank_transaction.amount > 0:
+            trans_type = "Credit"
+            spent = None
+            received = abs(bank_transaction.amount)
+        else:
+            trans_type = "Debit" 
+            spent = abs(bank_transaction.amount)
+            received = None
+        
+        transaction_list.append({
+            'transaction': bank_transaction,
+            'type': trans_type,
+            'spent': spent,
+            'received': received,
+            'balance': running_balance,
+            'status': 'Imported',  # Could be enhanced with actual reconciliation status
+            'reconciled': False,   # Could be enhanced with actual reconciliation data
+        })
+    
+    # Reverse to show newest first (like Xero)
+    transaction_list.reverse()
+    
+    # Get upload information
+    uploads = UploadedFile.objects.filter(account=account).order_by('-uploaded_at')
+    
+    # Calculate summary stats
+    total_debits = sum(abs(t.amount) for t in transactions if t.amount < 0)
+    total_credits = sum(t.amount for t in transactions if t.amount > 0)
+    current_balance = running_balance
+    
+    context = {
+        'account': account,
+        'company': company,
+        'transactions': transaction_list,
+        'opening_balance': opening_balance,
+        'current_balance': current_balance,
+        'total_debits': total_debits,
+        'total_credits': total_credits,
+        'transaction_count': transactions.count(),
+        'uploads': uploads,
+        'page_title': f'Bank Statement - {account.name}'
+    }
+    
+    return render(request, 'bank_accounts/bank_statement.html', context)
+
+
+@login_required
 def upload_transactions(request, account_id):
     """Upload bank transactions for a specific account"""
     company_id = request.session.get('active_company_id')  # Use correct session key
@@ -264,6 +353,7 @@ def upload_transactions(request, account_id):
             # Create UploadedFile record
             uploaded_file = UploadedFile.objects.create(
                 account=account,
+                company=company,
                 original_filename=csv_file.name,
                 stored_filename=stored_filename,
                 file_size=len(file_content),
@@ -293,31 +383,55 @@ def upload_transactions(request, account_id):
                 for row_num, row in enumerate(csv_data, start=2):  # Start at 2 because of header
                     total_rows += 1
                     try:
-                        # Parse date (supports DD/MM/YYYY, MM/DD/YYYY, and YYYY.MM.DD formats)
-                        date_str = row['Date'].strip()
-                        try:
-                            transaction_date = datetime.strptime(date_str, '%d/%m/%Y').date()
-                        except ValueError:
+                        # Create case-insensitive column lookup
+                        row_lower = {k.lower(): v for k, v in row.items()}
+                        
+                        # Check if required columns exist (case-insensitive)
+                        if 'date' not in row_lower:
+                            errors.append(f"Row {row_num}: Missing 'Date' column. Found columns: {list(row.keys())}")
+                            continue
+                        if 'amount' not in row_lower:
+                            errors.append(f"Row {row_num}: Missing 'Amount' column. Found columns: {list(row.keys())}")
+                            continue
+                        
+                        # Parse date with more flexible formats
+                        date_str = row_lower['date'].strip()
+                        transaction_date = None
+                        
+                        # Try multiple date formats
+                        date_formats = [
+                            '%d/%m/%Y',     # DD/MM/YYYY
+                            '%m/%d/%Y',     # MM/DD/YYYY  
+                            '%Y-%m-%d',     # YYYY-MM-DD
+                            '%Y.%m.%d',     # YYYY.MM.DD
+                            '%d-%m-%Y',     # DD-MM-YYYY
+                            '%m-%d-%Y',     # MM-DD-YYYY
+                            '%d.%m.%Y',     # DD.MM.YYYY
+                            '%Y/%m/%d',     # YYYY/MM/DD
+                        ]
+                        
+                        for date_format in date_formats:
                             try:
-                                transaction_date = datetime.strptime(date_str, '%m/%d/%Y').date()
+                                transaction_date = datetime.strptime(date_str, date_format).date()
+                                break
                             except ValueError:
-                                try:
-                                    transaction_date = datetime.strptime(date_str, '%Y.%m.%d').date()
-                                except ValueError:
-                                    errors.append(f"Row {row_num}: Invalid date format '{date_str}'. Supported formats: DD/MM/YYYY, MM/DD/YYYY, YYYY.MM.DD")
-                                    continue
+                                continue
+                        
+                        if transaction_date is None:
+                            errors.append(f"Row {row_num}: Invalid date format '{date_str}'. Supported formats: DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD, DD-MM-YYYY, etc.")
+                            continue
                         
                         # Parse amount
-                        amount_str = row['Amount'].strip().replace(',', '')
+                        amount_str = row_lower['amount'].strip().replace(',', '').replace('$', '').replace('€', '').replace('£', '')
                         try:
                             amount = Decimal(amount_str)
                         except (ValueError, InvalidOperation):
                             errors.append(f"Row {row_num}: Invalid amount '{amount_str}'")
                             continue
                         
-                        # Get other fields
-                        description = row['Description'].strip()
-                        reference = row['Reference'].strip()
+                        # Get other fields with defaults for missing columns (case-insensitive)
+                        description = row_lower.get('description', '').strip()
+                        reference = row_lower.get('reference', '').strip()
                         
                         # Generate transaction hash for duplicate detection
                         hash_string = f"{transaction_date}{amount}{reference}{description}"
@@ -335,6 +449,7 @@ def upload_transactions(request, account_id):
                         BankTransaction.objects.create(
                             date=transaction_date,
                             coa_account=account,
+                            company=company,
                             amount=amount,
                             description=description,
                             reference=reference,

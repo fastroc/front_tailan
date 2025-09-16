@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Debug Context{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h3>Debug Context Variables</h3>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">User Authentication</div>
+                <div class="card-body">
+                    <p><strong>User authenticated:</strong> {{ user.is_authenticated }}</p>
+                    <p><strong>Username:</strong> {{ user.username }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Active Company</div>
+                <div class="card-body">
+                    <p><strong>Active Company:</strong> 
+                        {% if active_company %}
+                            {{ active_company.name }} ({{ active_company.id }})
+                        {% else %}
+                            None
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">User Companies</div>
+                <div class="card-body">
+                    <p><strong>User Companies Count:</strong> {{ user_companies|length }}</p>
+                    {% if user_companies %}
+                        <ul>
+                        {% for company in user_companies %}
+                            <li>{{ company.name }} - {{ company.id }}</li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p>No companies found</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">Setup Status</div>
+                <div class="card-body">
+                    <p><strong>Setup Status:</strong> 
+                        {% if setup_status %}
+                            Exists - Needs setup: {{ setup_status.needs_setup }}
+                        {% else %}
+                            None
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">Test Link</div>
+                <div class="card-body">
+                    {% if active_company %}
+                        <a href="{% url 'conversion:balances' active_company.id %}" class="btn btn-primary">
+                            <i class="bi bi-arrow-repeat"></i> Conversion Balances (Active Company)
+                        </a>
+                    {% elif user_companies %}
+                        <a href="{% url 'conversion:balances' user_companies.0.id %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-repeat"></i> Conversion Balances (First Company)
+                        </a>
+                    {% else %}
+                        <span class="text-muted">No companies available</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

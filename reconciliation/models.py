@@ -8,6 +8,7 @@ from journal.models import Journal
 class ReconciliationSession(models.Model):
     """Tracks each reconciliation session for a bank account - Enhanced"""
     account = models.ForeignKey(Account, on_delete=models.CASCADE, limit_choices_to={'account_type': 'Bank'})
+    company = models.ForeignKey('company.Company', on_delete=models.CASCADE, related_name='reconciliation_sessions', null=True, blank=True, help_text="Company this reconciliation belongs to")
     session_name = models.CharField(max_length=200, help_text="Name or description of this reconciliation")
     
     # Enhanced period tracking
@@ -63,6 +64,7 @@ class TransactionMatch(models.Model):
     # Core relationships - separate raw data from processed data
     bank_transaction = models.OneToOneField(BankTransaction, on_delete=models.CASCADE, help_text="Raw bank transaction")
     reconciliation_session = models.ForeignKey(ReconciliationSession, on_delete=models.CASCADE)
+    company = models.ForeignKey('company.Company', on_delete=models.CASCADE, related_name='transaction_matches', null=True, blank=True, help_text="Company this transaction match belongs to")
     
     # WHO/WHAT/WHY/TAX Data (from reconciliation UI)
     contact = models.CharField(max_length=255, blank=True, help_text="WHO - Contact/Payee name")
@@ -148,6 +150,7 @@ class TransactionSplit(models.Model):
     
     # Parent transaction match
     transaction_match = models.ForeignKey(TransactionMatch, on_delete=models.CASCADE, related_name='splits')
+    company = models.ForeignKey('company.Company', on_delete=models.CASCADE, related_name='transaction_splits', null=True, blank=True, help_text="Company this transaction split belongs to")
     
     # Split details
     split_number = models.PositiveIntegerField(help_text="Split sequence number (1, 2, 3...)")
@@ -202,6 +205,7 @@ class TransactionSplit(models.Model):
 class ReconciliationReport(models.Model):
     """Stores reconciliation reports and summaries"""
     reconciliation_session = models.OneToOneField(ReconciliationSession, on_delete=models.CASCADE)
+    company = models.ForeignKey('company.Company', on_delete=models.CASCADE, related_name='reconciliation_reports', null=True, blank=True, help_text="Company this report belongs to")
     total_bank_transactions = models.IntegerField(default=0)
     total_reconciled = models.IntegerField(default=0)
     total_unreconciled = models.IntegerField(default=0)

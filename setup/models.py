@@ -82,23 +82,16 @@ class CompanySetupStatus(models.Model):
     @property
     def completion_percentage(self):
         """Calculate completion percentage based on completed steps"""
-        # Required steps: company_info (25%), accounts (35%), opening_balance (25%) = 85%
-        # Optional step: tax_setup (15%) = 100%
-
+        # Only two steps remain: company_info (50%) and tax_setup (50%)
+        
         percentage = 0
-
+        
         if self.company_info_complete:
-            percentage += 25
-
-        if self.accounts_complete:
-            percentage += 35
-
-        if self.balance_complete:
-            percentage += 25
-
+            percentage += 50
+            
         if self.tax_complete:
-            percentage += 15
-
+            percentage += 50
+            
         return min(percentage, 100)  # Cap at 100%
 
     @property
@@ -106,10 +99,6 @@ class CompanySetupStatus(models.Model):
         """Determine next setup step to complete"""
         if not self.company_info_complete:
             return "company_info"
-        elif not self.accounts_complete:
-            return "essential_accounts"
-        elif not self.balance_complete:
-            return "opening_balance"
         elif not self.tax_complete:
             return "tax_setup"  # Optional step
         else:
@@ -118,20 +107,14 @@ class CompanySetupStatus(models.Model):
     @property
     def required_steps_complete(self):
         """Check if all required steps are complete"""
-        return (
-            self.company_info_complete
-            and self.accounts_complete
-            and self.balance_complete
-        )
+        return self.company_info_complete  # Only company_info is required now
 
     @property
     def all_steps_complete(self):
         """Check if all steps (including optional) are complete"""
         return (
             self.company_info_complete
-            and self.accounts_complete
             and self.tax_complete
-            and self.balance_complete
         )
 
     def save(self, *args, **kwargs):
@@ -156,9 +139,7 @@ class CompanySetupStatus(models.Model):
         """Mark a specific setup step as complete"""
         step_mapping = {
             "company_info": "company_info_complete",
-            "essential_accounts": "accounts_complete",
             "tax_setup": "tax_complete",
-            "opening_balance": "balance_complete",
         }
 
         if step_name in step_mapping:
@@ -175,24 +156,12 @@ class CompanySetupStatus(models.Model):
                 "complete": self.company_info_complete,
                 "name": "Company Information",
                 "required": True,
-                "weight": 25,
-            },
-            "essential_accounts": {
-                "complete": self.accounts_complete,
-                "name": "Essential Accounts",
-                "required": True,
-                "weight": 35,
-            },
-            "opening_balance": {
-                "complete": self.balance_complete,
-                "name": "Opening Balances",
-                "required": True,
-                "weight": 25,
+                "weight": 50,
             },
             "tax_setup": {
                 "complete": self.tax_complete,
                 "name": "Tax Configuration",
                 "required": False,
-                "weight": 15,
+                "weight": 50,
             },
         }

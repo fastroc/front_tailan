@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.db.models import Count
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from .models import Company, UserCompanyAccess, UserCompanyPreference
 
 
@@ -31,6 +32,7 @@ class CompanyAdmin(admin.ModelAdmin):
         "company_info_display",
         "business_details_display",
         "contact_info_display",
+        "financial_summary_display",
         "setup_status_display",
         "user_count",
         "is_active",
@@ -65,6 +67,7 @@ class CompanyAdmin(admin.ModelAdmin):
         "get_statistics",
         "setup_progress_display",
         "financial_summary_display",
+        "fiscal_year_end_display",
     ]
     ordering = ["-created_at"]
 
@@ -96,7 +99,7 @@ class CompanyAdmin(admin.ModelAdmin):
         (
             "💼 Financial Settings",
             {
-                "fields": (("base_currency", "fiscal_year_start"), "setup_complete"),
+                "fields": (("base_currency", "fiscal_year_start"), "fiscal_year_end_display", "setup_complete"),
                 "classes": ("collapse",),
             },
         ),
@@ -122,7 +125,7 @@ class CompanyAdmin(admin.ModelAdmin):
         queryset = super().get_queryset(request)
         return (
             queryset.select_related("owner")
-            .prefetch_related("companysetupstatus_set")
+            .prefetch_related("setup_status")
             .annotate(user_count_annotated=Count("user_access", distinct=True))
         )
 
@@ -270,7 +273,26 @@ class CompanyAdmin(admin.ModelAdmin):
             parts.append(f"<strong>Base Currency:</strong> {obj.base_currency}")
 
         if obj.fiscal_year_start:
-            parts.append(f"<strong>Fiscal Year:</strong> {obj.fiscal_year_start}")
+            # Calculate fiscal year end
+            from datetime import date, timedelta
+            try:
+                fiscal_end = date(
+                    obj.fiscal_year_start.year + 1,
+                    obj.fiscal_year_start.month,
+                    obj.fiscal_year_start.day
+                ) - timedelta(days=1)
+                parts.append(f"<strong>Fiscal Year:</strong> {obj.fiscal_year_start.strftime('%b %d')} - {fiscal_end.strftime('%b %d')}")
+                parts.append(f"<strong>FY Period:</strong> {obj.fiscal_year_start.strftime('%Y-%m-%d')} to {fiscal_end.strftime('%Y-%m-%d')}")
+            except ValueError:
+                # Handle leap year edge case
+                fiscal_end = date(
+                    obj.fiscal_year_start.year + 1,
+                    obj.fiscal_year_start.month,
+                    28
+                )
+                parts.append(f"<strong>Fiscal Year:</strong> {obj.fiscal_year_start.strftime('%b %d')} - {fiscal_end.strftime('%b %d')}")
+        else:
+            parts.append("<strong>Fiscal Year:</strong> <em>Not set (defaults to calendar year)</em>")
 
         # Get account and tax rate counts
         try:
@@ -285,22 +307,63 @@ class CompanyAdmin(admin.ModelAdmin):
             pass
 
         if parts:
+            html_content = "<br>".join(parts)
             return format_html(
                 '<div style="background: #e7f3ff; padding: 10px; border-left: 4px solid #0d6efd; border-radius: 3px;">'
-                "{}"
-                "</div>",
-                "<br>".join(parts),
+                '{}'
+                '</div>',
+                mark_safe(html_content)
             )
 
         return "No financial data configured"
 
     financial_summary_display.short_description = "Financial Configuration"
 
-    def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        return queryset.select_related("owner").annotate(
-            user_count_annotated=Count("user_access", distinct=True)
-        )
+    def fiscal_year_end_display(self, obj):
+        """Display calculated fiscal year end date"""
+        if not obj.fiscal_year_start:
+            return format_html(
+                '<div style="color: #6c757d; font-style: italic;">'
+                'Not set - using calendar year (Jan 1 - Dec 31)'
+                '</div>'
+            )
+        
+        from datetime import date, timedelta
+        try:
+            fiscal_end = date(
+                obj.fiscal_year_start.year + 1,
+                obj.fiscal_year_start.month,
+                obj.fiscal_year_start.day
+            ) - timedelta(days=1)
+            
+            return format_html(
+                '<div style="background: #d4edda; padding: 8px; border-radius: 4px; border-left: 3px solid #28a745;">'
+                '<strong>Fiscal Year Start:</strong> {}<br>'
+                '<strong>Fiscal Year End:</strong> {}<br>'
+                '<small style="color: #6c757d;">Financial year: {} - {}</small>'
+                '</div>',
+                obj.fiscal_year_start.strftime('%B %d, %Y'),
+                fiscal_end.strftime('%B %d, %Y'),
+                obj.fiscal_year_start.strftime('%b %d'),
+                fiscal_end.strftime('%b %d')
+            )
+        except ValueError:
+            # Handle leap year edge case
+            fiscal_end = date(
+                obj.fiscal_year_start.year + 1,
+                obj.fiscal_year_start.month,
+                28
+            )
+            return format_html(
+                '<div style="background: #fff3cd; padding: 8px; border-radius: 4px; border-left: 3px solid #ffc107;">'
+                '<strong>Fiscal Year Start:</strong> {}<br>'
+                '<strong>Fiscal Year End:</strong> {} <em>(adjusted for leap year)</em>'
+                '</div>',
+                obj.fiscal_year_start.strftime('%B %d, %Y'),
+                fiscal_end.strftime('%B %d, %Y')
+            )
+
+    fiscal_year_end_display.short_description = "📅 Fiscal Year Period"
 
     def user_count(self, obj):
         return getattr(obj, "user_count_annotated", obj.user_access.count())

@@ -368,6 +368,29 @@
                 </a>
             </div>
             
+            <div class="sidebar-section">
+                <div class="sidebar-title">Company</div>
+                <a href="{% url 'company:company_list' %}" class="sidebar-link">
+                    <i class="bi bi-building"></i>
+                    My Companies
+                </a>
+                <a href="{% url 'setup:dashboard' %}" class="sidebar-link">
+                    <i class="bi bi-gear-fill"></i>
+                    Company Setup
+                </a>
+                {% if active_company %}
+                <a href="{% url 'conversion:balances' active_company.id %}" class="sidebar-link">
+                    <i class="bi bi-arrow-repeat"></i>
+                    Conversion Balances
+                </a>
+                {% elif user_companies %}
+                <a href="{% url 'conversion:balances' user_companies.0.id %}" class="sidebar-link">
+                    <i class="bi bi-arrow-repeat"></i>
+                    Conversion Balances
+                </a>
+                {% endif %}
+            </div>
+            
             <!-- Setup Section (visible when setup incomplete) -->
             {% if request.user.is_authenticated and setup_status and setup_status.needs_setup %}
             <div class="sidebar-section setup-section">
@@ -542,6 +565,19 @@
             }
             return cookieValue;
         }
+        
+        // Highlight active sidebar links
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const sidebarLinks = document.querySelectorAll('.sidebar-link');
+            
+            sidebarLinks.forEach(link => {
+                const linkPath = new URL(link.href).pathname;
+                if (currentPath.startsWith(linkPath) && linkPath !== '/') {
+                    link.classList.add('active');
+                }
+            });
+        });
     </script>
     
     {% block extra_js %}{% endblock %}

@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Conversion Date{% endblock %}
+
+{% block extra_css %}
+<style>
+  .cd-card {
+    max-width: 640px;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: #f8fafc;
+  }
+  .cd-info-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .date-preview {
+    background: #f0f9ff;
+    border: 1px solid #0ea5e9;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <!-- Header with breadcrumb -->
+  <div class="mb-3">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'company:company_detail' company.id %}">{{ company.name }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'conversion:balances' company.id %}">Conversion Balances</a></li>
+        <li class="breadcrumb-item active">Conversion Date</li>
+      </ol>
+    </nav>
+    <h4 class="mb-0">Set Conversion Date</h4>
+  </div>
+
+  <!-- Info card -->
+  <div class="cd-info-card">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h5 class="mb-1">📅 Choose Your Starting Point</h5>
+        <p class="mb-0">Select the date when you began processing transactions in this system. This determines when your opening balances are calculated from.</p>
+      </div>
+      <div class="col-md-4 text-md-end">
+        <div class="fs-6">
+          <i class="fas fa-lightbulb me-1"></i>
+          <strong>Tip:</strong> Choose the start of a tax period for easier reconciliation.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card cd-card">
+        <div class="card-body">
+          <form method="post" id="conversionDateForm">
+            {% csrf_token %}
+            
+            <div class="mb-3">
+              <h5 class="card-title mb-2">
+                <i class="fas fa-calendar-alt text-primary me-2"></i>Conversion Date
+              </h5>
+              <p class="text-muted small">
+                Enter the date that you began processing all your transactions in this system. 
+                This will be used to determine your opening balance date.
+              </p>
+            </div>
+
+            <div class="row g-3 align-items-end">
+              <div class="col-md-6">
+                <label for="id_month" class="form-label fw-semibold">Month</label>
+                {{ form.month }}
+              </div>
+              <div class="col-md-6">
+                <label for="id_year" class="form-label fw-semibold">Year</label>
+                {{ form.year }}
+              </div>
+            </div>
+
+            <!-- Hidden field for actual conversion_date -->
+            {{ form.conversion_date }}
+
+            <!-- Date preview -->
+            <div class="date-preview" id="datePreview">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="small text-muted mb-1">Conversion Date (Start Processing):</div>
+                  <div class="fw-semibold text-primary" id="conversionDateDisplay">
+                    {% if conv_date.conversion_date %}
+                      {{ conv_date.conversion_date|date:"d M Y" }}
+                    {% else %}
+                      1 Jan {{ default_year }}
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="small text-muted mb-1">Opening Balances As At:</div>
+                  <div class="fw-semibold text-success" id="asAtDisplay">
+                    {% if conv_date.conversion_date %}
+                      {{ conv_date.as_at_date|date:"d M Y" }}
+                    {% else %}
+                      31 Dec {{ default_year|add:"-1" }}
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              <div class="small text-info mt-2">
+                <i class="fas fa-info-circle me-1"></i>
+                Your opening balances will be entered as at the <strong>last day of the previous month</strong> 
+                before your conversion date.
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+              <button type="submit" class="btn btn-success px-4">
+                <i class="fas fa-save me-1"></i>Save Conversion Date
+              </button>
+              <a href="{% url 'conversion:balances' company.id %}" class="btn btn-outline-secondary px-4">
+                <i class="fas fa-arrow-left me-1"></i>Back to Balances
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function lastDayOfMonth(year, month) {
+    return new Date(year, month, 0).getDate();
+  }
+
+  function updateDatePreview() {
+    const yearSelect = document.getElementById('id_year');
+    const monthSelect = document.getElementById('id_month');
+    const conversionDateField = document.getElementById('id_conversion_date');
+    
+    if (!yearSelect || !monthSelect) return;
+    
+    const year = parseInt(yearSelect.value, 10);
+    const month = parseInt(monthSelect.value, 10); // 1-12
+    
+    // Conversion date is first day of selected month/year
+    const conversionDate = new Date(year, month - 1, 1);
+    
+    // As-at date is last day of previous month
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const lastDay = lastDayOfMonth(prevYear, prevMonth);
+    const asAtDate = new Date(prevYear, prevMonth - 1, lastDay);
+    
+    // Update displays
+    document.getElementById('conversionDateDisplay').textContent = 
+      conversionDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'});
+    
+    document.getElementById('asAtDisplay').textContent = 
+      asAtDate.toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'});
+    
+    // Update hidden field for form submission
+    const formattedDate = conversionDate.toISOString().split('T')[0];
+    conversionDateField.value = formattedDate;
+  }
+
+  // Event listeners
+  document.getElementById('id_year').addEventListener('change', updateDatePreview);
+  document.getElementById('id_month').addEventListener('change', updateDatePreview);
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', updateDatePreview);
+
+  // Form submission with loading state
+  document.getElementById('conversionDateForm').addEventListener('submit', function(e) {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    submitBtn.disabled = true;
+    
+    // Re-enable button after 3 seconds if form doesn't redirect
+    setTimeout(() => {
+      submitBtn.innerHTML = originalText;
+      submitBtn.disabled = false;
+    }, 3000);
+  });
+</script>
+{% endblock %}

@@ -5,17 +5,13 @@ from django.urls import reverse
 from company.models import Company
 from .models import CompanySetupStatus
 from .setup_steps.company_info import CompanyInfoSetupStep
-from .setup_steps.essential_accounts import EssentialAccountsSetupStep
 from .setup_steps.tax_setup import TaxSetupStep
-from .setup_steps.opening_balance import OpeningBalanceSetupStep
 
 
 # Define available setup steps
 SETUP_STEPS = {
     'company_info': CompanyInfoSetupStep,
-    'essential_accounts': EssentialAccountsSetupStep,
     'tax_setup': TaxSetupStep,
-    'opening_balance': OpeningBalanceSetupStep,
 }
 
 
@@ -77,12 +73,8 @@ def setup_dashboard(request):
         # Update setup status based on actual step completion
         if step_key == 'company_info' and is_complete and not setup_status.company_info_complete:
             setup_status.company_info_complete = True
-        elif step_key == 'essential_accounts' and is_complete and not setup_status.accounts_complete:
-            setup_status.accounts_complete = True
         elif step_key == 'tax_setup' and is_complete and not setup_status.tax_complete:
             setup_status.tax_complete = True
-        elif step_key == 'opening_balance' and is_complete and not setup_status.balance_complete:
-            setup_status.balance_complete = True
     
     # Save any updates to setup status
     setup_status.save()
@@ -215,7 +207,7 @@ def complete_setup(request):
     # Add debug message
     messages.info(request, f'Setup Status Debug: {debug_info}')
     
-    if completion_percentage >= 50:  # At least essential steps
+    if completion_percentage >= 50:  # Company info complete (50%)
         # Mark company setup as complete
         active_company.setup_complete = True
         active_company.save(update_fields=['setup_complete'])

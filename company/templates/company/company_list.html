@@ -109,7 +109,7 @@
                 </div>
                 <div>
                     <a href="{% url 'company:company_detail' active_company.id %}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-gear me-1"></i>
+                        <i class="bi bi-building me-1"></i>
                         Manage
                     </a>
                 </div>
@@ -179,11 +179,11 @@
                             Active
                         </button>
                     {% endif %}
-                    <a href="{% url 'company:company_detail' company.id %}" 
-                       class="btn btn-outline-secondary btn-sm"
-                       onclick="event.stopPropagation()">
-                        <i class="bi bi-gear"></i>
-                    </a>
+                    <button class="btn btn-outline-danger btn-sm" 
+                            onclick="event.stopPropagation(); confirmDelete('{{ company.name|escapejs }}', '{% url 'company:company_delete' company.id %}')"
+                            title="Delete Company">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -255,6 +255,48 @@
     </div>
 </div>
 
+<!-- Delete Company Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-danger">Delete Company</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                </div>
+                <h6 class="mb-2">Are you sure you want to delete</h6>
+                <p class="h5 text-danger mb-3" id="deleteCompanyName"></p>
+                <div class="alert alert-warning text-start">
+                    <h6 class="alert-heading">⚠️ Warning</h6>
+                    <ul class="mb-0 small">
+                        <li>This action cannot be undone</li>
+                        <li>All company data will be permanently deleted</li>
+                        <li>All transactions, accounts, and reports will be lost</li>
+                        <li>Team members will lose access to this company</li>
+                    </ul>
+                </div>
+                <div class="form-group mt-3">
+                    <label for="confirmText" class="form-label small">Type "DELETE" to confirm:</label>
+                    <input type="text" class="form-control text-center" id="confirmText" placeholder="DELETE">
+                </div>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger" id="confirmDeleteBtn" disabled>
+                        <i class="bi bi-trash me-1"></i>
+                        Delete Company
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let switchCompanyId = null;
 
@@ -265,6 +307,37 @@ function switchCompany(companyId, companyName) {
     const modal = new bootstrap.Modal(document.getElementById('switchModal'));
     modal.show();
 }
+
+function confirmDelete(companyName, deleteUrl) {
+    document.getElementById('deleteCompanyName').textContent = companyName;
+    document.getElementById('deleteForm').action = deleteUrl;
+    document.getElementById('confirmText').value = '';
+    document.getElementById('confirmDeleteBtn').disabled = true;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+// Enable delete button only when user types "DELETE"
+document.getElementById('confirmText').addEventListener('input', function() {
+    const deleteBtn = document.getElementById('confirmDeleteBtn');
+    if (this.value === 'DELETE') {
+        deleteBtn.disabled = false;
+        deleteBtn.classList.remove('btn-outline-danger');
+        deleteBtn.classList.add('btn-danger');
+    } else {
+        deleteBtn.disabled = true;
+        deleteBtn.classList.remove('btn-danger');
+        deleteBtn.classList.add('btn-outline-danger');
+    }
+});
+
+// Handle delete form submission
+document.getElementById('deleteForm').addEventListener('submit', function(e) {
+    const deleteBtn = document.getElementById('confirmDeleteBtn');
+    deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
+    deleteBtn.disabled = true;
+});
 
 document.getElementById('confirmSwitch').addEventListener('click', function() {
     if (!switchCompanyId) return;

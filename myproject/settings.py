@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "journal",
     "assets",  # Fixed Assets management
     "reports",  # New modular reports app
+    "conversion",  # Conversion balances (opening balances)
 ]
 
 # Add debug toolbar only in development

@@ -3,17 +3,78 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.db import transaction
 import json
 
 from .models import Company, UserCompanyAccess, UserCompanyPreference
 from .forms import SimpleCompanyForm, CompanySettingsForm
 
 
+def create_essential_accounts(company):
+    """Create essential accounts for a new company"""
+    from coa.models import Account
+    
+    try:
+        with transaction.atomic():
+            # Create Cash Account
+            Account.objects.get_or_create(
+                company=company,
+                code="1001",
+                defaults={
+                    'name': 'Cash',
+                    'account_type': 'CURRENT_ASSET',
+                    'description': 'Company cash and bank accounts',
+                    'is_active': True
+                }
+            )
+            
+            # Create Income Account
+            Account.objects.get_or_create(
+                company=company,
+                code="4001",
+                defaults={
+                    'name': 'Sales Revenue',
+                    'account_type': 'REVENUE',
+                    'description': 'Revenue from sales and services',
+                    'is_active': True
+                }
+            )
+            
+            # Create Expense Account
+            Account.objects.get_or_create(
+                company=company,
+                code="6001",
+                defaults={
+                    'name': 'General Expenses',
+                    'account_type': 'EXPENSE',
+                    'description': 'General business expenses',
+                    'is_active': True
+                }
+            )
+            
+            # Mark accounts setup as complete
+            from setup.models import CompanySetupStatus
+            setup_status, created = CompanySetupStatus.objects.get_or_create(
+                company=company
+            )
+            setup_status.accounts_complete = True
+            setup_status.save()
+            
+            return True
+            
+    except Exception as e:
+        # Log the error but don't fail company creation
+        import logging
+        logging.error(f"Error creating essential accounts for company {company.name}: {str(e)}")
+        return False
+
+
 @login_required
 def company_list(request):
     """Display list of user's companies"""
     companies = Company.objects.filter(
-        user_access__user=request.user
+        user_access__user=request.user,
+        is_active=True  # Only show active companies
     ).distinct().order_by('-created_at')
     
     # Get active company
@@ -44,6 +105,9 @@ def company_create(request):
                 role='owner'
             )
             
+            # Automatically create essential accounts
+            create_essential_accounts(company)
+            
             # Set as active company if user doesn't have one
             try:
                 preferences = request.user.company_preference
@@ -56,7 +120,7 @@ def company_create(request):
                     active_company=company
                 )
             
-            messages.success(request, f'Company "{company.name}" created successfully!')
+            messages.success(request, f'Company "{company.name}" created successfully with essential accounts!')
             return redirect('company:company_list')
     else:
         form = SimpleCompanyForm()
@@ -84,9 +148,20 @@ def company_detail(request, company_id):
         company=company
     )
     
+    # Get active company for comparison
+    active_company = get_active_company(request)
+    
+    # Get all company users
+    company_users = UserCompanyAccess.objects.filter(
+        company=company
+    ).select_related('user').order_by('-created_at')
+    
     context = {
         'company': company,
         'user_access': user_access,
+        'user_role': user_access.role,
+        'active_company': active_company,
+        'company_users': company_users,
         'title': f'{company.name} - Details',
         'can_edit': user_access.role in ['owner', 'admin'],
     }
@@ -230,3 +305,64 @@ def get_active_company(request):
         request.session['active_company_id'] = first_company.id
         
     return first_company
+
+
+@login_required
+@require_POST
+def company_delete(request, company_id):
+    """Delete a company (only owner can delete)"""
+    company = get_object_or_404(
+        Company,
+        id=company_id,
+        user_access__user=request.user
+    )
+    
+    # Check if user is owner
+    user_access = UserCompanyAccess.objects.get(
+        user=request.user,
+        company=company
+    )
+    
+    if user_access.role != 'owner':
+        messages.error(request, 'Only company owners can delete companies.')
+        return redirect('company:company_detail', company_id=company_id)
+    
+    # Check if this is the user's only company
+    user_companies_count = Company.objects.filter(
+        user_access__user=request.user,
+        is_active=True
+    ).count()
+    
+    if user_companies_count <= 1:
+        messages.error(request, 'Cannot delete your only company. Create another company first.')
+        return redirect('company:company_detail', company_id=company_id)
+    
+    company_name = company.name
+    
+    # If this is the active company, switch to another one
+    active_company = get_active_company(request)
+    if active_company and active_company.id == company.id:
+        # Find another company to switch to
+        other_company = Company.objects.filter(
+            user_access__user=request.user,
+            is_active=True
+        ).exclude(id=company.id).first()
+        
+        if other_company:
+            try:
+                preferences = request.user.company_preference
+                preferences.active_company = other_company
+                preferences.save()
+            except UserCompanyPreference.DoesNotExist:
+                UserCompanyPreference.objects.create(
+                    user=request.user,
+                    active_company=other_company
+                )
+            request.session['active_company_id'] = other_company.id
+    
+    # Soft delete the company
+    company.is_active = False
+    company.save()
+    
+    messages.success(request, f'Company "{company_name}" has been deleted.')
+    return redirect('company:company_list')

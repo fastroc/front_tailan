@@ -1,0 +1,390 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Conversion balances{% endblock %}
+
+{% block extra_css %}
+<style>
+  .cb-toolbar .btn{border-radius:.35rem}
+  .cb-box{border:1px solid #e5e7eb;border-radius:.5rem;background:#f8fafc}
+  .cb-head{background:#eef2ff;border-bottom:1px solid #e5e7eb}
+  .cb-grid thead th{background:#f3f4f6;position:sticky;top:0;z-index:1}
+  .cb-help .accordion-button{font-weight:600}
+  .row-drag{cursor:grab;color:#94a3b8}
+  .cb-info-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" id="cbRoot">
+  <!-- Header with breadcrumb -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+          <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'company:company_detail' company.id %}">{{ company.name }}</a></li>
+          <li class="breadcrumb-item active">Conversion Balances</li>
+        </ol>
+      </nav>
+      <h4 class="mb-0">Conversion Balances</h4>
+    </div>
+    <div class="cb-toolbar d-flex gap-2">
+      <a href="{% url 'conversion:comparatives' company.id %}" class="btn btn-outline-primary btn-sm">
+        <i class="fas fa-plus me-1"></i>Add Comparative Balances
+      </a>
+      <a href="{% url 'conversion:date' company.id %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-calendar me-1"></i>Conversion Date
+      </a>
+    </div>
+  </div>
+
+  <!-- Info card -->
+  <div class="cb-info-card">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h5 class="mb-1">📊 Opening Balance Setup</h5>
+        <p class="mb-0">Enter your account balances as they existed in your previous system. This ensures accurate financial reporting from day one.</p>
+      </div>
+      <div class="col-md-4 text-md-end">
+        <div class="fs-6">
+          <strong>Conversion Date:</strong><br>
+          {{ conv_date.conversion_date|date:"d M Y" }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Period tabs -->
+  <ul class="nav nav-tabs mb-3">
+    {% for p in periods %}
+      <li class="nav-item">
+        <a class="nav-link {% if p.active %}active{% endif %}" 
+           href="{% url 'conversion:balances' company.id %}?start={{ p.start }}&end={{ p.end }}">
+          {{ p.label }}
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="cb-box">
+        <div class="cb-head px-3 py-2 d-flex justify-content-between align-items-center">
+          <div class="small text-muted">
+            Enter opening balances as at <strong>{{ as_at|date:'d M Y' }}</strong>
+          </div>
+          <div class="d-flex gap-3 small">
+            <a href="#" class="text-decoration-underline" onclick="showAll();return false;">Show all accounts</a>
+            <a href="#" class="text-decoration-underline" onclick="removeZeros();return false;">Remove zero balances</a>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0 cb-grid" id="grid">
+            <thead>
+              <tr>
+                <th style="width:28px"></th>
+                <th>Account</th>
+                <th class="text-end" style="width:180px">Debit</th>
+                <th class="text-end" style="width:180px">Credit</th>
+                <th style="width:40px"></th>
+              </tr>
+            </thead>
+            <tbody id="gridBody">
+              {% for row in rows %}
+              <tr>
+                <td class="row-drag">⋮⋮</td>
+                <td>
+                  <select class="form-select form-select-sm acc">
+                    <option value="">Select Account...</option>
+                    {% for a in accounts %}
+                      <option value="{{ a.code }}" {% if a.code == row.account %}selected{% endif %}>
+                        {{ a.code }} — {{ a.name }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td class="text-end">
+                  <input type="number" step="0.01" min="0" 
+                         class="form-control form-control-sm text-end debit" 
+                         value="{{ row.debit|default:'' }}">
+                </td>
+                <td class="text-end">
+                  <input type="number" step="0.01" min="0" 
+                         class="form-control form-control-sm text-end credit" 
+                         value="{{ row.credit|default:'' }}">
+                </td>
+                <td>
+                  <button class="btn btn-outline-danger btn-sm" onclick="removeRow(this)" title="Remove row">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td></td>
+                <td>
+                  <button class="btn btn-outline-primary btn-sm" onclick="addRow()">
+                    <i class="fas fa-plus me-1"></i>Add a new line
+                  </button>
+                </td>
+                <td class="text-end fw-semibold">Total Debits</td>
+                <td class="text-end fw-semibold" id="totCrLabel">Total Credits</td>
+                <td></td>
+              </tr>
+              <tr class="table-light">
+                <td></td>
+                <td></td>
+                <td class="text-end fw-bold" id="totDr">$0.00</td>
+                <td class="text-end fw-bold" id="totCr">$0.00</td>
+                <td></td>
+              </tr>
+              <tr id="diffRow" style="display: none;">
+                <td></td>
+                <td colspan="3">
+                  <div class="small text-warning">
+                    <strong>⚠️ Out of Balance</strong> — Debits and credits must be equal
+                  </div>
+                </td>
+                <td class="text-end fw-semibold text-warning" id="diff">$0.00</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="d-flex justify-content-center gap-2 p-3">
+          <button class="btn btn-success px-4" onclick="saveBalances()" id="saveBtn">
+            <i class="fas fa-save me-1"></i>Save Balances
+          </button>
+          <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary px-4">
+            <i class="fas fa-times me-1"></i>Cancel
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right help column -->
+    <div class="col-lg-4">
+      <div class="cb-box p-0">
+        <div class="p-3 fw-semibold border-bottom">
+          <i class="fas fa-question-circle text-warning me-2"></i>Starting with the right numbers
+        </div>
+        <div class="accordion cb-help" id="helpAcc">
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#h0">
+                What's this?
+              </button>
+            </h2>
+            <div id="h0" class="accordion-collapse collapse show">
+              <div class="accordion-body small">
+                Enter bank balances, outstanding invoices and bills, and other balances as at your conversion date.
+                This ensures your new accounting system starts with accurate opening balances.
+              </div>
+            </div>
+          </div>
+          {% for help_item in help_items %}
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#h{{ forloop.counter }}">
+                {{ forloop.counter }}. {{ help_item.title }}
+              </button>
+            </h2>
+            <div id="h{{ forloop.counter }}" class="accordion-collapse collapse">
+              <div class="accordion-body small">
+                {{ help_item.body }}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function fmt(n) {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(parseFloat(n) || 0);
+  }
+
+  function recalc() {
+    let dr = 0, cr = 0;
+    document.querySelectorAll('#gridBody tr').forEach(tr => {
+      const debitInput = tr.querySelector('.debit');
+      const creditInput = tr.querySelector('.credit');
+      
+      if (debitInput && creditInput) {
+        dr += parseFloat(debitInput.value || 0);
+        cr += parseFloat(creditInput.value || 0);
+      }
+    });
+
+    document.getElementById('totDr').textContent = fmt(dr);
+    document.getElementById('totCr').textContent = fmt(cr);
+    
+    const difference = Math.abs(dr - cr);
+    const diffRow = document.getElementById('diffRow');
+    const saveBtn = document.getElementById('saveBtn');
+    
+    if (difference > 0.01) {
+      document.getElementById('diff').textContent = fmt(difference);
+      diffRow.style.display = '';
+      saveBtn.classList.add('btn-warning');
+      saveBtn.classList.remove('btn-success');
+      saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Out of Balance';
+    } else {
+      diffRow.style.display = 'none';
+      saveBtn.classList.add('btn-success');
+      saveBtn.classList.remove('btn-warning');
+      saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save Balances';
+    }
+  }
+
+  function addRow() {
+    const tb = document.getElementById('gridBody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class='row-drag'>⋮⋮</td>
+      <td>
+        <select class='form-select form-select-sm acc'>
+          <option value="">Select Account...</option>
+          {% for a in accounts %}
+            <option value="{{ a.code }}">{{ a.code }} — {{ a.name }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td class='text-end'><input type='number' step='0.01' min='0' class='form-control form-control-sm text-end debit'></td>
+      <td class='text-end'><input type='number' step='0.01' min='0' class='form-control form-control-sm text-end credit'></td>
+      <td><button class='btn btn-outline-danger btn-sm' onclick='removeRow(this)' title='Remove row'><i class='fas fa-times'></i></button></td>
+    `;
+    tr.querySelectorAll('input').forEach(el => el.addEventListener('input', recalc));
+    tb.appendChild(tr);
+    recalc();
+  }
+
+  function removeRow(btn) {
+    btn.closest('tr').remove();
+    recalc();
+  }
+
+  function showAll() {
+    // TODO: Implement show all accounts functionality
+    alert('Show all accounts feature coming soon!');
+  }
+
+  function removeZeros() {
+    document.querySelectorAll('#gridBody tr').forEach(tr => {
+      const debitInput = tr.querySelector('.debit');
+      const creditInput = tr.querySelector('.credit');
+      
+      if (debitInput && creditInput) {
+        const d = parseFloat(debitInput.value || 0);
+        const c = parseFloat(creditInput.value || 0);
+        
+        if (d === 0 && c === 0) {
+          tr.remove();
+        }
+      }
+    });
+    recalc();
+  }
+
+  function saveBalances() {
+    const lines = [...document.querySelectorAll('#gridBody tr')].map(tr => {
+      const accountSelect = tr.querySelector('.acc');
+      const debitInput = tr.querySelector('.debit');
+      const creditInput = tr.querySelector('.credit');
+      
+      if (accountSelect && debitInput && creditInput && accountSelect.value) {
+        return {
+          account: accountSelect.value,
+          debit: parseFloat(debitInput.value || 0),
+          credit: parseFloat(creditInput.value || 0),
+        };
+      }
+      return null;
+    }).filter(l => l !== null && (l.debit > 0 || l.credit > 0));
+
+    const payload = {
+      as_at: '{{ as_at|date:"Y-m-d" }}',
+      lines: lines
+    };
+
+    // Show loading state
+    const saveBtn = document.getElementById('saveBtn');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    saveBtn.disabled = true;
+
+    fetch(`{% url 'conversion:save_balances' company.id %}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Show success message
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+        alertDiv.innerHTML = `
+          <i class="fas fa-check-circle me-2"></i>${data.message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.getElementById('cbRoot').insertBefore(alertDiv, document.getElementById('cbRoot').firstChild);
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+          alertDiv.remove();
+        }, 3000);
+      } else {
+        throw new Error(data.message);
+      }
+    })
+    .catch(error => {
+      // Show error message
+      const alertDiv = document.createElement('div');
+      alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+      alertDiv.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>Error: ${error.message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+      document.getElementById('cbRoot').insertBefore(alertDiv, document.getElementById('cbRoot').firstChild);
+    })
+    .finally(() => {
+      // Restore button state
+      saveBtn.innerHTML = originalText;
+      saveBtn.disabled = false;
+    });
+  }
+
+  // Initialize
+  document.addEventListener('input', e => {
+    if (e.target.matches('.debit,.credit')) {
+      recalc();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    recalc();
+  });
+</script>
+{% endblock %}

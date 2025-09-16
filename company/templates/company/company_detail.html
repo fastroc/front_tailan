@@ -306,7 +306,7 @@
                         <div class="d-flex align-items-center gap-3">
                             <span class="role-badge">{{ user_role|title }}</span>
                             {% if company.industry %}
-                                <span class="text-white-50">{{ company.get_industry_display }}</span>
+                                <span class="text-white-50">{{ company.industry }}</span>
                             {% endif %}
                         </div>
                     </div>
@@ -357,7 +357,11 @@
                 <li><a class="dropdown-item" href="#"><i class="bi bi-archive me-2"></i>Archive Company</a></li>
                 <li><a class="dropdown-item" href="#"><i class="bi bi-shield-check me-2"></i>Security Settings</a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-trash me-2"></i>Delete Company</a></li>
+                <li>
+                    <a class="dropdown-item text-danger" href="#" onclick="confirmDelete('{{ company.name|escapejs }}', '{% url 'company:company_delete' company.id %}')">
+                        <i class="bi bi-trash me-2"></i>Delete Company
+                    </a>
+                </li>
             </ul>
         </div>
     </div>
@@ -458,7 +462,7 @@
                 
                 <div class="info-row">
                     <span class="info-label">Industry</span>
-                    <span class="info-value">{{ company.get_industry_display|default:"Not specified" }}</span>
+                    <span class="info-value">{{ company.industry|default:"Not specified" }}</span>
                 </div>
                 
                 <div class="info-row">
@@ -468,15 +472,14 @@
                 
                 <div class="info-row">
                     <span class="info-label">Financial Year</span>
-                    <span class="info-value">{{ company.financial_year_start|date:"M d" }} - {{ company.financial_year_end|date:"M d, Y" }}</span>
+                    <span class="info-value">
+                        {% if company.fiscal_year_start %}
+                            {{ company.fiscal_year_start|date:"M d, Y" }} - Next Year
+                        {% else %}
+                            Not set
+                        {% endif %}
+                    </span>
                 </div>
-                
-                {% if company.registration_number %}
-                <div class="info-row">
-                    <span class="info-label">Registration</span>
-                    <span class="info-value">{{ company.registration_number }}</span>
-                </div>
-                {% endif %}
                 
                 {% if company.tax_id %}
                 <div class="info-row">
@@ -526,14 +529,13 @@
                 </div>
                 {% endif %}
                 
-                {% if company.address_line_1 %}
+                {% if company.address %}
                 <div class="info-row">
                     <span class="info-label">Address</span>
                     <span class="info-value">
-                        {{ company.address_line_1 }}<br>
-                        {% if company.address_line_2 %}{{ company.address_line_2 }}<br>{% endif %}
+                        {{ company.address }}<br>
                         {% if company.city %}{{ company.city }}, {% endif %}
-                        {% if company.state_province %}{{ company.state_province }} {% endif %}
+                        {% if company.state %}{{ company.state }} {% endif %}
                         {% if company.postal_code %}{{ company.postal_code }}<br>{% endif %}
                         {% if company.country %}{{ company.country }}{% endif %}
                     </span>
@@ -673,6 +675,38 @@
     </div>
 </div>
 
+<!-- Delete Company Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-danger">Delete Company</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                </div>
+                <h6 class="mb-2">Are you sure you want to delete</h6>
+                <p class="h5 text-danger mb-3" id="deleteCompanyName"></p>
+                <div class="alert alert-warning text-start">
+                    <strong>Warning:</strong> This action cannot be undone. All data associated with this company will be permanently deleted.
+                </div>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger" id="confirmDelete">
+                        <i class="bi bi-trash me-1"></i>
+                        Delete Company
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let switchCompanyId = null;
 
@@ -681,6 +715,14 @@ function switchCompany(companyId, companyName) {
     document.getElementById('switchCompanyName').textContent = companyName;
     
     const modal = new bootstrap.Modal(document.getElementById('switchModal'));
+    modal.show();
+}
+
+function confirmDelete(companyName, deleteUrl) {
+    document.getElementById('deleteCompanyName').textContent = companyName;
+    document.getElementById('deleteForm').action = deleteUrl;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
     modal.show();
 }
 

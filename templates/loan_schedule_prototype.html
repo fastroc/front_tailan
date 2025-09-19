@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Schedule Prototype - Professional Accounting System</title>
+    
+    <!-- Bootstrap 5.3.0 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
+    
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bs-primary: #1e3a8a;
+            --bs-primary-rgb: 30, 58, 138;
+            --bs-secondary: #6b7280;
+            --bs-success: #059669;
+            --bs-info: #0284c7;
+            --bs-warning: #d97706;
+            --bs-danger: #dc2626;
+            --bs-light: #f8fafc;
+            --bs-dark: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #f8fafc;
+            color: #374151;
+            line-height: 1.6;
+            padding-top: 20px;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .page-header {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+
+        .header-section {
+            background: linear-gradient(135deg, var(--bs-primary) 0%, #3b82f6 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .header-section h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-section p {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .content-section {
+            background: white;
+            padding: 2rem;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            background: var(--bs-info);
+            color: white;
+            border: none;
+            border-radius: 12px 12px 0 0 !important;
+            padding: 1rem 1.5rem;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .loan-input-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .schedule-type-selector {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .schedule-type-selector:hover {
+            border-color: var(--bs-primary);
+            background: rgba(30, 58, 138, 0.05);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(30, 58, 138, 0.15);
+        }
+
+        .schedule-type-selector.active {
+            border-color: var(--bs-primary);
+            background: rgba(30, 58, 138, 0.1);
+            box-shadow: 0 4px 15px rgba(30, 58, 138, 0.2);
+        }
+
+        .schedule-type-selector .type-icon {
+            font-size: 2.5rem;
+            color: var(--bs-primary);
+            margin-bottom: 1rem;
+        }
+
+        .schedule-type-selector .type-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--bs-dark);
+        }
+
+        .schedule-type-selector .type-description {
+            font-size: 0.9rem;
+            color: var(--bs-secondary);
+            line-height: 1.4;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .summary-card.primary { border-left: 4px solid var(--bs-primary); }
+        .summary-card.success { border-left: 4px solid var(--bs-success); }
+        .summary-card.warning { border-left: 4px solid var(--bs-warning); }
+        .summary-card.info { border-left: 4px solid var(--bs-info); }
+
+        .summary-card-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--bs-dark);
+        }
+
+        .summary-card-label {
+            font-size: 0.9rem;
+            color: var(--bs-secondary);
+            font-weight: 500;
+        }
+
+        .schedule-table {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-top: 2rem;
+        }
+
+        .schedule-table table {
+            margin-bottom: 0;
+        }
+
+        .schedule-table th {
+            background: var(--bs-primary);
+            color: white;
+            font-weight: 600;
+            padding: 1rem 0.75rem;
+            border: none;
+            font-size: 0.9rem;
+        }
+
+        .schedule-table td {
+            padding: 0.875rem 0.75rem;
+            border-color: #e2e8f0;
+            vertical-align: middle;
+            font-size: 0.9rem;
+        }
+
+        .schedule-table tbody tr:hover {
+            background: rgba(30, 58, 138, 0.03);
+        }
+
+        .table-warning {
+            background-color: rgba(255, 193, 7, 0.1) !important;
+            border-left: 4px solid #ffc107 !important;
+        }
+
+        .table-warning .payment-number {
+            font-weight: 600;
+            color: #856404;
+        }
+
+        .payment-number {
+            background: var(--bs-primary);
+            color: white;
+            border-radius: 20px;
+            padding: 0.25rem 0.75rem;
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
+
+        .chart-container {
+            display: none !important;
+        }
+
+        .custom-fields {
+            display: none;
+            background: #fff3cd;
+            border: 2px solid var(--bs-warning);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .form-control, .form-select {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--bs-primary);
+            box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.25);
+        }
+
+        .btn-primary {
+            background: var(--bs-primary);
+            border-color: var(--bs-primary);
+            border-radius: 8px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(30, 58, 138, 0.3);
+        }
+
+        .tooltip-icon {
+            color: var(--bs-info);
+            margin-left: 0.5rem;
+            cursor: help;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 0 15px;
+            }
+            
+            .header-section {
+                padding: 1.5rem;
+            }
+            
+            .header-section h1 {
+                font-size: 1.8rem;
+            }
+            
+            .content-section {
+                padding: 1rem;
+            }
+            
+            .loan-input-card {
+                padding: 1rem;
+            }
+            
+            .schedule-table {
+                font-size: 0.8rem;
+            }
+            
+            .schedule-table th,
+            .schedule-table td {
+                padding: 0.5rem 0.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Header Section -->
+        <div class="page-header">
+            <div class="header-section">
+                <h1><i class="fas fa-calculator me-3"></i>Loan Schedule Prototype</h1>
+                <p>Professional Accounting System - Advanced Payment Schedule Calculator</p>
+            </div>
+        </div>
+
+        <!-- Content Section -->
+        <div class="content-section">
+            <!-- Loan Input Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-gear me-2"></i>Loan Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="loanAmount" class="form-label fw-semibold">
+                                Loan Amount <i class="fas fa-info-circle tooltip-icon" title="Principal amount to be borrowed"></i>
+                            </label>
+                            <input type="number" class="form-control" id="loanAmount" value="100000" step="1000" min="1000">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="interestRate" class="form-label fw-semibold">
+                                Annual Interest Rate (%) <i class="fas fa-info-circle tooltip-icon" title="Annual percentage rate"></i>
+                            </label>
+                            <input type="number" class="form-control" id="interestRate" value="8.5" step="0.1" min="0">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="loanTerm" class="form-label fw-semibold">
+                                Loan Term (Years) <i class="fas fa-info-circle tooltip-icon" title="Total duration of the loan"></i>
+                            </label>
+                            <input type="number" class="form-control" id="loanTerm" value="5" step="1" min="1" max="30">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="interestBasis" class="form-label fw-semibold">
+                                Interest Calculation Basis <i class="fas fa-info-circle tooltip-icon" title="365-day: Standard calendar year. 360-day: Banker's year (effectively 1.39% higher rate). Example: 12% becomes 12.17% effective rate with 360-day basis."></i>
+                            </label>
+                            <select class="form-select" id="interestBasis">
+                                <option value="365" selected>365 Days</option>
+                                <option value="360">360 Days</option>
+                            </select>
+                            <small class="text-muted" id="basisEffect">Standard calendar year calculation</small>
+                            <input type="hidden" id="paymentFrequency" value="monthly">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="loanStartDate" class="form-label fw-semibold">
+                                Loan Start Date <i class="fas fa-info-circle tooltip-icon" title="Date when loan is disbursed"></i>
+                            </label>
+                            <input type="date" class="form-control" id="loanStartDate" value="2024-09-10">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="firstPaymentDate" class="form-label fw-semibold">
+                                First Payment Date <i class="fas fa-info-circle tooltip-icon" title="When the first payment is due (choose your preferred date)"></i>
+                            </label>
+                            <input type="date" class="form-control" id="firstPaymentDate" value="2024-10-14">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Schedule Type Selector -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list-check me-2"></i>Payment Schedule Types</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Equal Total Payment -->
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <div class="schedule-type-selector active" data-type="equal-total">
+                                <i class="fas fa-chart-line type-icon"></i>
+                                <div class="type-title">Equal Total Payment</div>
+                                <div class="type-description">Fixed monthly payment (PMT). Principal increases, interest decreases over time.</div>
+                            </div>
+                        </div>
+
+                        <!-- Equal Principal Payment -->
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <div class="schedule-type-selector" data-type="equal-principal">
+                                <i class="fas fa-chart-bar type-icon"></i>
+                                <div class="type-title">Equal Principal Payment</div>
+                                <div class="type-description">Fixed principal payment. Total payment decreases over time as interest reduces.</div>
+                            </div>
+                        </div>
+
+                        <!-- Balloon Payment -->
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <div class="schedule-type-selector" data-type="balloon">
+                                <i class="fas fa-rocket type-icon"></i>
+                                <div class="type-title">Balloon Payment</div>
+                                <div class="type-description">Interest-only payments during term with all principal paid in the final payment.</div>
+                            </div>
+                        </div>
+
+                        <!-- Custom Schedule -->
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <div class="schedule-type-selector" data-type="custom">
+                                <i class="fas fa-cogs type-icon"></i>
+                                <div class="type-title">Custom Schedule</div>
+                                <div class="type-description">Completely customizable payment amounts and timing for complex scenarios.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Balloon Options - Simplified -->
+                    <div id="balloonOptions" class="custom-fields">
+                        <h6><i class="fas fa-rocket me-2"></i>Balloon Payment Configuration</h6>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Balloon Payment Structure:</strong> Interest-only payments for the entire term, with all principal ($<span id="balloonPrincipalAmount">100,000</span>) paid in the final month along with that month's interest.
+                        </div>
+                    </div>
+
+                    <div id="customOptions" class="custom-fields">
+                        <h6><i class="fas fa-cogs me-2"></i>Custom Payment Options</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="customPaymentType" class="form-label fw-semibold">Custom Payment Type</label>
+                                <select class="form-select" id="customPaymentType">
+                                    <option value="custom-equal-total">Custom Equal Total Payment</option>
+                                    <option value="custom-table">Custom Principal Amounts</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3" id="customTableSection" style="display: none;">
+                            <div class="col-12" id="customPrincipalSection">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Payment Schedule</h6>
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="generateCustomTable()">
+                                        <i class="fas fa-table me-1"></i>Generate Editable Table
+                                    </button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered" id="customPrincipalTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Payment #</th>
+                                                <th>Principal Amount ($)</th>
+                                                <th>Interest (Auto)</th>
+                                                <th>Total Payment (Auto)</th>
+                                                <th>Remaining Balance (Auto)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="customPrincipalTableBody">
+                                            <!-- Custom principal rows will be generated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="text-muted small mt-2">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    <span id="tableDescription">Edit principal amounts as needed. Interest and totals will calculate automatically.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Calculate Button -->
+                    <div class="text-center mt-4">
+                        <button type="button" class="btn btn-primary btn-lg" onclick="calculateSchedule()">
+                            <i class="fas fa-calculator me-2"></i>Calculate Payment Schedule
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="summary-cards" id="summaryCards" style="display: none;">
+                <div class="summary-card primary">
+                    <div class="summary-card-value" id="totalPayments">$0</div>
+                    <div class="summary-card-label">Total Payments</div>
+                </div>
+                <div class="summary-card success">
+                    <div class="summary-card-value" id="totalInterest">$0</div>
+                    <div class="summary-card-label">Total Interest</div>
+                </div>
+                <div class="summary-card warning">
+                    <div class="summary-card-value" id="monthlyPayment">$0</div>
+                    <div class="summary-card-label">Monthly Payment</div>
+                </div>
+                <div class="summary-card info">
+                    <div class="summary-card-value" id="effectiveRate">0%</div>
+                    <div class="summary-card-label">Effective Rate</div>
+                </div>
+            </div>
+
+            <!-- Chart Container - REMOVED -->
+            <!-- Chart functionality disabled -->
+
+            <!-- Standard Schedule Results Table (for non-custom schedules) -->
+            <div class="schedule-table" id="standardScheduleTable" style="display: none;">
+                <h5><i class="fas fa-table me-2"></i>Payment Schedule Results</h5>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Payment #</th>
+                            <th>Payment Date</th>
+                            <th>Payment Amount</th>
+                            <th>Principal</th>
+                            <th>Interest</th>
+                            <th>Remaining Balance</th>
+                            <th>Cumulative Interest</th>
+                        </tr>
+                    </thead>
+                    <tbody id="standardScheduleTableBody">
+                        <!-- Standard schedule results populate here -->
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let currentScheduleType = 'equal-total';
+        // Chart functionality removed
+
+        // Initialize tooltips
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+
+        // Schedule type selector with auto-calculation
+        document.querySelectorAll('.schedule-type-selector').forEach(selector => {
+            selector.addEventListener('click', function() {
+                document.querySelectorAll('.schedule-type-selector').forEach(s => s.classList.remove('active'));
+                this.classList.add('active');
+                currentScheduleType = this.dataset.type;
+                
+                // Hide all custom options
+                document.querySelectorAll('.custom-fields').forEach(field => field.style.display = 'none');
+                
+                // Hide both table types initially
+                document.getElementById('standardScheduleTable').style.display = 'none';
+                document.getElementById('customTableSection').style.display = 'none';
+                
+                // Show specific options
+                if (currentScheduleType === 'balloon') {
+                    document.getElementById('balloonOptions').style.display = 'block';
+                    // Update balloon principal amount display
+                    const loanAmount = parseFloat(document.getElementById('loanAmount').value);
+                    document.getElementById('balloonPrincipalAmount').textContent = loanAmount.toLocaleString();
+                } else if (currentScheduleType === 'custom') {
+                    document.getElementById('customOptions').style.display = 'block';
+                    // Show/hide custom table section based on selection
+                    updateCustomTableVisibility();
+                }
+
+                // Automatically calculate and show results when clicking schedule type
+                calculateSchedule();
+            });
+        });
+
+        function generateCustomTable() {
+            const loanAmount = parseFloat(document.getElementById('loanAmount').value);
+            const annualRate = parseFloat(document.getElementById('interestRate').value) / 100;
+            const loanTermYears = parseFloat(document.getElementById('loanTerm').value);
+            const customPaymentType = document.getElementById('customPaymentType').value;
+            
+            const paymentsPerYear = 12;
+            const totalPayments = loanTermYears * paymentsPerYear;
+            const rate = annualRate / paymentsPerYear;
+            
+            const tbody = document.getElementById('customPrincipalTableBody');
+            tbody.innerHTML = '';
+            
+            let balance = loanAmount;
+            
+            // Calculate initial principal amounts based on selected type
+            let principalAmounts = [];
+            if (customPaymentType === 'custom-equal-total') {
+                // Use Equal Total Payment as base calculation
+                const payment = loanAmount * (rate * Math.pow(1 + rate, totalPayments)) / (Math.pow(1 + rate, totalPayments) - 1);
+                for (let i = 0; i < totalPayments; i++) {
+                    const interestPayment = balance * rate;
+                    const principalPayment = payment - interestPayment;
+                    principalAmounts.push(principalPayment);
+                    balance -= principalPayment;
+                }
+            } else {
+                // Use Equal Principal as base for custom-table option
+                const principalPayment = loanAmount / totalPayments;
+                for (let i = 0; i < totalPayments; i++) {
+                    principalAmounts.push(principalPayment);
+                }
+            }
+            
+            // Reset balance and create table rows
+            balance = loanAmount;
+            
+            // Add editable principal payment rows
+            for (let i = 0; i < totalPayments; i++) {
+                const paymentNumber = i + 1;
+                const interestPayment = balance * rate;
+                const principalPayment = principalAmounts[i] || 0;
+                const totalPayment = principalPayment + interestPayment;
+                balance -= principalPayment;
+                
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${paymentNumber}</td>
+                    <td><input type="number" class="form-control form-control-sm principal-input" 
+                             value="${principalPayment.toFixed(2)}" min="0" step="0.01" 
+                             data-payment="${paymentNumber}"></td>
+                    <td class="interest-cell">${formatCurrency(interestPayment)}</td>
+                    <td class="total-cell">${formatCurrency(totalPayment)}</td>
+                    <td class="balance-cell">${formatCurrency(Math.max(0, balance))}</td>
+                `;
+            }
+            
+            // Add event listeners to principal inputs
+            document.querySelectorAll('.principal-input').forEach(input => {
+                input.addEventListener('input', recalculateCustomTable);
+            });
+        }
+        
+        function updateCustomTableVisibility() {
+            const customPaymentType = document.getElementById('customPaymentType').value;
+            const tableSection = document.getElementById('customTableSection');
+            const description = document.getElementById('tableDescription');
+            
+            if (customPaymentType === 'custom-table' || customPaymentType === 'custom-equal-total') {
+                tableSection.style.display = 'block';
+                
+                // Update description based on type
+                if (customPaymentType === 'custom-equal-total') {
+                    description.textContent = 'Table starts with Equal Total Payment base. Edit principal amounts as needed.';
+                } else {
+                    description.textContent = 'Table starts with Equal Principal Payment base. Edit principal amounts as needed.';
+                }
+            } else {
+                tableSection.style.display = 'none';
+            }
+        }
+        
+        function recalculateCustomTable() {
+            const loanAmount = parseFloat(document.getElementById('loanAmount').value);
+            const annualRate = parseFloat(document.getElementById('interestRate').value) / 100;
+            const rate = annualRate / 12;
+            
+            const rows = document.querySelectorAll('#customPrincipalTableBody tr');
+            let balance = loanAmount;
+            
+            // Auto-balancing: Calculate total principal from all editable rows
+            let totalPrincipal = 0;
+            const principalRows = Array.from(rows); // All rows are now principal payment rows
+            
+            principalRows.forEach(row => {
+                const principalInput = row.querySelector('.principal-input');
+                if (principalInput) {
+                    totalPrincipal += parseFloat(principalInput.value) || 0;
+                }
+            });
+            
+            // Check if rebalancing is needed
+            const difference = loanAmount - totalPrincipal;
+            if (Math.abs(difference) > 0.01 && principalRows.length > 0) {
+                // Find the last row with an editable principal input
+                const lastPrincipalRow = principalRows[principalRows.length - 1];
+                const lastPrincipalInput = lastPrincipalRow.querySelector('.principal-input');
+                
+                if (lastPrincipalInput) {
+                    const currentLastPrincipal = parseFloat(lastPrincipalInput.value) || 0;
+                    const newLastPrincipal = currentLastPrincipal + difference;
+                    
+                    // Only auto-adjust if the result would be positive
+                    if (newLastPrincipal >= 0) {
+                        lastPrincipalInput.value = newLastPrincipal.toFixed(2);
+                        
+                        // Show auto-balance notification
+                        const notification = document.createElement('div');
+                        notification.className = 'alert alert-info alert-dismissible fade show mt-2';
+                        notification.innerHTML = `
+                            <i class="fas fa-balance-scale"></i> 
+                            Auto-balanced: Added ${formatCurrency(difference)} to final payment to maintain loan balance.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        
+                        // Insert notification above the custom table
+                        const customSection = document.getElementById('customPrincipalSection');
+                        const existingAlert = customSection.querySelector('.alert');
+                        if (existingAlert) {
+                            existingAlert.remove();
+                        }
+                        customSection.insertBefore(notification, customSection.firstChild);
+                        
+                        // Auto-remove notification after 5 seconds
+                        setTimeout(() => {
+                            if (notification.parentNode) {
+                                notification.remove();
+                            }
+                        }, 5000);
+                    }
+                }
+            }
+            
+            // Reset balance for calculations
+            balance = loanAmount;
+            
+            // Process all principal payment rows (no grace period)
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                if (row) {
+                    const principalInput = row.querySelector('.principal-input');
+                    const principalPayment = parseFloat(principalInput.value) || 0;
+                    const interestPayment = balance * rate;
+                    const totalPayment = principalPayment + interestPayment;
+                    
+                    balance -= principalPayment;
+                    
+                    row.cells[2].textContent = formatCurrency(interestPayment);
+                    row.cells[3].textContent = formatCurrency(totalPayment);
+                    row.cells[4].textContent = formatCurrency(Math.max(0, balance));
+                    
+                    // Highlight if balance becomes negative
+                    if (balance < 0) {
+                        row.classList.add('table-danger');
+                    } else {
+                        row.classList.remove('table-danger');
+                    }
+                }
+            }
+        }
+
+        function calculateSchedule() {
+            const loanAmount = parseFloat(document.getElementById('loanAmount').value);
+            const annualRate = parseFloat(document.getElementById('interestRate').value) / 100;
+            const loanTermYears = parseFloat(document.getElementById('loanTerm').value);
+            const frequency = document.getElementById('paymentFrequency').value;
+            const interestBasis = document.getElementById('interestBasis').value;
+
+            // Calculate payment frequency multiplier
+            let paymentsPerYear;
+            switch(frequency) {
+                case 'weekly': paymentsPerYear = 52; break;
+                case 'bi-weekly': paymentsPerYear = 26; break;
+                case 'monthly': paymentsPerYear = 12; break;
+                case 'quarterly': paymentsPerYear = 4; break;
+                case 'semi-annual': paymentsPerYear = 2; break;
+                case 'annual': paymentsPerYear = 1; break;
+                default: paymentsPerYear = 12;
+            }
+
+            // Calculate interest divisor based on basis
+            let interestDivisor;
+            switch(interestBasis) {
+                case '365': interestDivisor = 365; break;
+                case '360': interestDivisor = 360; break;
+                default: interestDivisor = 365;
+            }
+
+            const totalPayments = loanTermYears * paymentsPerYear;
+            
+            // Calculate period rate based on payment frequency and interest basis
+            // The key difference: 365-day uses actual calendar days, 360-day uses banker's year
+            // For monthly payments: 365-day = annual_rate/12, 360-day = annual_rate * (365/360) / 12
+            let periodRate;
+            if (interestBasis === '360') {
+                // 360-day basis: effectively higher rate due to fewer days in banker's year
+                periodRate = (annualRate * (365/360)) / paymentsPerYear;
+            } else {
+                // 365-day basis: standard calculation
+                periodRate = annualRate / paymentsPerYear;
+            }
+
+            let schedule = [];
+            let remainingBalance = loanAmount;
+            let cumulativeInterest = 0;
+            let monthlyPaymentAmount = 0;
+
+            // Calculate based on schedule type
+            switch(currentScheduleType) {
+                case 'equal-total':
+                    schedule = calculateEqualTotalPayment(loanAmount, periodRate, totalPayments);
+                    break;
+                case 'equal-principal':
+                    schedule = calculateEqualPrincipalPayment(loanAmount, periodRate, totalPayments);
+                    break;
+                case 'balloon':
+                    schedule = calculateBalloonPayment(loanAmount, periodRate, totalPayments);
+                    break;
+                case 'custom':
+                    schedule = calculateCustomSchedule(loanAmount, periodRate, totalPayments);
+                    break;
+            }
+
+            displayResults(schedule, loanAmount);
+        }
+
+        function calculateEqualTotalPayment(principal, rate, numPayments) {
+            const payment = principal * (rate * Math.pow(1 + rate, numPayments)) / (Math.pow(1 + rate, numPayments) - 1);
+            let balance = principal;
+            let schedule = [];
+            let cumulativeInterest = 0;
+
+            for (let i = 1; i <= numPayments; i++) {
+                const interestPayment = balance * rate;
+                const principalPayment = payment - interestPayment;
+                balance -= principalPayment;
+                cumulativeInterest += interestPayment;
+
+                schedule.push({
+                    paymentNumber: i,
+                    paymentAmount: payment,
+                    principal: principalPayment,
+                    interest: interestPayment,
+                    remainingBalance: Math.max(0, balance),
+                    cumulativeInterest: cumulativeInterest
+                });
+            }
+
+            return schedule;
+        }
+
+        function calculateEqualPrincipalPayment(principal, rate, numPayments) {
+            const principalPayment = principal / numPayments;
+            let balance = principal;
+            let schedule = [];
+            let cumulativeInterest = 0;
+
+            for (let i = 1; i <= numPayments; i++) {
+                const interestPayment = balance * rate;
+                const totalPayment = principalPayment + interestPayment;
+                balance -= principalPayment;
+                cumulativeInterest += interestPayment;
+
+                schedule.push({
+                    paymentNumber: i,
+                    paymentAmount: totalPayment,
+                    principal: principalPayment,
+                    interest: interestPayment,
+                    remainingBalance: Math.max(0, balance),
+                    cumulativeInterest: cumulativeInterest
+                });
+            }
+
+            return schedule;
+        }
+
+        function calculateBalloonPayment(principal, rate, numPayments) {
+            // Balloon payment: Interest-only payments + principal in final payment
+            let balance = principal;
+            let schedule = [];
+            let cumulativeInterest = 0;
+
+            for (let i = 1; i <= numPayments; i++) {
+                const interestPayment = balance * rate;
+                let principalPayment, totalPayment;
+
+                if (i === numPayments) {
+                    // Final payment: All remaining principal + current month's interest
+                    principalPayment = balance;
+                    totalPayment = principalPayment + interestPayment;
+                    balance = 0;
+                } else {
+                    // Regular payments: Interest only
+                    principalPayment = 0;
+                    totalPayment = interestPayment;
+                    // Balance remains the same since no principal is paid
+                }
+
+                cumulativeInterest += interestPayment;
+
+                schedule.push({
+                    paymentNumber: i,
+                    paymentAmount: totalPayment,
+                    principal: principalPayment,
+                    interest: interestPayment,
+                    remainingBalance: Math.max(0, balance),
+                    cumulativeInterest: cumulativeInterest
+                });
+            }
+
+            return schedule;
+        }
+
+        function calculateCustomSchedule(principal, rate, numPayments) {
+            const customPaymentType = document.getElementById('customPaymentType').value;
+            
+            // Both custom options use the table data if table exists
+            if (customPaymentType === 'custom-table' || customPaymentType === 'custom-equal-total') {
+                return calculateFromCustomTable(principal, rate, numPayments);
+            }
+            
+            // Default fallback to equal total payment
+            return calculateEqualTotalPayment(principal, rate, numPayments);
+        }
+
+        function calculateCustomTotalPayment(principal, rate, numPayments, customPayment) {
+            let balance = principal;
+            let schedule = [];
+            let cumulativeInterest = 0;
+
+            for (let i = 1; i <= numPayments; i++) {
+                const interestPayment = balance * rate;
+                let principalPayment = Math.max(0, customPayment - interestPayment);
+                let totalPayment = customPayment;
+
+                // If remaining balance is less than principal payment, adjust
+                if (principalPayment > balance) {
+                    principalPayment = balance;
+                    totalPayment = principalPayment + interestPayment;
+                }
+
+                balance -= principalPayment;
+                cumulativeInterest += interestPayment;
+
+                schedule.push({
+                    paymentNumber: i,
+                    paymentAmount: totalPayment,
+                    principal: principalPayment,
+                    interest: interestPayment,
+                    remainingBalance: Math.max(0, balance),
+                    cumulativeInterest: cumulativeInterest
+                });
+
+                if (balance <= 0.01) break; // Loan paid off
+            }
+
+            return schedule;
+        }
+
+        function calculateFromCustomTable(principal, rate, numPayments) {
+            const schedule = [];
+            let balance = principal;
+            let cumulativeInterest = 0;
+            
+            // Get data from custom table
+            const tableRows = document.querySelectorAll('#customPrincipalTableBody tr');
+            
+            if (tableRows.length === 0) {
+                // If no custom table data, fall back to equal total payment
+                return calculateEqualTotalPayment(principal, rate, numPayments);
+            }
+            
+            tableRows.forEach((row, index) => {
+                const paymentNumber = index + 1;
+                const principalInput = row.querySelector('.principal-input');
+                
+                if (principalInput) {
+                    // Regular payment with custom principal
+                    const principalPayment = parseFloat(principalInput.value) || 0;
+                    const interestPayment = balance * rate;
+                    const totalPayment = principalPayment + interestPayment;
+                    
+                    balance -= principalPayment;
+                    cumulativeInterest += interestPayment;
+                    
+                    schedule.push({
+                        paymentNumber: paymentNumber,
+                        paymentAmount: totalPayment,
+                        principal: principalPayment,
+                        interest: interestPayment,
+                        remainingBalance: Math.max(0, balance),
+                        cumulativeInterest: cumulativeInterest
+                    });
+                } else {
+                    // Grace period payment (interest only)
+                    const interestPayment = balance * rate;
+                    cumulativeInterest += interestPayment;
+                    
+                    schedule.push({
+                        paymentNumber: paymentNumber,
+                        paymentAmount: interestPayment,
+                        principal: 0,
+                        interest: interestPayment,
+                        remainingBalance: balance,
+                        cumulativeInterest: cumulativeInterest
+                    });
+                }
+                
+                if (balance <= 0.01) return; // Loan paid off
+            });
+            
+            return schedule;
+        }
+
+        function displayResults(schedule, loanAmount) {
+            // Show summary cards
+            const totalPayments = schedule.reduce((sum, payment) => sum + payment.paymentAmount, 0);
+            const totalInterest = schedule.reduce((sum, payment) => sum + payment.interest, 0);
+            const avgPayment = totalPayments / schedule.length;
+            const effectiveRate = ((totalPayments / loanAmount) - 1) / (schedule.length / 12) * 100;
+
+            document.getElementById('totalPayments').textContent = formatCurrency(totalPayments);
+            document.getElementById('totalInterest').textContent = formatCurrency(totalInterest);
+            document.getElementById('monthlyPayment').textContent = formatCurrency(avgPayment);
+            document.getElementById('effectiveRate').textContent = effectiveRate.toFixed(2) + '%';
+
+            document.getElementById('summaryCards').style.display = 'grid';
+
+            // Show standard table for non-custom schedules, hide for custom schedules
+            if (currentScheduleType === 'custom') {
+                document.getElementById('standardScheduleTable').style.display = 'none';
+            } else {
+                displayStandardTable(schedule);
+            }
+        }
+
+        // Chart functionality removed - displayChart function deleted
+
+        function displayStandardTable(schedule) {
+            const tbody = document.getElementById('standardScheduleTableBody');
+            tbody.innerHTML = '';
+
+            // Get first payment date
+            const firstPaymentDate = new Date(document.getElementById('firstPaymentDate').value);
+
+            schedule.forEach((payment, index) => {
+                const row = tbody.insertRow();
+                
+                // Calculate payment date: first payment date + index months
+                let paymentDate = new Date(firstPaymentDate);
+                paymentDate.setMonth(paymentDate.getMonth() + index);
+
+                row.innerHTML = `
+                    <td><span class="payment-number">${payment.paymentNumber}</span></td>
+                    <td>${paymentDate.toLocaleDateString()}</td>
+                    <td>${formatCurrency(payment.paymentAmount)}</td>
+                    <td>${formatCurrency(payment.principal)}</td>
+                    <td>${formatCurrency(payment.interest)}</td>
+                    <td>${formatCurrency(payment.remainingBalance)}</td>
+                    <td>${formatCurrency(payment.cumulativeInterest)}</td>
+                `;
+            });
+
+            document.getElementById('standardScheduleTable').style.display = 'block';
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(amount);
+        }
+
+        // Auto-update schedule when parameters change
+        document.addEventListener('DOMContentLoaded', function() {
+            const amountField = document.getElementById('loanAmount');
+            const rateField = document.getElementById('interestRate');
+            const termField = document.getElementById('loanTerm');
+            const basisField = document.getElementById('interestBasis');
+            
+            // Custom schedule fields
+            const customPaymentTypeField = document.getElementById('customPaymentType');
+            
+            // Date fields
+            const loanStartDateField = document.getElementById('loanStartDate');
+            const firstPaymentDateField = document.getElementById('firstPaymentDate');
+            
+            function updateSchedule() {
+                updateBasisEffect();
+                calculateSchedule();
+            }
+            
+            function updateBasisEffect() {
+                const basis = document.getElementById('interestBasis').value;
+                const rate = parseFloat(document.getElementById('interestRate').value) || 12;
+                const effectDisplay = document.getElementById('basisEffect');
+                
+                if (basis === '360') {
+                    const effectiveRate = rate * (365/360);
+                    effectDisplay.textContent = `Banker's year (effective rate: ${effectiveRate.toFixed(2)}%)`;
+                    effectDisplay.className = 'text-warning';
+                } else {
+                    effectDisplay.textContent = 'Standard calendar year calculation';
+                    effectDisplay.className = 'text-muted';
+                }
+            }
+            
+            // Basic fields
+            if (amountField) amountField.addEventListener('input', updateSchedule);
+            if (rateField) rateField.addEventListener('input', updateSchedule);
+            if (termField) termField.addEventListener('input', updateSchedule);
+            if (basisField) basisField.addEventListener('change', updateSchedule);
+            
+            // Custom fields
+            if (customPaymentTypeField) {
+                customPaymentTypeField.addEventListener('change', function() {
+                    updateCustomTableVisibility();
+                    updateSchedule();
+                });
+            }
+            
+            // Date fields
+            if (loanStartDateField) loanStartDateField.addEventListener('change', updateSchedule);
+            if (firstPaymentDateField) firstPaymentDateField.addEventListener('change', updateSchedule);
+            
+            // Initial setup
+            updateBasisEffect();
+            updateCustomTableVisibility();
+            calculateSchedule();
+        });
+    </script>
+</body>
+</html>

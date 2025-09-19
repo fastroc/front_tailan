@@ -1,0 +1,804 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}New Loan Application{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-file-alt text-primary me-2"></i>
+                        New Loan Application
+                    </h1>
+                    <p class="text-muted mb-0">Create a new loan application for a customer</p>
+                </div>
+                <div>
+                    <a href="{% url 'loans_core:application_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Applications
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Form -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Application Details</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Customer Selection -->
+                        <div class="mb-4">
+                            <h6 class="font-weight-bold text-secondary mb-3">Customer Information</h6>
+                            <div class="row">
+                                <div class="col-md-9 mb-3">
+                                    <label for="id_existing_customer" class="form-label">Existing Customer</label>
+                                    {{ form.existing_customer }}
+                                    {% if form.existing_customer.errors %}
+                                        <div class="text-danger small">{{ form.existing_customer.errors.0 }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">Select an existing customer</small>
+                                </div>
+                                <div class="col-md-3 mb-3 d-flex align-items-end">
+                                    <button type="button" class="btn btn-success btn-sm w-100" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
+                                        <i class="fas fa-plus me-2"></i>New Customer
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Loan Details -->
+                        <div class="mb-4">
+                            <h6 class="font-weight-bold text-secondary mb-3">Loan Details</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_loan_product" class="form-label">Loan Product <span class="text-danger">*</span></label>
+                                    {{ form.loan_product }}
+                                    {% if form.loan_product.errors %}
+                                        <div class="text-danger small">{{ form.loan_product.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_requested_amount" class="form-label">Requested Amount <span class="text-danger">*</span></label>
+                                    {{ form.requested_amount }}
+                                    {% if form.requested_amount.errors %}
+                                        <div class="text-danger small">{{ form.requested_amount.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_term_months" class="form-label">Term (Months) <span class="text-danger">*</span></label>
+                                    {{ form.term_months }}
+                                    {% if form.term_months.errors %}
+                                        <div class="text-danger small">{{ form.term_months.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_purpose" class="form-label">Purpose <span class="text-danger">*</span></label>
+                                    {{ form.purpose }}
+                                    {% if form.purpose.errors %}
+                                        <div class="text-danger small">{{ form.purpose.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Loan Calculation Preview -->
+                        <div class="mb-4" id="loanCalculation" style="display: none;">
+                            <h6 class="font-weight-bold text-secondary mb-3">Loan Calculation Preview</h6>
+                            <div class="alert alert-info">
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <strong>Monthly Payment</strong><br>
+                                        <span class="h5 text-primary" id="monthlyPayment">$0</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <strong>Total Interest</strong><br>
+                                        <span class="h5 text-warning" id="totalInterest">$0</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <strong>Total Payment</strong><br>
+                                        <span class="h5 text-success" id="totalPayment">$0</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <strong>Interest Rate</strong><br>
+                                        <span class="h5 text-info" id="interestRate">0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-end">
+                            <a href="{% url 'loans_core:application_list' %}" class="btn btn-secondary me-2">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-2"></i>Submit Application
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Application Guidelines</h6>
+                </div>
+                <div class="card-body">
+                    <h6 class="font-weight-bold">Required Documents</h6>
+                    <ul class="small text-muted">
+                        <li>Valid government-issued ID</li>
+                        <li>Proof of income (pay stubs, bank statements)</li>
+                        <li>Employment verification</li>
+                        <li>Credit history authorization</li>
+                    </ul>
+                    
+                    <h6 class="font-weight-bold mt-3">Processing Timeline</h6>
+                    <ul class="small text-muted">
+                        <li><strong>Application Review:</strong> 1-2 business days</li>
+                        <li><strong>Credit Check:</strong> 1 business day</li>
+                        <li><strong>Final Approval:</strong> 2-3 business days</li>
+                        <li><strong>Disbursement:</strong> 1-2 business days</li>
+                    </ul>
+                    
+                    <h6 class="font-weight-bold mt-3">Contact Support</h6>
+                    <p class="small text-muted">
+                        Need help with your application? Contact our loan specialists at 
+                        <strong>support@company.com</strong> or call <strong>(555) 123-4567</strong>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Product Information Card -->
+            <div class="card shadow mt-3" id="productInfo" style="display: none;">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Product Information</h6>
+                </div>
+                <div class="card-body" id="productDetails">
+                    <!-- Product details will be loaded here via JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Customer Modal -->
+<div class="modal fade" id="newCustomerModal" tabindex="-1" aria-labelledby="newCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="newCustomerModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>Create New Customer
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newCustomerForm">
+                    {% csrf_token %}
+                    
+                    <!-- Customer Type Selection -->
+                    <div class="mb-4">
+                        <label for="modal_customer_type" class="form-label">Customer Type <span class="text-danger">*</span></label>
+                        <select class="form-control" id="modal_customer_type" name="customer_type" required>
+                            <option value="">Select Customer Type</option>
+                            <option value="individual">Individual Customer</option>
+                            <option value="business">Business Customer</option>
+                        </select>
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <!-- Individual Customer Form -->
+                    <div id="individualForm" style="display: none;">
+                        <h6 class="font-weight-bold text-secondary mb-3">
+                            <i class="fas fa-user me-2"></i>Individual Customer Information
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_first_name" name="first_name" maxlength="50">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_last_name" name="last_name" maxlength="50">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="modal_email" name="email">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_phone_primary" class="form-label">Phone <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="modal_phone_primary" name="phone_primary">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_national_id" class="form-label">National ID <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_national_id" name="national_id" maxlength="20">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_street_address" class="form-label">Street Address <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_street_address" name="street_address" maxlength="200">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="modal_city" class="form-label">City <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_city" name="city" maxlength="100">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="modal_state_province" class="form-label">State/Province <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_state_province" name="state_province" maxlength="100">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="modal_postal_code" class="form-label">Postal Code <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_postal_code" name="postal_code" maxlength="20">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label for="modal_country" class="form-label">Country <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_country" name="country" value="United States" maxlength="100">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Business Customer Form -->
+                    <div id="businessForm" style="display: none;">
+                        <h6 class="font-weight-bold text-secondary mb-3">
+                            <i class="fas fa-building me-2"></i>Business Customer Information
+                        </h6>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label for="modal_business_name" class="form-label">Business Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_business_name" name="business_name" maxlength="200">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_email_business" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="modal_email_business" name="email">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_phone_business" class="form-label">Phone <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="modal_phone_business" name="phone_primary">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_national_id_business" class="form-label">Tax ID/Registration <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_national_id_business" name="national_id" maxlength="20">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="modal_street_address_business" class="form-label">Street Address <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_street_address_business" name="street_address" maxlength="200">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="modal_city_business" class="form-label">City <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_city_business" name="city" maxlength="100">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="modal_state_business" class="form-label">State/Province <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_state_business" name="state_province" maxlength="100">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="modal_postal_code_business" class="form-label">Postal Code <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_postal_code_business" name="postal_code" maxlength="20">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label for="modal_country_business" class="form-label">Country <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="modal_country_business" name="country" value="United States" maxlength="100">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-success" id="saveNewCustomer">
+                    <i class="fas fa-save me-2"></i>Create Customer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Custom styles for the new customer modal */
+#newCustomerModal .modal-dialog {
+    max-width: 800px;
+}
+
+#newCustomerModal .form-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+#newCustomerModal .form-control:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+#newCustomerModal .is-invalid {
+    border-color: #dc3545;
+}
+
+#newCustomerModal .invalid-feedback {
+    display: block;
+}
+
+#newCustomerModal .modal-header {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.toast-container {
+    z-index: 1055;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #newCustomerModal .modal-dialog {
+        max-width: 95%;
+        margin: 1rem auto;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add Bootstrap classes to form fields
+    const formControls = document.querySelectorAll('input, select, textarea');
+    formControls.forEach(field => {
+        if (!field.classList.contains('form-check-input')) {
+            field.classList.add('form-control');
+        }
+    });
+    
+    // Handle existing customer selection
+    const existingCustomerField = document.getElementById('id_existing_customer');
+    
+    // Handle customer type change in modal
+    const modalCustomerType = document.getElementById('modal_customer_type');
+    const individualForm = document.getElementById('individualForm');
+    const businessForm = document.getElementById('businessForm');
+    
+    if (modalCustomerType) {
+        modalCustomerType.addEventListener('change', function() {
+            console.log('🔄 Customer type changed to:', this.value);
+            
+            // Reset all forms
+            individualForm.style.display = 'none';
+            businessForm.style.display = 'none';
+            
+            // Clear all fields from both forms and remove required attribute
+            individualForm.querySelectorAll('input').forEach(input => {
+                input.removeAttribute('required');
+                input.value = '';
+                input.classList.remove('is-invalid');
+            });
+            businessForm.querySelectorAll('input').forEach(input => {
+                input.removeAttribute('required');
+                input.value = '';
+                input.classList.remove('is-invalid');
+            });
+            
+            // Show and enable appropriate form
+            if (this.value === 'individual') {
+                console.log('👤 Showing individual form');
+                individualForm.style.display = 'block';
+                
+                // Only mark truly required fields for individual customers
+                const requiredIndividualFields = [
+                    'first_name', 'last_name', 'email', 'phone_primary', 
+                    'national_id', 'street_address', 'city', 'state_province', 
+                    'postal_code', 'country'
+                ];
+                
+                individualForm.querySelectorAll('input[name]').forEach(input => {
+                    if (requiredIndividualFields.includes(input.name)) {
+                        input.setAttribute('required', 'required');
+                    }
+                });
+                
+                // Set default country
+                document.getElementById('modal_country').value = 'United States';
+            } else if (this.value === 'business') {
+                console.log('🏢 Showing business form');
+                businessForm.style.display = 'block';
+                
+                // Only mark truly required fields for business customers
+                const requiredBusinessFields = [
+                    'business_name', 'email', 'phone_primary', 'national_id', 
+                    'street_address', 'city', 'state_province', 'postal_code', 'country'
+                ];
+                
+                businessForm.querySelectorAll('input[name]').forEach(input => {
+                    if (requiredBusinessFields.includes(input.name)) {
+                        input.setAttribute('required', 'required');
+                    }
+                });
+                });
+                // Set default country
+                document.getElementById('modal_country_business').value = 'United States';
+            }
+        });
+    }
+    
+    // Handle new customer creation
+    const saveNewCustomerBtn = document.getElementById('saveNewCustomer');
+    const newCustomerForm = document.getElementById('newCustomerForm');
+    
+    if (saveNewCustomerBtn) {
+        saveNewCustomerBtn.addEventListener('click', function() {
+            console.log('🔥 Save New Customer button clicked!');
+            
+            // Validate form
+            const form = newCustomerForm;
+            console.log('📝 Form:', form);
+            
+            if (!form.checkValidity()) {
+                console.log('❌ Form validation failed');
+                form.classList.add('was-validated');
+                return;
+            }
+            
+            console.log('✅ Form validation passed');
+            
+            // Disable button and show loading
+            saveNewCustomerBtn.disabled = true;
+            saveNewCustomerBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating...';
+            
+            // Collect form data
+            const formData = new FormData();
+            
+            // Add CSRF token
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            
+            // Get customer type
+            const customerType = document.getElementById('modal_customer_type').value;
+            formData.append('customer_type', customerType);
+            
+            // Collect fields based on customer type
+            if (customerType === 'individual') {
+                // Individual customer fields
+                const fields = [
+                    'first_name', 'last_name', 'email', 'phone_primary', 
+                    'national_id', 'street_address', 'city', 'state_province', 
+                    'postal_code', 'country'
+                ];
+                
+                fields.forEach(field => {
+                    const element = document.getElementById('modal_' + field);
+                    if (element && element.value.trim()) {
+                        formData.append(field, element.value.trim());
+                    }
+                });
+            } else if (customerType === 'business') {
+                // Business customer fields
+                const businessFields = [
+                    'business_name', 'email', 'phone_primary', 'national_id', 
+                    'street_address', 'city', 'state_province', 'postal_code', 'country'
+                ];
+                
+                businessFields.forEach(field => {
+                    let element;
+                    if (field === 'business_name') {
+                        element = document.getElementById('modal_business_name');
+                    } else {
+                        element = document.getElementById('modal_' + field + '_business') || 
+                                  document.getElementById('modal_' + field);
+                    }
+                    
+                    if (element && element.value.trim()) {
+                        formData.append(field, element.value.trim());
+                    }
+                });
+            }
+            
+            // Debug: Log all form data
+            console.log('📋 Form Data being sent:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`  ${key}: ${value}`);
+            }
+            
+            // Send AJAX request to create customer
+            fetch('/loans/customers/api/create/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: formData
+            })
+            .then(response => {
+                console.log('📡 Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('📦 Response data:', data);
+                
+                if (data.success) {
+                    console.log('✅ Customer created successfully!');
+                    
+                    // Add new customer to dropdown
+                    const option = new Option(data.customer.full_name + ' (' + data.customer.customer_id + ')', data.customer.id, true, true);
+                    existingCustomerField.add(option);
+                    
+                    // Show success message
+                    showToast('Success', 'Customer created successfully!', 'success');
+                    
+                    // Close modal and reset form
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('newCustomerModal'));
+                    modal.hide();
+                    form.reset();
+                    form.classList.remove('was-validated');
+                    businessInfo.style.display = 'none';
+                } else {
+                    console.log('❌ Customer creation failed:', data);
+                    
+                    // Enhanced error logging
+                    if (data.debug_info) {
+                        console.log('🔍 DEBUG INFO:');
+                        console.log('📝 Received fields:', data.debug_info.received_fields);
+                        console.log('❌ Missing required fields:', data.debug_info.missing_required_fields);
+                        console.log('📋 Customer data:', data.debug_info.customer_data);
+                    }
+                    
+                    // Re-enable button
+                    saveNewCustomerBtn.disabled = false;
+                    saveNewCustomerBtn.innerHTML = '<i class="fas fa-save me-2"></i>Create Customer';
+                    
+                    // Show error messages
+                    showFormErrors(data.errors);
+                    
+                    // Enhanced error message
+                    let errorMsg = 'Failed to create customer. Please check the form.';
+                    if (data.debug_info && data.debug_info.missing_required_fields.length > 0) {
+                        errorMsg = `Missing required fields: ${data.debug_info.missing_required_fields.join(', ')}`;
+                    }
+                    showToast('Error', errorMsg, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('💥 AJAX Error:', error);
+                
+                // Re-enable button
+                saveNewCustomerBtn.disabled = false;
+                saveNewCustomerBtn.innerHTML = '<i class="fas fa-save me-2"></i>Create Customer';
+                showToast('Error', 'An unexpected error occurred.', 'error');
+            })
+            .finally(() => {
+                // Re-enable button
+                saveNewCustomerBtn.disabled = false;
+                saveNewCustomerBtn.innerHTML = '<i class="fas fa-save me-2"></i>Create Customer';
+            });
+        });
+    }
+    
+    // Function to show form errors
+    function showFormErrors(errors) {
+        console.log('🚨 Showing form errors:', errors);
+        
+        // Clear previous errors
+        document.querySelectorAll('#newCustomerModal .invalid-feedback').forEach(el => {
+            el.textContent = '';
+            if (el.previousElementSibling) {
+                el.previousElementSibling.classList.remove('is-invalid');
+            }
+        });
+        
+        // Show new errors
+        for (const [field, messages] of Object.entries(errors)) {
+            console.log(`❌ Field error - ${field}:`, messages);
+            
+            // Try different field ID patterns based on customer type
+            const customerType = document.getElementById('modal_customer_type').value;
+            let fieldElement = null;
+            
+            if (customerType === 'individual') {
+                fieldElement = document.getElementById('modal_' + field);
+            } else if (customerType === 'business') {
+                fieldElement = document.getElementById('modal_' + field + '_business') || 
+                              document.getElementById('modal_' + field);
+            }
+            
+            console.log(`🔍 Looking for field: ${field}, found element:`, fieldElement);
+            
+            if (fieldElement) {
+                console.log(`✅ Found field element for ${field}`);
+                fieldElement.classList.add('is-invalid');
+                const feedback = fieldElement.nextElementSibling;
+                if (feedback && feedback.classList.contains('invalid-feedback')) {
+                    feedback.textContent = messages[0];
+                    console.log(`📝 Set error message for ${field}: ${messages[0]}`);
+                } else {
+                    console.log(`⚠️ No feedback element found for ${field}`);
+                }
+            } else {
+                console.log(`❌ Field element not found for: ${field}`);
+            }
+        }
+    }
+    
+    // Function to show toast notifications
+    function showToast(title, message, type) {
+        // Create toast container if it doesn't exist
+        let toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toastContainer';
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            toastContainer.style.zIndex = '9999';
+            document.body.appendChild(toastContainer);
+        }
+        
+        // Create toast
+        const toastId = 'toast_' + Date.now();
+        const iconClass = type === 'success' ? 'fas fa-check-circle text-success' : 'fas fa-exclamation-circle text-danger';
+        
+        const toastHTML = `
+            <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header">
+                    <i class="${iconClass} me-2"></i>
+                    <strong class="me-auto">${title}</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+        
+        // Initialize and show toast
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, {
+            autohide: true,
+            delay: 5000
+        });
+        toast.show();
+        
+        // Remove toast element after it's hidden
+        toastElement.addEventListener('hidden.bs.toast', function() {
+            toastElement.remove();
+        });
+    }
+    
+    // Handle loan product selection
+    const loanProductField = document.getElementById('id_loan_product');
+    const requestedAmountField = document.getElementById('id_requested_amount');
+    const termMonthsField = document.getElementById('id_term_months');
+    const loanCalculation = document.getElementById('loanCalculation');
+    const productInfo = document.getElementById('productInfo');
+    
+    if (loanProductField) {
+        loanProductField.addEventListener('change', function() {
+            if (this.value) {
+                // Fetch product details
+                fetch(`/loans/core/api/product/${this.value}/details/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update product info sidebar
+                            const productDetails = document.getElementById('productDetails');
+                            productDetails.innerHTML = `
+                                <p><strong>Amount Range:</strong> $${data.data.min_amount.toLocaleString()} - $${data.data.max_amount.toLocaleString()}</p>
+                                <p><strong>Term Range:</strong> ${data.data.min_term_months} - ${data.data.max_term_months} months</p>
+                                <p><strong>Interest Rate:</strong> ${data.data.default_interest_rate}% APR</p>
+                                <p><strong>Early Repayment:</strong> ${data.data.allows_prepayment ? 'Allowed' : 'Not Allowed'}</p>
+                            `;
+                            productInfo.style.display = 'block';
+                            
+                            // Update form field limits
+                            requestedAmountField.min = data.data.min_amount;
+                            requestedAmountField.max = data.data.max_amount;
+                            termMonthsField.min = data.data.min_term_months;
+                            termMonthsField.max = data.data.max_term_months;
+                            
+                            // Calculate loan if all fields are filled
+                            calculateLoan();
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+            } else {
+                productInfo.style.display = 'none';
+                loanCalculation.style.display = 'none';
+            }
+        });
+    }
+    
+    // Calculate loan payment
+    function calculateLoan() {
+        const product = loanProductField.value;
+        const amount = parseFloat(requestedAmountField.value);
+        const term = parseInt(termMonthsField.value);
+        
+        if (product && amount > 0 && term > 0) {
+            // Get product details first, then calculate
+            fetch(`/loans/core/api/product/${product}/details/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const rate = data.data.default_interest_rate;
+                        
+                        // Calculate payment
+                        const calculationData = {
+                            principal: amount,
+                            annual_rate: rate,
+                            months: term
+                        };
+                        
+                        fetch('/loans/core/api/calculate-payment/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                            },
+                            body: JSON.stringify(calculationData)
+                        })
+                        .then(response => response.json())
+                        .then(calcData => {
+                            if (calcData.success) {
+                                document.getElementById('monthlyPayment').textContent = '$' + calcData.monthly_payment.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                document.getElementById('totalInterest').textContent = '$' + calcData.total_interest.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                document.getElementById('totalPayment').textContent = '$' + calcData.total_payment.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                document.getElementById('interestRate').textContent = rate + '%';
+                                loanCalculation.style.display = 'block';
+                            }
+                        });
+                    }
+                });
+        } else {
+            loanCalculation.style.display = 'none';
+        }
+    }
+    
+    // Add event listeners for calculation
+    if (requestedAmountField && termMonthsField) {
+        requestedAmountField.addEventListener('input', calculateLoan);
+        termMonthsField.addEventListener('input', calculateLoan);
+    }
+});
+</script>
+
+{% endblock %}

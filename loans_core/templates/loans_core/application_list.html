@@ -1,0 +1,494 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Loan Applications{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-file-alt text-primary me-2"></i>
+                        Loan Applications
+                    </h1>
+                    <p class="text-muted mb-0">Manage and review loan applications</p>
+                </div>
+                <div>
+                    <a href="{% url 'loans_core:application_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>New Application
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Total Applications
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_applications|default:"0" }}</div>
+                            <div class="text-xs text-muted">
+                                ${{ stats.total_requested_amount|floatformat:0|intcomma }} requested
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-file-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Pending Review
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.pending_applications|default:"0" }}</div>
+                            <div class="text-xs text-muted">
+                                Avg: ${{ stats.average_requested_amount|floatformat:0|intcomma }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Approved ({{ stats.approval_rate }}%)
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.approved_applications|default:"0" }}</div>
+                            <div class="text-xs text-muted">
+                                ${{ stats.total_approved_amount|floatformat:0|intcomma }} approved
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Rejected
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.rejected_applications|default:"0" }}</div>
+                            <div class="text-xs text-muted">
+                                Draft: {{ stats.draft_applications|default:"0" }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-times fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="get" action="">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="search" class="form-label">Search Applications</label>
+                                <input type="text" class="form-control" id="search" name="search" 
+                                       value="{{ search_query }}" placeholder="Application ID, customer name, email">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="status" class="form-label">Status</label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="">All Status</option>
+                                    {% for value, label in status_choices %}
+                                        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="product" class="form-label">Product</label>
+                                <select class="form-select" id="product" name="product">
+                                    <option value="">All Products</option>
+                                    {% for product in loan_products %}
+                                        <option value="{{ product.pk }}" {% if product_filter == product.pk|stringformat:"s" %}selected{% endif %}>{{ product.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-outline-primary w-100">
+                                    <i class="fas fa-search me-2"></i>Search
+                                </button>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <a href="{% url 'loans_core:application_list' %}" class="btn btn-outline-secondary w-100">
+                                    <i class="fas fa-times me-2"></i>Clear
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Applications Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Loan Applications</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Application ID</th>
+                                    <th>Customer</th>
+                                    <th>Product</th>
+                                    <th>Amount Requested</th>
+                                    <th>Term</th>
+                                    <th>Status</th>
+                                    <th>Date Applied</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for application in page_obj %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ application.application_id }}</strong>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar bg-primary text-white rounded-circle me-3" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">
+                                                <strong>{{ application.customer.first_name|first }}{{ application.customer.last_name|first }}</strong>
+                                            </div>
+                                            <div>
+                                                <strong>{{ application.customer.full_name }}</strong><br>
+                                                <small class="text-muted">{{ application.customer.email }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <strong>{{ application.loan_product.name }}</strong><br>
+                                        <small class="text-muted">{{ application.loan_product.category|title }}</small>
+                                    </td>
+                                    <td>
+                                        <strong>${{ application.requested_amount|floatformat:0|intcomma }}</strong>
+                                        {% if application.approved_amount %}
+                                            <br><small class="text-success">Approved: ${{ application.approved_amount|floatformat:0|intcomma }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ application.term_months }} months<br>
+                                        <small class="text-muted">{{ application.interest_rate }}% APR</small>
+                                    </td>
+                                    <td>
+                                        {% if application.status == 'approved' %}
+                                            <span class="badge bg-success">{{ application.status|title }}</span>
+                                        {% elif application.status == 'submitted' or application.status == 'under_review' %}
+                                            <span class="badge bg-warning">{{ application.get_status_display }}</span>
+                                        {% elif application.status == 'rejected' %}
+                                            <span class="badge bg-danger">{{ application.status|title }}</span>
+                                        {% elif application.status == 'draft' %}
+                                            <span class="badge bg-secondary">{{ application.status|title }}</span>
+                                        {% else %}
+                                            <span class="badge bg-info">{{ application.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ application.application_date|date:"M d, Y" }}<br>
+                                        <small class="text-muted">{{ application.created_at|timesince }} ago</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{% url 'loans_core:application_detail' application.pk %}" 
+                                               class="btn btn-outline-primary" 
+                                               title="View Application Details" 
+                                               data-bs-toggle="tooltip">
+                                                <i class="fas fa-eye me-1"></i>View
+                                            </a>
+                                            {% if application.status == 'submitted' or application.status == 'under_review' %}
+                                            <a href="{% url 'loans_core:application_approve' application.pk %}" 
+                                               class="btn btn-outline-success" 
+                                               title="Review & Approve/Reject" 
+                                               data-bs-toggle="tooltip">
+                                                <i class="fas fa-gavel me-1"></i>Review
+                                            </a>
+                                            {% endif %}
+                                            {% if application.status == 'draft' %}
+                                            <a href="#" 
+                                               class="btn btn-outline-info" 
+                                               title="Edit Application" 
+                                               data-bs-toggle="tooltip">
+                                                <i class="fas fa-edit me-1"></i>Edit
+                                            </a>
+                                            {% endif %}
+                                            {% if application.status == 'approved' %}
+                                            <a href="#" 
+                                               class="btn btn-outline-info" 
+                                               title="Create Loan Contract" 
+                                               data-bs-toggle="tooltip">
+                                                <i class="fas fa-file-contract me-1"></i>Contract
+                                            </a>
+                                            {% endif %}
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" 
+                                                        class="btn btn-outline-secondary dropdown-toggle" 
+                                                        data-bs-toggle="dropdown" 
+                                                        title="More Actions">
+                                                    <i class="fas fa-ellipsis-h me-1"></i>More
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{% url 'loans_customers:customer_detail' application.customer.pk %}">
+                                                            <i class="fas fa-user me-2 text-info"></i>View Customer
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="{% url 'loans_customers:customer_documents' application.customer.pk %}">
+                                                            <i class="fas fa-folder me-2 text-info"></i>Customer Documents
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="#" onclick="printApplication({{ application.pk }})">
+                                                            <i class="fas fa-print me-2 text-secondary"></i>Print Application
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="#" onclick="downloadApplication({{ application.pk }})">
+                                                            <i class="fas fa-download me-2 text-secondary"></i>Download PDF
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    {% if application.status == 'draft' %}
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" onclick="deleteApplication({{ application.pk }}, '{{ application.customer.full_name|escapejs }}')">
+                                                            <i class="fas fa-trash me-2"></i>Delete Application
+                                                        </a>
+                                                    </li>
+                                                    {% endif %}
+                                                    {% if application.status == 'submitted' %}
+                                                    <li>
+                                                        <a class="dropdown-item text-warning" href="#" onclick="requestDocuments({{ application.pk }})">
+                                                            <i class="fas fa-file-upload me-2"></i>Request Documents
+                                                        </a>
+                                                    </li>
+                                                    {% endif %}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="fas fa-file-alt fa-3x mb-3"></i>
+                                            <h5>No applications found</h5>
+                                            <p>
+                                                {% if search_query or status_filter %}
+                                                    No applications match your search criteria.
+                                                {% else %}
+                                                    Start by creating your first loan application.
+                                                {% endif %}
+                                            </p>
+                                            <a href="{% url 'loans_core:application_create' %}" class="btn btn-primary">
+                                                <i class="fas fa-plus me-2"></i>Create Application
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                    <nav aria-label="Applications pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- jQuery for enhanced functionality -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+});
+
+// Print Application Function
+function printApplication(applicationId) {
+    window.open(`/loans/applications/${applicationId}/print/`, '_blank');
+}
+
+// Download Application PDF Function
+function downloadApplication(applicationId) {
+    window.location.href = `/loans/applications/${applicationId}/download/`;
+}
+
+// Delete Application Function
+function deleteApplication(applicationId, customerName) {
+    if (confirm(`Are you sure you want to DELETE the loan application for "${customerName}"?\n\nThis action cannot be undone.`)) {
+        if (confirm(`FINAL CONFIRMATION: Delete application for "${customerName}"?`)) {
+            // Show loading
+            const loadingHtml = `
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <i class="fas fa-spinner fa-spin me-2"></i>
+                    Deleting application for "${customerName}"...
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            $('.container-fluid > .row:first').after(loadingHtml);
+            
+            // Make AJAX request to delete application
+            $.ajax({
+                url: `/loans/applications/${applicationId}/delete/`,
+                type: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Show success message and reload page
+                        const successHtml = `
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="fas fa-check-circle me-2"></i>
+                                Application for "${customerName}" deleted successfully!
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        `;
+                        $('.container-fluid > .row:first').after(successHtml);
+                        
+                        // Reload page after short delay
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        alert('Error: ' + (response.error || 'Failed to delete application'));
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while deleting the application.');
+                }
+            });
+        }
+    }
+}
+
+// Request Documents Function
+function requestDocuments(applicationId) {
+    const message = prompt('What additional documents do you need from the customer?\n\nEnter your request:');
+    if (message && message.trim()) {
+        // Show loading
+        const loadingHtml = `
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <i class="fas fa-spinner fa-spin me-2"></i>
+                Sending document request...
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        $('.container-fluid > .row:first').after(loadingHtml);
+        
+        // Make AJAX request
+        $.ajax({
+            url: `/loans/applications/${applicationId}/request-documents/`,
+            type: 'POST',
+            data: {
+                'message': message.trim()
+            },
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Show success message
+                    const successHtml = `
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Document request sent to customer successfully!
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `;
+                    $('.container-fluid > .row:first').after(successHtml);
+                } else {
+                    alert('Error: ' + (response.error || 'Failed to send document request'));
+                }
+            },
+            error: function() {
+                alert('An error occurred while sending the document request.');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

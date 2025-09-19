@@ -1,0 +1,1366 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Application Decision - {{ application.application_id }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* CSS Variables for consistent theming */
+    :root {
+        --primary-color: #1e40af;
+        --primary-hover: #1d4ed8;
+        --secondary-color: #6b7280;
+        --success-color: #059669;
+        --border-color: #d1d5db;
+        --border-hover: #9ca3af;
+        --background-light: #f9fafb;
+        --text-primary: #374151;
+        --text-secondary: #6b7280;
+    }
+
+    /* Decision Options */
+    .decision-option {
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+
+    .decision-option:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+
+    .decision-option .btn {
+        width: 100%;
+    }
+
+    /* Payment Type Buttons - Side by Side Layout */
+    .payment-type-container {
+        display: flex;
+        flex-direction: row;
+        gap: 16px;
+        margin-bottom: 24px;
+        align-items: stretch;
+    }
+
+    .payment-type-wrapper {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .payment-type-container .custom-payment-btn {
+        width: 100%;
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 20px 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+        font-family: inherit;
+        outline: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 80px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .payment-type-container .custom-payment-btn:hover {
+        border-color: var(--border-hover);
+        background: var(--background-light);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        transform: translateY(-1px);
+    }
+
+    .payment-type-container .custom-payment-btn.active-payment {
+        border-color: var(--primary-color);
+        background: var(--primary-color);
+        color: white;
+        box-shadow: 0 4px 12px rgba(30,64,175,0.3);
+        transform: translateY(-1px);
+    }
+
+    .payment-type-container .payment-btn-text {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 6px;
+        line-height: 1.2;
+    }
+
+    .payment-type-container .custom-payment-btn.active-payment .payment-btn-text {
+        color: white;
+    }
+
+    .payment-type-container .payment-btn-desc {
+        font-size: 13px;
+        font-weight: 400;
+        color: var(--text-secondary);
+        line-height: 1.4;
+        margin: 0;
+    }
+
+    .payment-type-container .custom-payment-btn.active-payment .payment-btn-desc {
+        color: rgba(255,255,255,0.9);
+    }
+
+    /* Schedule Summary Cards */
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .summary-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+
+    .summary-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .summary-card.primary { border-left: 4px solid var(--primary-color); }
+    .summary-card.success { border-left: 4px solid var(--success-color); }
+    .summary-card.warning { border-left: 4px solid #d97706; }
+    .summary-card.info { border-left: 4px solid #0284c7; }
+
+    .summary-card-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+        color: #111827;
+    }
+
+    .summary-card-label {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    /* Schedule Table */
+    .schedule-table {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-top: 1rem;
+    }
+
+    .schedule-table th {
+        background: var(--primary-color);
+        color: white;
+        font-weight: 600;
+        padding: 0.75rem 0.5rem;
+        border: none;
+        font-size: 0.85rem;
+    }
+
+    .schedule-table td {
+        padding: 0.5rem;
+        border-color: #e2e8f0;
+        vertical-align: middle;
+        font-size: 0.8rem;
+    }
+
+    .schedule-table tbody tr:hover {
+        background: rgba(30,64,175,0.03);
+    }
+
+    /* Form Controls */
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(30,64,175,0.25);
+    }
+
+    #scheduleContainer {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .payment-type-container {
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .custom-payment-btn {
+            min-height: 70px;
+            padding: 16px 12px;
+        }
+        
+        .payment-btn-text {
+            font-size: 15px;
+        }
+        
+        .payment-btn-desc {
+            font-size: 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Application Summary Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Application Summary: {{ application.application_id }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Customer:</strong> {{ application.customer.full_name }}</p>
+                            <p><strong>Product:</strong> {{ application.loan_product.name }}</p>
+                            <p><strong>Requested Amount:</strong> {{ application.requested_amount|floatformat:2 }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Term:</strong> {{ application.term_months }} months</p>
+                            <p><strong>Interest Rate:</strong> {{ application.interest_rate }}%</p>
+                            <p><strong>Current Status:</strong> 
+                                <span class="badge bg-warning">{{ application.get_status_display }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Simple Decision Card -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-gavel me-2"></i>
+                        Make Your Decision
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <!-- Approve & Make Contract -->
+                        <div class="col-md-4 mb-3">
+                            <div class="decision-option p-4 border rounded h-100">
+                                <div class="mb-3">
+                                    <i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>
+                                </div>
+                                <h5 class="text-success">Approve & Make Contract</h5>
+                                <p class="text-muted">Approve application and proceed to create loan contract with disbursement scheduling.</p>
+                                <button type="button" class="btn btn-success btn-lg" onclick="approveApplication()">
+                                    <i class="fas fa-handshake me-2"></i>Approve & Contract
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Reject -->
+                        <div class="col-md-4 mb-3">
+                            <div class="decision-option p-4 border rounded h-100">
+                                <div class="mb-3">
+                                    <i class="fas fa-times-circle text-danger" style="font-size: 3rem;"></i>
+                                </div>
+                                <h5 class="text-danger">Reject Application</h5>
+                                <p class="text-muted">Decline the application and provide rejection reason to customer.</p>
+                                <button type="button" class="btn btn-danger btn-lg" onclick="rejectApplication()">
+                                    <i class="fas fa-ban me-2"></i>Reject
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Leave Submitted -->
+                        <div class="col-md-4 mb-3">
+                            <div class="decision-option p-4 border rounded h-100">
+                                <div class="mb-3">
+                                    <i class="fas fa-clock text-warning" style="font-size: 3rem;"></i>
+                                </div>
+                                <h5 class="text-warning">Leave Submitted</h5>
+                                <p class="text-muted">Keep application in submitted status for further review or documentation.</p>
+                                <button type="button" class="btn btn-warning btn-lg" onclick="leaveSubmitted()">
+                                    <i class="fas fa-pause me-2"></i>Leave Submitted
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="row mt-4">
+                        <div class="col-12 text-center">
+                            <a href="{% url 'loans_core:application_detail' application.pk %}" class="btn btn-outline-secondary me-2">
+                                <i class="fas fa-eye me-1"></i>View Full Details
+                            </a>
+                            <a href="{% url 'loans_core:application_list' %}" class="btn btn-outline-primary">
+                                <i class="fas fa-list me-1"></i>Back to Applications
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Approve Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="approveModalLabel">
+                    <i class="fas fa-handshake me-2"></i>Approve Application & Create Contract
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="approveForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="approve">
+                    <input type="hidden" name="schedule_type" id="schedule_type" value="equal-total">
+                    <input type="hidden" name="schedule_data" id="schedule_data" value="">
+                    
+                    <!-- Loan Terms Section -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-success border-bottom pb-2">
+                                <i class="fas fa-file-contract me-1"></i>Loan Terms & Conditions
+                            </h6>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="approved_amount" class="form-label">Approved Amount <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="approved_amount" name="approved_amount" 
+                                       value="{{ application.requested_amount }}" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="interest_rate" class="form-label">Interest Rate (%) <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="interest_rate" name="interest_rate" 
+                                       value="{{ application.interest_rate }}" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="term_months" class="form-label">Term (Months) <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="term_months" name="term_months" 
+                                       value="{{ application.term_months }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="interest_basis" class="form-label">Interest Basis</label>
+                                <select class="form-select" id="interest_basis" name="interest_basis">
+                                    <option value="365" selected>365 Days</option>
+                                    <option value="360">360 Days (Banker's)</option>
+                                </select>
+                                <small class="text-muted" id="basisEffect">Standard calendar year</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scheduling Section -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2">
+                                <i class="fas fa-calendar-alt me-1"></i>Disbursement & Payment Schedule
+                            </h6>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="disbursement_date" class="form-label">Disbursement Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="disbursement_date" name="disbursement_date" 
+                                       value="{% now 'Y-m-d' %}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="first_payment_date" class="form-label">First Payment Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="first_payment_date" name="first_payment_date" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Payment Schedule Types -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-info border-bottom pb-2">
+                                <i class="fas fa-list-check me-1"></i>Payment Schedule Type
+                            </h6>
+                        </div>
+                        <div class="col-12">
+                            <div class="payment-type-container">
+                                <!-- Equal Total Payment -->
+                                <div class="payment-type-wrapper">
+                                    <button type="button" class="custom-payment-btn active-payment" data-type="equal-total">
+                                        <span class="payment-btn-text">Equal Payment</span>
+                                        <span class="payment-btn-desc">Fixed monthly payment</span>
+                                    </button>
+                                </div>
+
+                                <!-- Equal Principal Payment -->
+                                <div class="payment-type-wrapper">
+                                    <button type="button" class="custom-payment-btn" data-type="equal-principal">
+                                        <span class="payment-btn-text">Equal Principal</span>
+                                        <span class="payment-btn-desc">Fixed principal amount</span>
+                                    </button>
+                                </div>
+                            </div>
+
+
+
+                        </div>
+                    </div>
+
+                    <!-- Payment Schedule Summary -->
+                    <div class="row mb-4" id="scheduleContainer" style="display: none;">
+                        <div class="col-12">
+                            <h6 class="text-warning border-bottom pb-2">
+                                <i class="fas fa-calculator me-1"></i>Payment Schedule Summary
+                            </h6>
+                        </div>
+                        
+                        <!-- Summary Cards -->
+                        <div class="col-12 mb-3">
+                            <div class="summary-cards" id="summaryCards">
+                                <div class="summary-card primary">
+                                    <div class="summary-card-value" id="totalPayments">$0</div>
+                                    <div class="summary-card-label">Total Payments</div>
+                                </div>
+                                <div class="summary-card success">
+                                    <div class="summary-card-value" id="totalInterest">$0</div>
+                                    <div class="summary-card-label">Total Interest</div>
+                                </div>
+                                <div class="summary-card warning">
+                                    <div class="summary-card-value" id="monthlyPayment">$0</div>
+                                    <div class="summary-card-label">Avg Payment</div>
+                                </div>
+                                <div class="summary-card info">
+                                    <div class="summary-card-value" id="effectiveRate">0%</div>
+                                    <div class="summary-card-label">Effective Rate</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Schedule Table -->
+                        <div class="col-12">
+                            <div class="schedule-table" id="standardScheduleTable">
+                                <table class="table table-striped table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Payment #</th>
+                                            <th>Date</th>
+                                            <th>Payment</th>
+                                            <th>Principal</th>
+                                            <th>Interest</th>
+                                            <th>Balance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="standardScheduleTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Terms Section -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label for="notes" class="form-label">Approval Notes</label>
+                                <textarea class="form-control" id="notes" name="notes" rows="2" 
+                                          placeholder="Any conditions or notes for the approval..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="button" class="btn btn-info me-2" onclick="calculateSchedule()">
+                        <i class="fas fa-calculator me-1"></i>Calculate Schedule
+                    </button>
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-handshake me-1"></i>Approve & Create Contract
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="rejectModalLabel">Reject Application</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="rejectForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="reject">
+                    <div class="mb-3">
+                        <label for="rejection_reason" class="form-label">Rejection Reason <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="4" 
+                                  placeholder="Please provide a clear reason for rejection..." required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reject_notes" class="form-label">Additional Notes</label>
+                        <textarea class="form-control" id="reject_notes" name="notes" rows="2" 
+                                  placeholder="Any additional information for internal use..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-ban me-1"></i>Reject Application
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===================================================================
+// LOAN APPLICATION APPROVAL - STREAMLINED JAVASCRIPT
+// ===================================================================
+
+// Global Modal Functions (must be available immediately)
+function approveApplication() {
+    const approveModal = new bootstrap.Modal(document.getElementById('approveModal'));
+    
+    // Set default first payment date to 30 days from disbursement
+    const firstPaymentDate = new Date();
+    firstPaymentDate.setDate(firstPaymentDate.getDate() + 30);
+    document.getElementById('first_payment_date').value = firstPaymentDate.toISOString().split('T')[0];
+    
+    approveModal.show();
+}
+
+function rejectApplication() {
+    const rejectModal = new bootstrap.Modal(document.getElementById('rejectModal'));
+    rejectModal.show();
+}
+
+function leaveSubmitted() {
+    if (confirm('Keep this application in submitted status?')) {
+        window.location.href = '{% url "loans_core:application_list" %}';
+    }
+}
+
+function calculateSchedule() {
+    if (typeof window.calculateScheduleFunction === 'function') {
+        window.calculateScheduleFunction();
+    }
+}
+
+// Main Initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Ensure jQuery is available
+    if (typeof window.jQuery === 'undefined') {
+        setTimeout(function() {
+            if (typeof window.jQuery !== 'undefined') {
+                initializeLoanApproval();
+            }
+        }, 100);
+        return;
+    }
+    
+    initializeLoanApproval();
+});
+
+// Main Application Logic
+function initializeLoanApproval() {
+    const $ = window.jQuery;
+    
+    // ===============================================================
+    // HELPER FUNCTIONS
+    // ===============================================================
+    
+    function updatePaymentCalculation() {
+        const amount = parseFloat($('#approved_amount').val()) || 0;
+        const rate = parseFloat($('#interest_rate').val()) || 0;
+        const months = parseInt($('#term_months').val()) || 0;
+        
+        if (amount > 0 && rate > 0 && months > 0) {
+            const monthlyRate = rate / 100 / 12;
+            const monthlyPayment = amount * (monthlyRate * Math.pow(1 + monthlyRate, months)) / 
+                                  (Math.pow(1 + monthlyRate, months) - 1);
+            const totalInterest = (monthlyPayment * months) - amount;
+            
+            $('#monthly-payment, #monthlyPayment').text('$' + monthlyPayment.toFixed(2));
+            $('#total-interest, #totalInterest').text('$' + totalInterest.toFixed(2));
+        } else {
+            $('#monthly-payment, #monthlyPayment').text('Calculating...');
+            $('#total-interest, #totalInterest').text('Calculating...');
+        }
+    }
+    
+    function calculateEqualTotalSchedule(principal, monthlyRate, months, startDate) {
+        const monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, months)) / 
+                              (Math.pow(1 + monthlyRate, months) - 1);
+        
+        let schedule = [];
+        let balance = principal;
+        let currentDate = new Date(startDate);
+        
+        for (let i = 1; i <= months; i++) {
+            const interestPayment = balance * monthlyRate;
+            const principalPayment = monthlyPayment - interestPayment;
+            balance -= principalPayment;
+            
+            if (i === months && Math.abs(balance) < 0.01) {
+                balance = 0;
+            }
+            
+            schedule.push({
+                payment_number: i,
+                date: new Date(currentDate).toISOString().split('T')[0],
+                payment: monthlyPayment,
+                principal: principalPayment,
+                interest: interestPayment,
+                balance: Math.max(0, balance)
+            });
+            
+            currentDate.setMonth(currentDate.getMonth() + 1);
+        }
+        
+        return schedule;
+    }
+    
+    function calculateEqualPrincipalSchedule(principal, monthlyRate, months, startDate) {
+        const principalPayment = principal / months;
+        
+        let schedule = [];
+        let balance = principal;
+        let currentDate = new Date(startDate);
+        
+        for (let i = 1; i <= months; i++) {
+            const interestPayment = balance * monthlyRate;
+            const totalPayment = principalPayment + interestPayment;
+            balance -= principalPayment;
+            
+            schedule.push({
+                payment_number: i,
+                date: new Date(currentDate).toISOString().split('T')[0],
+                payment: totalPayment,
+                principal: principalPayment,
+                interest: interestPayment,
+                balance: Math.max(0, balance)
+            });
+            
+            currentDate.setMonth(currentDate.getMonth() + 1);
+        }
+        
+        return schedule;
+    }
+    
+    function updateSummaryCards(totalPayments, totalInterest, schedule, annualRate) {
+        const avgPayment = schedule.length ? totalPayments / schedule.length : 0;
+        
+        $('#totalPayments').text('$' + totalPayments.toLocaleString('en-US', {
+            minimumFractionDigits: 2, maximumFractionDigits: 2
+        }));
+        
+        $('#totalInterest').text('$' + totalInterest.toLocaleString('en-US', {
+            minimumFractionDigits: 2, maximumFractionDigits: 2
+        }));
+        
+        $('#monthlyPayment').text('$' + avgPayment.toLocaleString('en-US', {
+            minimumFractionDigits: 2, maximumFractionDigits: 2
+        }));
+        
+        $('#effectiveRate').text(annualRate.toFixed(2) + '%');
+    }
+    
+    function displayScheduleTable(schedule) {
+        const $tbody = $('#standardScheduleTableBody');
+        $tbody.empty();
+        
+        schedule.forEach((payment, index) => {
+            $tbody.append(`
+                <tr>
+                    <td>${payment.payment_number}</td>
+                    <td>${new Date(payment.date).toLocaleDateString()}</td>
+                    <td class="payment-cell">$${payment.payment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td><input type="number" class="form-control form-control-sm editable-principal" 
+                              value="${payment.principal.toFixed(2)}" step="0.01" min="0" data-row="${index}"></td>
+                    <td class="interest-cell">$${payment.interest.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="balance-cell">$${payment.balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                </tr>
+            `);
+        });
+        
+        // Add event listeners for editable principal inputs
+        $('.editable-principal').on('input', updateScheduleCalculations);
+    }
+    
+    function updateScheduleCalculations() {
+        const rate = parseFloat($('#interest_rate').val()) || 0;
+        const monthlyRate = rate / 100 / 12;
+        const originalAmount = parseFloat($('#approved_amount').val()) || 0;
+        
+        // Auto-balance principal adjustments
+        let totalPrincipalEntered = 0;
+        const principalInputs = [];
+        
+        $('#standardScheduleTableBody tr').each(function(index) {
+            const $row = $(this);
+            const principalInput = $row.find('.editable-principal');
+            const principal = parseFloat(principalInput.val()) || 0;
+            principalInputs.push({input: principalInput, value: principal, row: $row, index: index});
+            totalPrincipalEntered += principal;
+        });
+        
+        // Balance the difference
+        const difference = totalPrincipalEntered - originalAmount;
+        
+        if (Math.abs(difference) > 0.01) {
+            if (difference > 0) {
+                // Reduce from the end
+                let remainingToReduce = difference;
+                
+                for (let i = principalInputs.length - 1; i >= 0 && remainingToReduce > 0.01; i--) {
+                    const currentValue = principalInputs[i].value;
+                    
+                    if (currentValue > 0) {
+                        if (currentValue >= remainingToReduce) {
+                            const newValue = currentValue - remainingToReduce;
+                            principalInputs[i].input.val(newValue.toFixed(2));
+                            remainingToReduce = 0;
+                        } else {
+                            principalInputs[i].input.val('0.00');
+                            remainingToReduce -= currentValue;
+                        }
+                    }
+                }
+            } else {
+                // Add to the last payment
+                const amountToAdd = Math.abs(difference);
+                
+                for (let i = principalInputs.length - 1; i >= 0; i--) {
+                    const currentValue = principalInputs[i].value;
+                    const newValue = currentValue + amountToAdd;
+                    principalInputs[i].input.val(newValue.toFixed(2));
+                    break;
+                }
+            }
+        }
+        
+        // Recalculate all payments
+        let balance = originalAmount;
+        let totalPayments = 0;
+        let totalInterest = 0;
+
+        $('#standardScheduleTableBody tr').each(function(index) {
+            const $row = $(this);
+            const principal = parseFloat($row.find('.editable-principal').val()) || 0;
+            const interest = balance * monthlyRate;
+            const payment = principal + interest;
+            
+            $row.find('.payment-cell').text('$' + payment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $row.find('.interest-cell').text('$' + interest.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            
+            balance -= principal;
+            $row.find('.balance-cell').text('$' + Math.max(0, balance).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            
+            totalPayments += payment;
+            totalInterest += interest;
+        });
+
+        updateSummaryCards(totalPayments, totalInterest, [], rate);
+        
+        // Update schedule data for form submission
+        const updatedSchedule = [];
+        $('#standardScheduleTableBody tr').each(function(index) {
+            const $row = $(this);
+            updatedSchedule.push({
+                payment_number: index + 1,
+                date: $row.find('td:eq(1)').text(),
+                payment: parseFloat($row.find('.payment-cell').text().replace(/[$,]/g, '')),
+                principal: parseFloat($row.find('.editable-principal').val()),
+                interest: parseFloat($row.find('.interest-cell').text().replace(/[$,]/g, '')),
+                balance: parseFloat($row.find('.balance-cell').text().replace(/[$,]/g, ''))
+            });
+        });
+        $('#schedule_data').val(JSON.stringify(updatedSchedule));
+    }
+    
+    function calculateScheduleMain() {
+        const amount = parseFloat($('#approved_amount').val()) || 0;
+        const rate = parseFloat($('#interest_rate').val()) || 0;
+        const months = parseInt($('#term_months').val()) || 0;
+        const scheduleType = $('#schedule_type').val();
+        const firstPaymentDate = $('#first_payment_date').val();
+        
+        if (!(amount > 0 && rate > 0 && months > 0 && firstPaymentDate)) {
+            $('#scheduleContainer').hide();
+            return;
+        }
+        
+        $('#scheduleContainer').show();
+        
+        const monthlyRate = rate / 100 / 12;
+        let schedule = [];
+        
+        if (scheduleType === 'equal-total') {
+            schedule = calculateEqualTotalSchedule(amount, monthlyRate, months, firstPaymentDate);
+        } else if (scheduleType === 'equal-principal') {
+            schedule = calculateEqualPrincipalSchedule(amount, monthlyRate, months, firstPaymentDate);
+        }
+        
+        let totalPayments = 0, totalInterest = 0;
+        schedule.forEach(payment => {
+            totalPayments += payment.payment;
+            totalInterest += payment.interest;
+        });
+        
+        updateSummaryCards(totalPayments, totalInterest, schedule, rate);
+        displayScheduleTable(schedule);
+        $('#schedule_data').val(JSON.stringify(schedule));
+    }
+    
+    // ===============================================================
+    // EVENT HANDLERS
+    // ===============================================================
+    
+    // Initialize calculations
+    updatePaymentCalculation();
+    
+    // Auto-calculate first payment date
+    $('#disbursement_date').on('change', function() {
+        const disbursementDate = new Date($(this).val());
+        if (!isNaN(disbursementDate)) {
+            const firstPaymentDate = new Date(disbursementDate);
+            firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
+            $('#first_payment_date').val(firstPaymentDate.toISOString().split('T')[0]);
+        }
+    });
+    
+    // Calculate on input changes
+    $('#approved_amount, #interest_rate, #term_months, #first_payment_date, #interest_basis')
+        .on('input change', function() {
+            updatePaymentCalculation();
+            calculateScheduleMain();
+        });
+
+    // Payment type selection
+    $('.custom-payment-btn').on('click', function() {
+        $('.custom-payment-btn').removeClass('active-payment');
+        $(this).addClass('active-payment');
+        
+        const type = $(this).data('type');
+        $('#schedule_type').val(type);
+        
+        calculateScheduleMain();
+    });
+
+    // Interest basis effect text
+    $('#interest_basis').on('change', function() {
+        const basis = $(this).val();
+        $('#basisEffect').text(basis === '360' 
+            ? "Banker's year (slightly higher effective rate)" 
+            : 'Standard calendar year');
+    });
+
+    // Auto-calculate schedule on modal show
+    $('#approveModal').on('shown.bs.modal', function() {
+        updatePaymentCalculation();
+        calculateScheduleMain();
+    });
+
+    // Form submission validation
+    $('#approveForm').on('submit', function(e) {
+        const scheduleType = $('#schedule_type').val();
+        
+        if (['equal-total', 'equal-principal'].includes(scheduleType) && $('#scheduleContainer').is(':hidden')) {
+            e.preventDefault();
+            alert('Please calculate the payment schedule first by clicking "Calculate Schedule".');
+            return false;
+        }
+        
+        const $submitBtn = $(this).find('button[type="submit"]');
+        $submitBtn.html('<i class="fas fa-spinner fa-spin me-1"></i>Processing...');
+        $submitBtn.prop('disabled', true);
+    });
+    
+    // ===============================================================
+    // EXPOSE GLOBAL FUNCTIONS
+    // ===============================================================
+    
+    window.calculateScheduleFunction = calculateScheduleMain;
+}
+</script>
+
+<style>
+.decision-option {
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.decision-option:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.decision-option .btn {
+    width: 100%;
+}
+</style>
+
+<script>
+function approveApplication() {
+    var approveModal = new bootstrap.Modal(document.getElementById('approveModal'));
+    
+    // Set default first payment date to 30 days from disbursement
+    const disbursementDate = new Date();
+    disbursementDate.setDate(disbursementDate.getDate() + 30);
+    document.getElementById('first_payment_date').value = disbursementDate.toISOString().split('T')[0];
+    
+    approveModal.show();
+}
+
+function rejectApplication() {
+    var rejectModal = new bootstrap.Modal(document.getElementById('rejectModal'));
+    rejectModal.show();
+}
+
+function leaveSubmitted() {
+    if (confirm('Keep this application in submitted status?')) {
+        // Just go back to the applications list
+        window.location.href = '{% url "loans_core:application_list" %}';
+    }
+}
+
+// Enhanced payment calculation and scheduling functionality
+// Wait for DOM to be ready and jQuery to be available
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if jQuery is available
+    if (typeof window.jQuery === 'undefined') {
+        console.error('jQuery is not loaded - retrying...');
+        setTimeout(function() {
+            if (typeof window.jQuery !== 'undefined') {
+                initializeAdvancedScheduling();
+            }
+        }, 100);
+        return;
+    }
+    
+    initializeAdvancedScheduling();
+});
+
+function initializeAdvancedScheduling() {
+    var $ = window.jQuery;
+    
+    // Initialize form calculations
+    updatePaymentCalculation();
+    
+    // Auto-calculate first payment date (one month after disbursement)
+    $('#disbursement_date').change(function() {
+        const disbursementDate = new Date($(this).val());
+        if (disbursementDate) {
+            const firstPaymentDate = new Date(disbursementDate);
+            firstPaymentDate.setMonth(firstPaymentDate.getMonth() + 1);
+            $('#first_payment_date').val(firstPaymentDate.toISOString().split('T')[0]);
+        }
+    });
+    
+    // Calculate on input changes
+    $('#approved_amount, #interest_rate, #term_months, #first_payment_date, #interest_basis').on('input change', function() {
+        updatePaymentCalculation();
+        calculateSchedule();
+    });
+
+    // Schedule type selector
+    $('.schedule-type-selector, .custom-payment-btn').click(function() {
+        $('.schedule-type-selector').removeClass('active');
+        $('.custom-payment-btn').removeClass('active-payment');
+        $(this).addClass('active');
+        $(this).addClass('active-payment');
+        
+        const type = $(this).data('type');
+        $('#schedule_type').val(type);
+        
+        // Show/hide custom fields
+        $('.custom-fields').hide();
+        if (type === 'balloon') {
+            $('#balloonOptions').show();
+            updateBalloonAmount();
+        } else if (type === 'custom') {
+            $('#customOptions').show();
+        }
+        
+        calculateSchedule();
+    });
+
+    // Custom payment type change
+    $('#customPaymentType').change(function() {
+        const type = $(this).val();
+        if (type === 'custom-table') {
+            $('#customTableSection').show();
+        } else {
+            $('#customTableSection').hide();
+        }
+    });
+
+    // Interest basis effect text
+    $('#interest_basis').change(function() {
+        const basis = $(this).val();
+        if (basis === '360') {
+            $('#basisEffect').text('Banker\'s year (slightly higher effective rate)');
+        } else {
+            $('#basisEffect').text('Standard calendar year');
+        }
+    });
+
+    // Auto-calculate schedule on modal show
+    $('#approveModal').on('shown.bs.modal', function() {
+        updatePaymentCalculation();
+        calculateSchedule();
+    });
+});
+
+function updatePaymentCalculation() {
+    const amount = parseFloat($('#approved_amount').val()) || 0;
+    const rate = parseFloat($('#interest_rate').val()) || 0;
+    const months = parseInt($('#term_months').val()) || 0;
+    
+    if (amount > 0 && rate > 0 && months > 0) {
+        const monthlyRate = rate / 100 / 12;
+        const monthlyPayment = amount * (monthlyRate * Math.pow(1 + monthlyRate, months)) / 
+                              (Math.pow(1 + monthlyRate, months) - 1);
+        const totalInterest = (monthlyPayment * months) - amount;
+        
+        // Update both old and new display elements
+        $('#monthly-payment').text('$' + monthlyPayment.toFixed(2));
+        $('#total-interest').text('$' + totalInterest.toFixed(2));
+    } else {
+        $('#monthly-payment').text('Calculating...');
+        $('#total-interest').text('Calculating...');
+    }
+}
+
+function calculateSchedule() {
+    const amount = parseFloat($('#approved_amount').val()) || 0;
+    const rate = parseFloat($('#interest_rate').val()) || 0;
+    const months = parseInt($('#term_months').val()) || 0;
+    const scheduleType = $('#schedule_type').val();
+    const firstPaymentDate = $('#first_payment_date').val();
+    const interestBasis = parseInt($('#interest_basis').val()) || 365;
+    
+    if (amount <= 0 || rate <= 0 || months <= 0 || !firstPaymentDate) {
+        $('#scheduleContainer').hide();
+        return;
+    }
+    
+    $('#scheduleContainer').show();
+    
+    let schedule = [];
+    let totalPayments = 0;
+    let totalInterest = 0;
+    
+    const monthlyRate = rate / 100 / 12;
+    
+    if (scheduleType === 'equal-total') {
+        schedule = calculateEqualTotalSchedule(amount, monthlyRate, months, firstPaymentDate);
+    } else if (scheduleType === 'equal-principal') {
+        schedule = calculateEqualPrincipalSchedule(amount, monthlyRate, months, firstPaymentDate);
+    }
+    
+    // Calculate totals
+    schedule.forEach(payment => {
+        totalPayments += payment.payment;
+        totalInterest += payment.interest;
+    });
+    
+    // Update summary cards
+    updateSummaryCards(totalPayments, totalInterest, schedule, rate);
+    
+    // Display schedule table
+    displayScheduleTable(schedule);
+    
+    // Store schedule data for form submission
+    $('#schedule_data').val(JSON.stringify(schedule));
+}
+
+function calculateEqualTotalSchedule(principal, monthlyRate, months, startDate) {
+    const monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, months)) / 
+                          (Math.pow(1 + monthlyRate, months) - 1);
+    
+    let schedule = [];
+    let balance = principal;
+    let currentDate = new Date(startDate);
+    
+    for (let i = 1; i <= months; i++) {
+        const interestPayment = balance * monthlyRate;
+        const principalPayment = monthlyPayment - interestPayment;
+        balance -= principalPayment;
+        
+        // Adjust for rounding in final payment
+        if (i === months && Math.abs(balance) < 0.01) {
+            balance = 0;
+        }
+        
+        schedule.push({
+            payment_number: i,
+            date: new Date(currentDate).toISOString().split('T')[0],
+            payment: monthlyPayment,
+            principal: principalPayment,
+            interest: interestPayment,
+            balance: Math.max(0, balance)
+        });
+        
+        currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+    
+    return schedule;
+}
+
+function calculateEqualPrincipalSchedule(principal, monthlyRate, months, startDate) {
+    const principalPayment = principal / months;
+    
+    let schedule = [];
+    let balance = principal;
+    let currentDate = new Date(startDate);
+    
+    for (let i = 1; i <= months; i++) {
+        const interestPayment = balance * monthlyRate;
+        const totalPayment = principalPayment + interestPayment;
+        balance -= principalPayment;
+        
+        schedule.push({
+            payment_number: i,
+            date: new Date(currentDate).toISOString().split('T')[0],
+            payment: totalPayment,
+            principal: principalPayment,
+            interest: interestPayment,
+            balance: Math.max(0, balance)
+        });
+        
+        currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+    
+    return schedule;
+}
+
+function updateSummaryCards(totalPayments, totalInterest, schedule, annualRate) {
+    const avgPayment = totalPayments / schedule.length;
+    const effectiveRate = annualRate; // Simplified for now
+    
+    $('#totalPayments').text('$' + totalPayments.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }));
+    
+    $('#totalInterest').text('$' + totalInterest.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }));
+    
+    $('#monthlyPayment').text('$' + avgPayment.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }));
+    
+    $('#effectiveRate').text(effectiveRate.toFixed(2) + '%');
+}
+
+function displayScheduleTable(schedule) {
+    const tbody = $('#standardScheduleTableBody');
+    tbody.empty();
+    
+    schedule.forEach(payment => {
+        const row = `
+            <tr>
+                <td>${payment.payment_number}</td>
+                <td>${new Date(payment.date).toLocaleDateString()}</td>
+                <td>$${payment.payment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td>$${payment.principal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td>$${payment.interest.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td>$${payment.balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+}
+
+function generateCustomTable() {
+    const amount = parseFloat($('#approved_amount').val()) || 0;
+    const months = parseInt($('#term_months').val()) || 0;
+    
+    if (amount <= 0 || months <= 0) {
+        alert('Please enter valid loan amount and term first.');
+        return;
+    }
+    
+    const tbody = $('#customPrincipalTableBody');
+    tbody.empty();
+    
+    const principalPerMonth = amount / months;
+    let remainingBalance = amount;
+    
+    for (let i = 1; i <= months; i++) {
+        remainingBalance -= principalPerMonth;
+        
+        const row = `
+            <tr>
+                <td>${i}</td>
+                <td><input type="number" class="form-control form-control-sm custom-principal" 
+                    value="${principalPerMonth.toFixed(2)}" step="0.01" min="0"></td>
+                <td class="interest-cell">$0.00</td>
+                <td class="total-cell">$0.00</td>
+                <td class="balance-cell">$${Math.max(0, remainingBalance).toFixed(2)}</td>
+            </tr>
+        `;
+        tbody.append(row);
+    }
+    
+    $('#customTableContainer').show();
+    
+    // Add event listeners for custom principal inputs
+    $('.custom-principal').on('input', function() {
+        updateCustomTableCalculations();
+    });
+    
+    updateCustomTableCalculations();
+}
+
+function updateCustomTableCalculations() {
+    const rate = parseFloat($('#interest_rate').val()) || 0;
+    const monthlyRate = rate / 100 / 12;
+    const amount = parseFloat($('#approved_amount').val()) || 0;
+    
+    let balance = amount;
+    
+    $('#customPrincipalTableBody tr').each(function(index) {
+        const principalInput = $(this).find('.custom-principal');
+        const principal = parseFloat(principalInput.val()) || 0;
+        
+        const interest = balance * monthlyRate;
+        const total = principal + interest;
+        balance -= principal;
+        
+        $(this).find('.interest-cell').text('$' + interest.toFixed(2));
+        $(this).find('.total-cell').text('$' + total.toFixed(2));
+        $(this).find('.balance-cell').text('$' + Math.max(0, balance).toFixed(2));
+    });
+}
+
+// Enhanced form submission handling
+$('#approveForm').on('submit', function(e) {
+    const scheduleType = $('#schedule_type').val();
+    
+    // Validate schedule is calculated for complex types
+    if (['equal-total', 'equal-principal'].includes(scheduleType) && $('#scheduleContainer').is(':hidden')) {
+        e.preventDefault();
+        alert('Please calculate the payment schedule first by clicking "Calculate Schedule".');
+        return false;
+    }
+    
+    // Show loading state
+    const submitBtn = $(this).find('button[type="submit"]');
+    const originalText = submitBtn.html();
+    submitBtn.html('<i class="fas fa-spinner fa-spin me-1"></i>Processing...');
+    submitBtn.prop('disabled', true);
+    
+    // Allow normal form submission to continue
+});
+
+} // End of initializeAdvancedScheduling function
+
+// Make functions globally accessible for onclick handlers
+window.calculateScheduleFunction = calculateSchedule;
+window.generateCustomTableFunction = generateCustomTable;
+
+// Global function for Calculate Schedule button
+function calculateSchedule() {
+    if (typeof window.calculateScheduleFunction === 'function') {
+        window.calculateScheduleFunction();
+    }
+}
+</script>
+
+<style>
+/* FORCE the style for the two schedule buttons */
+.payment-type-container {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 16px !important;
+  margin-bottom: 24px !important;
+  align-items: stretch !important;
+}
+
+.payment-type-wrapper {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.payment-type-container button.custom-payment-btn {
+  width: 100% !important;
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 8px !important;
+  padding: 20px 16px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  text-align: center !important;
+  font-family: inherit !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 80px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+
+.payment-type-container button.custom-payment-btn:hover {
+  border-color: #9ca3af !important;
+  background: #f9fafb !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+  transform: translateY(-1px) !important;
+}
+
+.payment-type-container button.custom-payment-btn.active-payment {
+  border-color: #1e40af !important;
+  background: #1e40af !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(30,64,175,0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+.payment-type-container .payment-btn-text {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  margin-bottom: 6px !important;
+  line-height: 1.2 !important;
+}
+
+.payment-type-container .custom-payment-btn.active-payment .payment-btn-text {
+  color: #ffffff !important;
+}
+
+.payment-type-container .payment-btn-desc {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  color: #6b7280 !important;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+}
+
+.payment-type-container .custom-payment-btn.active-payment .payment-btn-desc {
+  color: rgba(255,255,255,0.9) !important;
+}
+</style>
+{% endblock %}

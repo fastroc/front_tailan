@@ -1,0 +1,361 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{% if product %}Edit Product - {{ product.name }}{% else %}Add New Loan Product{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-{% if product %}edit{% else %}plus{% endif %} text-primary me-2"></i>
+                        {% if product %}Edit Loan Product{% else %}Add New Loan Product{% endif %}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        {% if product %}Update loan product information{% else %}Create a new loan product offering{% endif %}
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'loans_core:product_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Products
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Form -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Product Information</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Basic Information -->
+                        <div class="mb-4">
+                            <h6 class="font-weight-bold text-secondary mb-3">Basic Information</h6>
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <label for="id_name" class="form-label">Product Name <span class="text-danger">*</span></label>
+                                    {{ form.name }}
+                                    {% if form.name.errors %}
+                                        <div class="text-danger small">{{ form.name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="id_code" class="form-label">Product Code <span class="text-danger">*</span></label>
+                                    {{ form.code }}
+                                    {% if form.code.errors %}
+                                        <div class="text-danger small">{{ form.code.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_category" class="form-label">Category <span class="text-danger">*</span></label>
+                                    {{ form.category }}
+                                    {% if form.category.errors %}
+                                        <div class="text-danger small">{{ form.category.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_repayment_method" class="form-label">Repayment Method <span class="text-danger">*</span></label>
+                                    {{ form.repayment_method }}
+                                    {% if form.repayment_method.errors %}
+                                        <div class="text-danger small">{{ form.repayment_method.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="id_description" class="form-label">Description</label>
+                                {{ form.description }}
+                                {% if form.description.errors %}
+                                    <div class="text-danger small">{{ form.description.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Loan Limits -->
+                        <div class="mb-4">
+                            <h6 class="font-weight-bold text-secondary mb-3">Loan Limits</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_min_amount" class="form-label">Minimum Amount <span class="text-danger">*</span></label>
+                                    {{ form.min_amount }}
+                                    {% if form.min_amount.errors %}
+                                        <div class="text-danger small">{{ form.min_amount.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_max_amount" class="form-label">Maximum Amount <span class="text-danger">*</span></label>
+                                    {{ form.max_amount }}
+                                    {% if form.max_amount.errors %}
+                                        <div class="text-danger small">{{ form.max_amount.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_min_term_months" class="form-label">Minimum Term (Months) <span class="text-danger">*</span></label>
+                                    {{ form.min_term_months }}
+                                    {% if form.min_term_months.errors %}
+                                        <div class="text-danger small">{{ form.min_term_months.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_max_term_months" class="form-label">Maximum Term (Months) <span class="text-danger">*</span></label>
+                                    {{ form.max_term_months }}
+                                    {% if form.max_term_months.errors %}
+                                        <div class="text-danger small">{{ form.max_term_months.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Interest & Fees -->
+                        <div class="mb-4">
+                            <h6 class="font-weight-bold text-secondary mb-3">Interest & Fees</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_default_interest_rate" class="form-label">Default Interest Rate (%) <span class="text-danger">*</span></label>
+                                    {{ form.default_interest_rate }}
+                                    {% if form.default_interest_rate.errors %}
+                                        <div class="text-danger small">{{ form.default_interest_rate.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_processing_fee_percentage" class="form-label">Processing Fee (%)</label>
+                                    {{ form.processing_fee_percentage }}
+                                    {% if form.processing_fee_percentage.errors %}
+                                        <div class="text-danger small">{{ form.processing_fee_percentage.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_late_payment_fee" class="form-label">Late Payment Fee</label>
+                                    {{ form.late_payment_fee }}
+                                    {% if form.late_payment_fee.errors %}
+                                        <div class="text-danger small">{{ form.late_payment_fee.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_grace_period_days" class="form-label">Grace Period (Days)</label>
+                                    {{ form.grace_period_days }}
+                                    {% if form.grace_period_days.errors %}
+                                        <div class="text-danger small">{{ form.grace_period_days.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Product Features -->
+                        <div class="mb-4">
+                            <h6 class="font-weight-bold text-secondary mb-3">Product Features</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check mb-3">
+                                        {{ form.allows_prepayment }}
+                                        <label class="form-check-label" for="id_allows_prepayment">
+                                            Allow Early Repayment
+                                        </label>
+                                        {% if form.allows_prepayment.errors %}
+                                            <div class="text-danger small">{{ form.allows_prepayment.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="form-check mb-3">
+                                        {{ form.requires_collateral }}
+                                        <label class="form-check-label" for="id_requires_collateral">
+                                            Requires Collateral
+                                        </label>
+                                        {% if form.requires_collateral.errors %}
+                                            <div class="text-danger small">{{ form.requires_collateral.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check mb-3">
+                                        {{ form.requires_guarantor }}
+                                        <label class="form-check-label" for="id_requires_guarantor">
+                                            Requires Guarantor
+                                        </label>
+                                        {% if form.requires_guarantor.errors %}
+                                            <div class="text-danger small">{{ form.requires_guarantor.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="form-check mb-3">
+                                        {{ form.is_active }}
+                                        <label class="form-check-label" for="id_is_active">
+                                            Active Product
+                                        </label>
+                                        {% if form.is_active.errors %}
+                                            <div class="text-danger small">{{ form.is_active.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                {% if product %}
+                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                    <i class="fas fa-trash me-2"></i>Delete Product
+                                </button>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <a href="{% url 'loans_core:product_list' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times me-2"></i>Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>
+                                    {% if product %}Update Product{% else %}Create Product{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar with help -->
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Product Categories</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="small text-muted">
+                        <li><strong>Personal:</strong> Individual consumer loans</li>
+                        <li><strong>Auto:</strong> Vehicle financing</li>
+                        <li><strong>Mortgage:</strong> Home loans</li>
+                        <li><strong>Business:</strong> Commercial loans</li>
+                        <li><strong>Education:</strong> Student loans</li>
+                        <li><strong>Microfinance:</strong> Small amount loans</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card shadow mt-3">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Repayment Methods</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="small text-muted">
+                        <li><strong>Equal Installments:</strong> Fixed monthly payments</li>
+                        <li><strong>Interest Only:</strong> Pay interest, then principal</li>
+                        <li><strong>Declining Balance:</strong> Reducing balance method</li>
+                        <li><strong>Bullet Payment:</strong> Lump sum at maturity</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card shadow mt-3">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Best Practices</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="small text-muted">
+                        <li>Set competitive but sustainable rates</li>
+                        <li>Define clear eligibility criteria</li>
+                        <li>Consider regulatory compliance</li>
+                        <li>Review and update products regularly</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+{% if product %}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-danger me-2"></i>Confirm Deletion
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong>{{ product.name }}</strong>?</p>
+                <p class="text-muted small">This action cannot be undone. All active loans using this product will be preserved but no new applications can be created.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'loans_core:product_delete' product.pk %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Delete Product
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add Bootstrap classes to form fields
+    const formControls = document.querySelectorAll('input, select, textarea');
+    formControls.forEach(field => {
+        if (!field.classList.contains('form-check-input')) {
+            field.classList.add('form-control');
+        }
+    });
+    
+    // Validate amount ranges
+    const minAmountField = document.getElementById('id_min_amount');
+    const maxAmountField = document.getElementById('id_max_amount');
+    
+    if (minAmountField && maxAmountField) {
+        function validateAmounts() {
+            const minAmount = parseFloat(minAmountField.value) || 0;
+            const maxAmount = parseFloat(maxAmountField.value) || 0;
+            
+            if (maxAmount > 0 && minAmount > maxAmount) {
+                maxAmountField.setCustomValidity('Maximum amount must be greater than minimum amount');
+            } else {
+                maxAmountField.setCustomValidity('');
+            }
+        }
+        
+        minAmountField.addEventListener('input', validateAmounts);
+        maxAmountField.addEventListener('input', validateAmounts);
+    }
+    
+    // Validate term ranges
+    const minTermField = document.getElementById('id_min_term_months');
+    const maxTermField = document.getElementById('id_max_term_months');
+    
+    if (minTermField && maxTermField) {
+        function validateTerms() {
+            const minTerm = parseInt(minTermField.value) || 0;
+            const maxTerm = parseInt(maxTermField.value) || 0;
+            
+            if (maxTerm > 0 && minTerm > maxTerm) {
+                maxTermField.setCustomValidity('Maximum term must be greater than minimum term');
+            } else {
+                maxTermField.setCustomValidity('');
+            }
+        }
+        
+        minTermField.addEventListener('input', validateTerms);
+        maxTermField.addEventListener('input', validateTerms);
+    }
+});
+</script>
+
+{% endblock %}

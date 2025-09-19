@@ -1,0 +1,394 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Loan Payments{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-credit-card text-primary me-2"></i>
+                        Loan Payments Management
+                    </h1>
+                    <p class="text-muted mb-0">Process payments and manage repayment schedules</p>
+                </div>
+                <div>
+                    <a href="#" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Record Payment
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Statistics -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Payments Today
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.payments_today|default:"0"|floatformat:0|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Due This Week
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.due_this_week|default:"0"|floatformat:0|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Overdue Payments
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.overdue_payments|default:"0"|floatformat:0|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Monthly Collection
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.monthly_collection|default:"0"|floatformat:0|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Processing -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Process Payment</h6>
+                </div>
+                <div class="card-body">
+                    <form>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="loan-account" class="form-label">Loan Account</label>
+                                <select class="form-select" id="loan-account" required>
+                                    <option value="">Select Loan Account</option>
+                                    {% for loan in active_loans %}
+                                    <option value="{{ loan.loan_number }}">{{ loan.loan_number }} - {{ loan.customer.full_name }} (${{ loan.next_payment_amount|default:"0"|floatformat:2 }} due)</option>
+                                    {% empty %}
+                                    <option value="LN-001">LN-001 - Alice Brown ($2,500 due)</option>
+                                    <option value="LN-002">LN-002 - Bob Green ($1,850 due)</option>
+                                    <option value="LN-003">LN-003 - Carol White ($3,200 due)</option>
+                                    <option value="LN-004">LN-004 - David Black ($1,950 overdue)</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="payment-amount" class="form-label">Payment Amount</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="payment-amount" step="0.01" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="payment-method" class="form-label">Payment Method</label>
+                                <select class="form-select" id="payment-method" required>
+                                    <option value="">Select Method</option>
+                                    <option value="cash">Cash</option>
+                                    <option value="check">Check</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="online">Online Payment</option>
+                                    <option value="debit_card">Debit Card</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="payment-date" class="form-label">Payment Date</label>
+                                <input type="date" class="form-control" id="payment-date" value="{{ today_date|date:'Y-m-d' }}" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="reference-number" class="form-label">Reference Number</label>
+                                <input type="text" class="form-control" id="reference-number" placeholder="Check #, Transaction ID, etc.">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="bank-account" class="form-label">Deposit To Account</label>
+                                <select class="form-select" id="bank-account">
+                                    <option value="">Select Bank Account</option>
+                                    <option value="checking">Main Checking Account</option>
+                                    <option value="savings">Loan Collections Account</option>
+                                    <option value="business">Business Operating Account</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="payment-notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="payment-notes" rows="2" placeholder="Additional notes about this payment..."></textarea>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-secondary me-2">Clear</button>
+                            <button type="submit" class="btn btn-primary">Process Payment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Payment Allocation</h6>
+                </div>
+                <div class="card-body">
+                    <div id="payment-breakdown" class="d-none">
+                        <div class="mb-3">
+                            <label class="form-label">Payment Breakdown</label>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Principal:</td>
+                                            <td class="text-end" id="principal-amount">$0.00</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Interest:</td>
+                                            <td class="text-end" id="interest-amount">$0.00</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Late Fees:</td>
+                                            <td class="text-end" id="late-fees">$0.00</td>
+                                        </tr>
+                                        <tr class="table-active">
+                                            <td><strong>Total:</strong></td>
+                                            <td class="text-end"><strong id="total-amount">$0.00</strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Payment will be automatically allocated according to loan terms.
+                        </div>
+                    </div>
+                    <div id="no-selection" class="text-center text-muted">
+                        <i class="fas fa-calculator fa-3x mb-3"></i>
+                        <p>Select a loan account to see payment breakdown</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Payments and Schedule -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Payments</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Account</th>
+                                    <th>Amount</th>
+                                    <th>Method</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in recent_payments %}
+                                <tr>
+                                    <td>{{ payment.payment_date|date:"M d" }}</td>
+                                    <td>{{ payment.loan.loan_number }}</td>
+                                    <td>${{ payment.amount|floatformat:2|intcomma }}</td>
+                                    <td><span class="badge bg-success">{{ payment.method|title }}</span></td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td>Sep 16</td>
+                                    <td>LN-001</td>
+                                    <td>$2,500.00</td>
+                                    <td><span class="badge bg-success">Bank Transfer</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Sep 15</td>
+                                    <td>LN-005</td>
+                                    <td>$1,200.00</td>
+                                    <td><span class="badge bg-info">Online</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Sep 15</td>
+                                    <td>LN-003</td>
+                                    <td>$3,200.00</td>
+                                    <td><span class="badge bg-warning">Check</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Sep 14</td>
+                                    <td>LN-007</td>
+                                    <td>$950.00</td>
+                                    <td><span class="badge bg-secondary">Cash</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Upcoming Due Dates</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Due Date</th>
+                                    <th>Account</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for due_payment in upcoming_payments %}
+                                <tr {% if due_payment.is_overdue %}class="table-danger"{% elif due_payment.due_soon %}class="table-warning"{% endif %}>
+                                    <td>
+                                        {{ due_payment.due_date|date:"M d" }}
+                                        {% if due_payment.is_overdue %}
+                                            <small class="text-danger">(Overdue)</small>
+                                        {% elif due_payment.due_soon %}
+                                            <small class="text-warning">({{ due_payment.days_until_due }} days)</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ due_payment.loan.loan_number }}</td>
+                                    <td>{{ due_payment.loan.customer.full_name }}</td>
+                                    <td>${{ due_payment.amount|floatformat:2|intcomma }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr class="table-danger">
+                                    <td>Sep 10 <small class="text-danger">(Overdue)</small></td>
+                                    <td>LN-004</td>
+                                    <td>David Black</td>
+                                    <td>$1,950.00</td>
+                                </tr>
+                                <tr class="table-warning">
+                                    <td>Sep 18 <small class="text-warning">(2 days)</small></td>
+                                    <td>LN-008</td>
+                                    <td>Frank Miller</td>
+                                    <td>$2,800.00</td>
+                                </tr>
+                                <tr>
+                                    <td>Sep 20</td>
+                                    <td>LN-002</td>
+                                    <td>Bob Green</td>
+                                    <td>$1,850.00</td>
+                                </tr>
+                                <tr>
+                                    <td>Sep 22</td>
+                                    <td>LN-006</td>
+                                    <td>Grace Wilson</td>
+                                    <td>$3,100.00</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Demo JavaScript for payment calculation
+document.addEventListener('DOMContentLoaded', function() {
+    const loanAccountSelect = document.getElementById('loan-account');
+    const paymentAmountInput = document.getElementById('payment-amount');
+    const paymentBreakdown = document.getElementById('payment-breakdown');
+    const noSelection = document.getElementById('no-selection');
+
+    loanAccountSelect.addEventListener('change', function() {
+        if (this.value) {
+            // Show payment breakdown
+            paymentBreakdown.classList.remove('d-none');
+            noSelection.classList.add('d-none');
+            
+            // Sample calculation (in real app, this would be calculated based on loan terms)
+            const amount = parseFloat(paymentAmountInput.value) || 0;
+            updatePaymentBreakdown(amount);
+        } else {
+            paymentBreakdown.classList.add('d-none');
+            noSelection.classList.remove('d-none');
+        }
+    });
+
+    paymentAmountInput.addEventListener('input', function() {
+        if (loanAccountSelect.value) {
+            const amount = parseFloat(this.value) || 0;
+            updatePaymentBreakdown(amount);
+        }
+    });
+
+    function updatePaymentBreakdown(amount) {
+        // Sample allocation logic
+        const interestRate = 0.15; // 15% of payment goes to interest
+        const interest = amount * interestRate;
+        const principal = amount - interest;
+        
+        document.getElementById('principal-amount').textContent = '$' + principal.toFixed(2);
+        document.getElementById('interest-amount').textContent = '$' + interest.toFixed(2);
+        document.getElementById('late-fees').textContent = '$0.00';
+        document.getElementById('total-amount').textContent = '$' + amount.toFixed(2);
+    }
+});
+</script>
+{% endblock %}

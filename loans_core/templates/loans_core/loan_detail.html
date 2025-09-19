@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Loan Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0 text-gray-800">
+                <i class="fas fa-handshake text-primary me-2"></i>
+                Loan {{ loan.loan_number }}
+            </h1>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5>Loan Information</h5>
+                    <p><strong>Customer:</strong> {{ loan.customer.full_name }}</p>
+                    <p><strong>Product:</strong> {{ loan.loan_product.name }}</p>
+                    <p><strong>Principal Amount:</strong> ${{ loan.principal_amount|floatformat:0 }}</p>
+                    <p><strong>Current Balance:</strong> ${{ loan.current_balance|floatformat:0 }}</p>
+                    <p><strong>Interest Rate:</strong> {{ loan.interest_rate }}%</p>
+                    <p><strong>Term:</strong> {{ loan.term_months }} months</p>
+                    <p><strong>Status:</strong> {{ loan.status|title }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Loan Products - Management{% endblock %}
+
+{% block extra_css %}
+<style>
+.product-card {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.product-card:hover {
+    border-color: #007bff;
+    box-shadow: 0 4px 8px rgba(0,123,255,0.15);
+}
+
+.product-status {
+    font-size: 0.85em;
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+.status-active {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-inactive {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.rate-badge {
+    background-color: #e7f3ff;
+    color: #0056b3;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-bank text-primary me-2"></i>
+                        Loan Products
+                    </h1>
+                    <p class="text-muted">Manage your loan product offerings</p>
+                </div>
+                <div>
+                    <a href="{% url 'loans_core:product_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Add Product
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-6">
+                            <label for="search" class="form-label">Search Products</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ search_query }}" placeholder="Product name, code, category...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="category" class="form-label">Category</label>
+                            <select class="form-select" id="category" name="category">
+                                <option value="">All Categories</option>
+                                {% for value, label in category_choices %}
+                                    <option value="{{ value }}" {% if category_filter == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">All Status</option>
+                                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                                <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i>Search
+                            </button>
+                            <a href="{% url 'loans_core:product_list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Clear
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="row">
+        {% for product in page_obj %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="product-card">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="mb-1">{{ product.name }}</h5>
+                        <span class="text-muted">{{ product.code }}</span>
+                    </div>
+                    <span class="product-status {% if product.is_active %}status-active{% else %}status-inactive{% endif %}">
+                        {% if product.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <span class="badge bg-secondary">{{ product.get_category_display }}</span>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <small class="text-muted">Amount Range</small>
+                        <div class="fw-bold">${{ product.min_amount|floatformat:0|intcomma }} - ${{ product.max_amount|floatformat:0|intcomma }}</div>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Term Range</small>
+                        <div class="fw-bold">{{ product.min_term_months }} - {{ product.max_term_months }} months</div>
+                    </div>
+                </div>
+                
+                <div class="text-center mb-3">
+                    <span class="rate-badge">{{ product.default_interest_rate }}% APR</span>
+                </div>
+                
+                {% if product.description %}
+                <p class="text-muted small">{{ product.description|truncatewords:15 }}</p>
+                {% endif %}
+                
+                <div class="d-flex gap-2">
+                    <a href="{% url 'loans_core:product_detail' product.pk %}" class="btn btn-outline-primary btn-sm flex-fill">
+                        <i class="fas fa-eye me-1"></i>View Details
+                    </a>
+                    <a href="{% url 'loans_core:product_edit' product.pk %}" class="btn btn-primary btn-sm flex-fill">
+                        <i class="fas fa-edit me-1"></i>Edit
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-university text-muted" style="font-size: 3rem;"></i>
+                <h4 class="mt-3 text-muted">No Loan Products Found</h4>
+                <p class="text-muted">
+                    {% if search_query %}
+                        No products match your search criteria.
+                    {% else %}
+                        Start by creating your first loan product.
+                    {% endif %}
+                </p>
+                <a href="{% url 'loans_core:product_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Create Loan Product
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <nav aria-label="Products pagination">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Last</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Stats -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>Product Portfolio Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <h4 class="text-primary">{{ total_products|default:0 }}</h4>
+                            <small class="text-muted">Total Products</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h4 class="text-success">{{ active_products|default:0 }}</h4>
+                            <small class="text-muted">Active Products</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h4 class="text-warning">{{ product_categories|default:0 }}</h4>
+                            <small class="text-muted">Categories</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h4 class="text-info">{{ avg_interest_rate|floatformat:2|default:"0.00" }}%</h4>
+                            <small class="text-muted">Avg Interest Rate</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

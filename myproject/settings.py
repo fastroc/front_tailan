@@ -68,6 +68,11 @@ INSTALLED_APPS = [
     "assets",  # Fixed Assets management
     "reports",  # New modular reports app
     "conversion",  # Conversion balances (opening balances)
+    # Loan Management System
+    "loans_core",  # Foundation - loan products and applications
+    "loans_customers",  # Customer management and KYC
+    "loans_schedule",  # Payment scheduling and interest calculations
+    "loans_payments",  # Payment processing and accounting integration
 ]
 
 # Add debug toolbar only in development
@@ -121,12 +126,27 @@ WSGI_APPLICATION = "myproject.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# PostgreSQL Configuration
 DATABASES = {
     "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "django_loan_system"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),  # Set in .env file
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
+        "OPTIONS": {
+            "client_encoding": "UTF8",
+        },
+    }
+}
+
+# SQLite backup configuration (for fallback during development)
+if os.getenv("USE_SQLITE", "False").lower() == "true":
+    DATABASES["default"] = {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
     }
-}
 
 
 # Password validation

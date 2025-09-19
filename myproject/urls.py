@@ -24,6 +24,10 @@ def accounts_login_redirect(request):
     """Redirect /accounts/login/ to /users/login/"""
     return redirect('/users/login/')
 
+def loan_schedule_prototype_view(request):
+    """Independent loan scheduling showcase for prototyping"""
+    return render(request, 'loan_schedule_prototype.html')
+
 urlpatterns = [
     path('', welcome_view, name='welcome'),
     path('dashboard/', dashboard_view, name='dashboard'),
@@ -40,8 +44,14 @@ urlpatterns = [
     path('reports/', include('reports.urls')),     # New modular reports
     path('setup/', include('setup.urls')),
     path('conversion/', include('conversion.urls')),  # Conversion balances (opening balances)
+    path('loans/', include('loans_core.urls')),  # Loan management core
+    path('loans/customers/', include('loans_customers.urls')),  # Customer management
+    path('loans/schedule/', include('loans_schedule.urls')),  # Payment scheduling
+    path('loans/payments/', include('loans_payments.urls')),  # Payment processing
     # Fallback redirect for Django's default login URL
     path('accounts/login/', accounts_login_redirect),
+    # Loan Schedule Prototype - Independent showcase
+    path('loan-schedule-prototype/', loan_schedule_prototype_view, name='loan_schedule_prototype'),
     # Template testing routes - include the core URLs
     path('', include('core.urls')),  # This will make /dashboard/, /test-404/, etc. work directly
 ]

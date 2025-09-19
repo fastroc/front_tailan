@@ -1,0 +1,471 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Loan Application{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>New Loan Application
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    <form method="post" id="loanApplicationForm">
+                        {% csrf_token %}
+                        
+                        <!-- Customer Selection -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="{{ form.existing_customer.id_for_label }}" class="form-label">Customer <span class="text-danger">*</span></label>
+                                <div class="row">
+                                    <div class="col-8">
+                                        {{ form.existing_customer }}
+                                        {% if form.existing_customer.errors %}
+                                            <div class="text-danger small">{{ form.existing_customer.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-4">
+                                        <button type="button" class="btn btn-success btn-sm w-100" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
+                                            <i class="fas fa-user-plus me-2"></i>Add New Customer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Loan Details -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.loan_product.id_for_label }}" class="form-label">Loan Product <span class="text-danger">*</span></label>
+                                {{ form.loan_product }}
+                                {% if form.loan_product.errors %}
+                                    <div class="text-danger small">{{ form.loan_product.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.requested_amount.id_for_label }}" class="form-label">Requested Amount <span class="text-danger">*</span></label>
+                                {{ form.requested_amount }}
+                                {% if form.requested_amount.errors %}
+                                    <div class="text-danger small">{{ form.requested_amount.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.term_months.id_for_label }}" class="form-label">Term (Months) <span class="text-danger">*</span></label>
+                                {{ form.term_months }}
+                                {% if form.term_months.errors %}
+                                    <div class="text-danger small">{{ form.term_months.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.purpose.id_for_label }}" class="form-label">Purpose <span class="text-danger">*</span></label>
+                                {{ form.purpose }}
+                                {% if form.purpose.errors %}
+                                    <div class="text-danger small">{{ form.purpose.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Additional Information -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="{{ form.notes.id_for_label }}" class="form-label">Additional Notes</label>
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                    <div class="text-danger small">{{ form.notes.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="row">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary btn-lg w-100">
+                                    <i class="fas fa-paper-plane me-2"></i>Submit Application
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Creation Modal -->
+<div class="modal fade" id="newCustomerModal" tabindex="-1" aria-labelledby="newCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="newCustomerModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>Add New Customer
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newCustomerForm" novalidate>
+                    {% csrf_token %}
+                    
+                    <!-- Customer Type Selection -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <label for="customerType" class="form-label">Customer Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="customerType" name="customer_type" required>
+                                <option value="">Select Customer Type</option>
+                                <option value="individual">Individual</option>
+                                <option value="business">Business</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <!-- Individual Customer Form -->
+                    <div id="individualForm" style="display: none;">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="dateOfBirth" class="form-label">Date of Birth</label>
+                                <input type="date" class="form-control" id="dateOfBirth" name="date_of_birth" placeholder="mm/dd/yyyy">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="firstName" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="firstName" name="first_name" maxlength="50" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="lastName" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="lastName" name="last_name" maxlength="50" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="email" name="email" maxlength="254" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="phone" class="form-label">Phone <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="phone" name="phone_primary" maxlength="20" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="nationalId" class="form-label">National ID/SSN <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="nationalId" name="national_id" maxlength="20" placeholder="e.g., 123-45-6789 or passport number" required>
+                                <small class="form-text text-muted">Enter government-issued ID (SSN, Passport, etc.). System will auto-generate internal Customer ID.</small>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="monthlyIncome" class="form-label">Monthly Income</label>
+                                <input type="number" class="form-control" id="monthlyIncome" name="monthly_income" min="0" step="0.01" placeholder="Individual monthly income">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="employmentType" class="form-label">Employment Type</label>
+                                <select class="form-select" id="employmentType" name="employment_type">
+                                    <option value="">Select Type</option>
+                                    <option value="full_time">Full Time Employee</option>
+                                    <option value="part_time">Part Time Employee</option>
+                                    <option value="self_employed">Self Employed</option>
+                                    <option value="contractor">Contractor</option>
+                                    <option value="unemployed">Unemployed</option>
+                                    <option value="retired">Retired</option>
+                                    <option value="student">Student</option>
+                                    <option value="other">Other</option>
+                                </select>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Hidden required address fields for backend validation -->
+                        <input type="hidden" id="streetAddress" name="street_address" value="123 Main St" required>
+                        <input type="hidden" id="city" name="city" value="Anytown" required>
+                        <input type="hidden" id="state" name="state_province" value="CA" required>
+                        <input type="hidden" id="postalCode" name="postal_code" value="12345" required>
+                        <input type="hidden" id="country" name="country" value="United States" required>
+                    </div>
+
+                    <!-- Business Customer Form -->
+                    <div id="businessForm" style="display: none;">
+                        <h6 class="text-primary mb-3"><i class="fas fa-building me-2"></i>Business Information</h6>
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="businessName" class="form-label">Business Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="businessName" name="business_name" maxlength="200" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="businessEmail" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="businessEmail" name="email" maxlength="254" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="businessPhone" class="form-label">Phone <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="businessPhone" name="phone_primary" maxlength="20" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="businessTaxId" class="form-label">Tax ID/EIN <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="businessTaxId" name="national_id" maxlength="20" required>
+                                <small class="form-text text-muted">Business Tax ID or EIN</small>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        
+                        <h6 class="text-primary mb-3 mt-4"><i class="fas fa-map-marker-alt me-2"></i>Business Address</h6>
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="businessStreetAddress" class="form-label">Street Address <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="businessStreetAddress" name="street_address" maxlength="200" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="businessCity" class="form-label">City <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="businessCity" name="city" maxlength="100" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="businessState" class="form-label">State/Province <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="businessState" name="state_province" maxlength="100" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="businessPostalCode" class="form-label">Postal Code <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="businessPostalCode" name="postal_code" maxlength="20" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="businessCountry" class="form-label">Country <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="businessCountry" name="country" value="United States" maxlength="100" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveCustomerBtn">
+                    <i class="fas fa-save me-2"></i>Create Customer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const customerTypeSelect = document.getElementById('customerType');
+    const individualForm = document.getElementById('individualForm');
+    const businessForm = document.getElementById('businessForm');
+    const saveCustomerBtn = document.getElementById('saveCustomerBtn');
+    const newCustomerForm = document.getElementById('newCustomerForm');
+    
+    // Handle customer type change
+    customerTypeSelect.addEventListener('change', function() {
+        const customerType = this.value;
+        
+        // Hide both forms
+        individualForm.style.display = 'none';
+        businessForm.style.display = 'none';
+        
+        // Clear all form data
+        newCustomerForm.querySelectorAll('input').forEach(input => {
+            if (input.type !== 'hidden') {
+                input.value = '';
+                input.classList.remove('is-invalid');
+                input.removeAttribute('required');
+            }
+        });
+        
+        // Show appropriate form and set required fields
+        if (customerType === 'individual') {
+            individualForm.style.display = 'block';
+            // Set required fields for individual (only visible fields are required)
+            const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'nationalId'];
+            requiredFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) field.setAttribute('required', 'required');
+            });
+        } else if (customerType === 'business') {
+            businessForm.style.display = 'block';
+            // Set required fields for business
+            const requiredFields = ['businessName', 'businessEmail', 'businessPhone', 'businessTaxId', 'businessStreetAddress', 'businessCity', 'businessState', 'businessPostalCode', 'businessCountry'];
+            requiredFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) field.setAttribute('required', 'required');
+            });
+            // Set default country
+            document.getElementById('businessCountry').value = 'United States';
+        }
+    });
+    
+    // Prevent default form submission - force AJAX only
+    newCustomerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        console.log('Form submission prevented - using AJAX instead');
+        return false;
+    });
+    
+    // Handle customer creation
+    saveCustomerBtn.addEventListener('click', function() {
+        const form = newCustomerForm;
+        const customerType = customerTypeSelect.value;
+        
+        console.log('Save button clicked, customer type:', customerType);
+        
+        if (!customerType) {
+            alert('Please select a customer type');
+            return;
+        }
+        
+        // Validate form
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            console.log('Form validation failed');
+            
+            // Log which fields are invalid
+            const invalidFields = form.querySelectorAll(':invalid');
+            invalidFields.forEach(field => {
+                console.log('Invalid field:', field.name, field.value, field.validationMessage);
+            });
+            
+            showToast('Error', 'Please fill in all required fields correctly.', 'error');
+            return;
+        }
+        
+        console.log('Form validation passed');
+        
+        // Disable button and show loading
+        saveCustomerBtn.disabled = true;
+        saveCustomerBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating...';
+        
+        // Collect form data
+        const formData = new FormData(form);
+        
+        // Ensure customer_type is included
+        formData.set('customer_type', customerType);
+        
+        // Debug: log the URL and form data
+        const url = '{% url "loans_customers:customer_quick_create" %}';
+        console.log('Making AJAX request to:', url);
+        console.log('Customer type:', customerType);
+        console.log('Form data entries:');
+        for (let [key, value] of formData.entries()) {
+            console.log(key, ':', value);
+        }
+        
+        // Make AJAX request
+        fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            }
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Add customer to dropdown
+                const customerSelect = document.getElementById('id_existing_customer');
+                const option = new Option(
+                    `${data.customer_name} (${data.customer_id})`,
+                    data.customer_pk,
+                    true,
+                    true
+                );
+                customerSelect.add(option);
+                
+                // Close modal and reset form
+                const modal = bootstrap.Modal.getInstance(document.getElementById('newCustomerModal'));
+                modal.hide();
+                form.reset();
+                form.classList.remove('was-validated');
+                individualForm.style.display = 'none';
+                businessForm.style.display = 'none';
+                
+                // Show success message
+                showToast('Success', `Customer "${data.customer_name}" created successfully!`, 'success');
+            } else {
+                // Show errors
+                console.log('Server returned error:', data);
+                
+                if (data.errors) {
+                    console.log('Validation errors:', data.errors);
+                    for (const [field, messages] of Object.entries(data.errors)) {
+                        const fieldElement = document.querySelector(`[name="${field}"]`);
+                        if (fieldElement) {
+                            fieldElement.classList.add('is-invalid');
+                            const feedback = fieldElement.nextElementSibling;
+                            if (feedback && feedback.classList.contains('invalid-feedback')) {
+                                feedback.textContent = Array.isArray(messages) ? messages[0] : messages;
+                            }
+                        }
+                        console.log(`Field ${field} error:`, messages);
+                    }
+                }
+                
+                const errorMessage = data.error || 'Please correct the errors and try again.';
+                showToast('Error', errorMessage, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error', 'An unexpected error occurred.', 'error');
+        })
+        .finally(() => {
+            // Re-enable button
+            saveCustomerBtn.disabled = false;
+            saveCustomerBtn.innerHTML = '<i class="fas fa-save me-2"></i>Create Customer';
+        });
+    });
+    
+    // Helper function to show toast notifications
+    function showToast(title, message, type) {
+        // You can implement your preferred toast notification method here
+        if (type === 'success') {
+            alert(`Success: ${message}`);
+        } else {
+            alert(`Error: ${message}`);
+        }
+    }
+});
+</script>
+{% endblock %}

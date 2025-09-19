@@ -1,0 +1,298 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{% if customer %}Edit Customer - {{ customer.full_name }}{% else %}Add New Customer{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-user-{% if customer %}edit{% else %}plus{% endif %} text-primary me-2"></i>
+                        {% if customer %}Edit Customer{% else %}Add New Customer{% endif %}
+                    </h1>
+                    <p class="text-muted mb-0">
+                        {% if customer %}Update customer information{% else %}Add a new customer to the system{% endif %}
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'loans_customers:customer_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Form -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Customer Information</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- Personal Information -->
+                        <div class="mb-4">
+                            <h6 class="font-weight-bold text-secondary mb-3">Personal Information</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                    {{ form.first_name }}
+                                    {% if form.first_name.errors %}
+                                        <div class="text-danger small">{{ form.first_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                    {{ form.last_name }}
+                                    {% if form.last_name.errors %}
+                                        <div class="text-danger small">{{ form.last_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_date_of_birth" class="form-label">Date of Birth</label>
+                                    {{ form.date_of_birth }}
+                                    {% if form.date_of_birth.errors %}
+                                        <div class="text-danger small">{{ form.date_of_birth.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_gender" class="form-label">Gender</label>
+                                    {{ form.gender }}
+                                    {% if form.gender.errors %}
+                                        <div class="text-danger small">{{ form.gender.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="id_id_number" class="form-label">ID Number <span class="text-danger">*</span></label>
+                                {{ form.id_number }}
+                                {% if form.id_number.errors %}
+                                    <div class="text-danger small">{{ form.id_number.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Contact Information -->
+                        <div class="mb-4">
+                            <h6 class="font-weight-bold text-secondary mb-3">Contact Information</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                                    {{ form.email }}
+                                    {% if form.email.errors %}
+                                        <div class="text-danger small">{{ form.email.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_phone_primary" class="form-label">Primary Phone <span class="text-danger">*</span></label>
+                                    {{ form.phone_primary }}
+                                    {% if form.phone_primary.errors %}
+                                        <div class="text-danger small">{{ form.phone_primary.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_phone_secondary" class="form-label">Secondary Phone</label>
+                                    {{ form.phone_secondary }}
+                                    {% if form.phone_secondary.errors %}
+                                        <div class="text-danger small">{{ form.phone_secondary.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_customer_type" class="form-label">Customer Type <span class="text-danger">*</span></label>
+                                    {{ form.customer_type }}
+                                    {% if form.customer_type.errors %}
+                                        <div class="text-danger small">{{ form.customer_type.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="id_address" class="form-label">Address</label>
+                                {{ form.address }}
+                                {% if form.address.errors %}
+                                    <div class="text-danger small">{{ form.address.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Financial Information -->
+                        <div class="mb-4">
+                            <h6 class="font-weight-bold text-secondary mb-3">Financial Information</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_monthly_income" class="form-label">Monthly Income</label>
+                                    {{ form.monthly_income }}
+                                    {% if form.monthly_income.errors %}
+                                        <div class="text-danger small">{{ form.monthly_income.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_employment_status" class="form-label">Employment Status</label>
+                                    {{ form.employment_status }}
+                                    {% if form.employment_status.errors %}
+                                        <div class="text-danger small">{{ form.employment_status.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_employer" class="form-label">Employer</label>
+                                    {{ form.employer }}
+                                    {% if form.employer.errors %}
+                                        <div class="text-danger small">{{ form.employer.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="id_credit_score" class="form-label">Credit Score</label>
+                                    {{ form.credit_score }}
+                                    {% if form.credit_score.errors %}
+                                        <div class="text-danger small">{{ form.credit_score.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Information -->
+                        <div class="mb-4">
+                            <h6 class="font-weight-bold text-secondary mb-3">Additional Information</h6>
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label for="id_notes" class="form-label">Notes</label>
+                                    {{ form.notes }}
+                                    {% if form.notes.errors %}
+                                        <div class="text-danger small">{{ form.notes.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="form-check">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="id_is_active">
+                                    Active Customer
+                                </label>
+                                {% if form.is_active.errors %}
+                                    <div class="text-danger small">{{ form.is_active.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                {% if customer %}
+                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                    <i class="fas fa-trash me-2"></i>Delete Customer
+                                </button>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <a href="{% url 'loans_customers:customer_list' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times me-2"></i>Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>
+                                    {% if customer %}Update Customer{% else %}Create Customer{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar with help -->
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Help & Guidelines</h6>
+                </div>
+                <div class="card-body">
+                    <h6 class="font-weight-bold">Required Fields</h6>
+                    <ul class="small text-muted">
+                        <li>First Name & Last Name</li>
+                        <li>Email Address</li>
+                        <li>Primary Phone Number</li>
+                        <li>ID Number</li>
+                        <li>Customer Type</li>
+                    </ul>
+                    
+                    <h6 class="font-weight-bold mt-3">Customer Types</h6>
+                    <ul class="small text-muted">
+                        <li><strong>Individual:</strong> Personal customers</li>
+                        <li><strong>Business:</strong> Corporate clients</li>
+                    </ul>
+                    
+                    <h6 class="font-weight-bold mt-3">Credit Score Ranges</h6>
+                    <ul class="small text-muted">
+                        <li><strong>750+:</strong> Excellent</li>
+                        <li><strong>700-749:</strong> Good</li>
+                        <li><strong>650-699:</strong> Fair</li>
+                        <li><strong>Below 650:</strong> Poor</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+{% if customer %}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-danger me-2"></i>Confirm Deletion
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong>{{ customer.full_name }}</strong>?</p>
+                <p class="text-muted small">This action cannot be undone. All associated loan applications and payment history will be preserved but the customer profile will be permanently deleted.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'loans_customers:customer_delete' customer.pk %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Delete Customer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add Bootstrap classes to form fields
+    const formControls = document.querySelectorAll('input, select, textarea');
+    formControls.forEach(field => {
+        if (!field.classList.contains('form-check-input')) {
+            field.classList.add('form-control');
+        }
+    });
+    
+    // Handle customer type specific fields
+    const customerType = document.getElementById('id_customer_type');
+    if (customerType) {
+        customerType.addEventListener('change', function() {
+            // Add any customer type specific logic here
+        });
+    }
+});
+</script>
+
+{% endblock %}

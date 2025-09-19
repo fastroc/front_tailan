@@ -1,0 +1,376 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Loan Reports & Analytics{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-chart-line text-primary me-2"></i>
+                        Loan Reports & Analytics
+                    </h1>
+                    <p class="text-muted mb-0">Portfolio performance and business intelligence</p>
+                </div>
+                <div>
+                    <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-download me-2"></i>Export Reports
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-file-pdf me-2"></i>PDF</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="date-range" class="form-label">Date Range</label>
+                            <select class="form-select" id="date-range">
+                                <option value="month">This Month</option>
+                                <option value="quarter">This Quarter</option>
+                                <option value="year">This Year</option>
+                                <option value="custom">Custom Range</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="loan-product-filter" class="form-label">Loan Product</label>
+                            <select class="form-select" id="loan-product-filter">
+                                <option value="">All Products</option>
+                                {% for product in product_distribution %}
+                                    <option value="{{ product.name }}">{{ product.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="status-filter" class="form-label">Status</label>
+                            <select class="form-select" id="status-filter">
+                                <option value="">All Statuses</option>
+                                <option value="active">Active</option>
+                                <option value="paid">Paid Off</option>
+                                <option value="overdue">Overdue</option>
+                                <option value="defaulted">Defaulted</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button class="btn btn-outline-primary w-100">
+                                <i class="fas fa-filter me-2"></i>Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Performance Indicators -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Portfolio Value
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ portfolio_stats.total_portfolio_value|floatformat:0|intcomma }}</div>
+                            <div class="text-xs text-success">
+                                <i class="fas fa-arrow-up me-1"></i>12% from last quarter
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-wallet fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Collection Rate
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ portfolio_stats.collection_rate }}%</div>
+                            <div class="text-xs text-success">
+                                <i class="fas fa-arrow-up me-1"></i>2.1% improvement
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Average Loan Size
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ portfolio_stats.avg_loan_amount|floatformat:0|intcomma }}</div>
+                            <div class="text-xs text-info">
+                                <i class="fas fa-arrow-down me-1"></i>5% from last month
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calculator fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Default Rate
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ portfolio_stats.default_rate }}%</div>
+                            <div class="text-xs text-warning">
+                                <i class="fas fa-arrow-up me-1"></i>0.3% increase
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <!-- Portfolio Growth Chart -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Portfolio Growth</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area" style="height: 320px; background: #f8f9fc; border: 2px dashed #d1d3e2; display: flex; align-items: center; justify-content: center; border-radius: 0.35rem;">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-chart-line fa-3x mb-3"></i>
+                            <h5>Portfolio Growth Chart</h5>
+                            <p>Interactive chart showing loan portfolio growth over time</p>
+                            <small>Chart.js integration would display monthly portfolio values</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loan Product Distribution -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Product Distribution</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-pie" style="height: 320px; background: #f8f9fc; border: 2px dashed #d1d3e2; display: flex; align-items: center; justify-content: center; border-radius: 0.35rem;">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-chart-pie fa-3x mb-3"></i>
+                            <h6>Loan Distribution</h6>
+                            <div class="small">
+                                {% for product in product_distribution %}
+                                <div><span class="text-primary">■</span> {{ product.name }} ({{ product.loan_count }})</div>
+                                {% empty %}
+                                <div class="text-muted">No products available</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports List -->
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Available Reports</h6>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Portfolio Summary Report</h6>
+                                <p class="mb-1 text-muted">Comprehensive overview of entire loan portfolio</p>
+                                <small class="text-muted">Last generated: Sep 15, 2025</small>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary">View</button>
+                                <button class="btn btn-sm btn-outline-secondary">Download</button>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Aging Analysis Report</h6>
+                                <p class="mb-1 text-muted">Breakdown of overdue loans by aging periods</p>
+                                <small class="text-muted">Last generated: Sep 14, 2025</small>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary">View</button>
+                                <button class="btn btn-sm btn-outline-secondary">Download</button>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Collection Performance Report</h6>
+                                <p class="mb-1 text-muted">Payment collection rates and trends</p>
+                                <small class="text-muted">Last generated: Sep 13, 2025</small>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary">View</button>
+                                <button class="btn btn-sm btn-outline-secondary">Download</button>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Risk Assessment Report</h6>
+                                <p class="mb-1 text-muted">Credit risk analysis and default predictions</p>
+                                <small class="text-muted">Last generated: Sep 12, 2025</small>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary">View</button>
+                                <button class="btn btn-sm btn-outline-secondary">Download</button>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Regulatory Compliance Report</h6>
+                                <p class="mb-1 text-muted">Reports required for regulatory compliance</p>
+                                <small class="text-muted">Last generated: Sep 10, 2025</small>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary">View</button>
+                                <button class="btn btn-sm btn-outline-secondary">Download</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Stats</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="border-bottom pb-2">
+                                <h4 class="text-primary">{{ portfolio_stats.active_loans_count }}</h4>
+                                <small class="text-muted">Active Loans</small>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="border-bottom pb-2">
+                                <h4 class="text-success">{{ portfolio_stats.total_customers }}</h4>
+                                <small class="text-muted">Total Customers</small>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="border-bottom pb-2">
+                                <h4 class="text-info">{{ portfolio_stats.pending_applications }}</h4>
+                                <small class="text-muted">Pending Apps</small>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="border-bottom pb-2">
+                                <h4 class="text-warning">{{ portfolio_stats.overdue_loans }}</h4>
+                                <small class="text-muted">Overdue</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6 class="text-center mb-3">Monthly Targets</h6>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small">New Loans</span>
+                            <span class="small">75%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" style="width: 75%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small">Collections</span>
+                            <span class="small">92%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: 92%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small">Portfolio Growth</span>
+                            <span class="small">68%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-info" style="width: 68%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Loans -->
+            <div class="card shadow mt-3">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Loans</h6>
+                </div>
+                <div class="card-body">
+                    {% for loan in recent_loans %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <h6 class="mb-0">{{ loan.customer.full_name }}</h6>
+                            <small class="text-muted">${{ loan.principal_amount|floatformat:0|intcomma }}</small>
+                        </div>
+                        <span class="badge bg-{% if loan.status == 'active' %}success{% elif loan.status == 'approved' %}primary{% else %}secondary{% endif %}">
+                            {{ loan.status|title }}
+                        </span>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted text-center">No recent loans</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

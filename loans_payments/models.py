@@ -374,7 +374,7 @@ class AutoPayment(BaseLoanModel):
             self.is_active = False
         
         self.save()
-    
+
     def reset_failure_count(self):
         """Reset failure count after successful payment"""
         self.current_failures = 0
@@ -383,3 +383,322 @@ class AutoPayment(BaseLoanModel):
         if self.status == 'failed':
             self.status = 'active'
         self.save()
+
+
+class PaymentPolicy(BaseLoanModel):
+    """Configurable payment processing policies - Company separated"""
+    
+    ALLOCATION_METHOD = [
+        ('interest_first', 'Interest First (Industry Standard)'),
+        ('principal_first', 'Principal First'),
+        ('proportional', 'Proportional Interest/Principal'),
+        ('customer_directed', 'Customer Directed'),
+    ]
+    
+    WEEKEND_POSTING = [
+        ('same_day', 'Same Day'),
+        ('next_business_day', 'Next Business Day'),
+        ('previous_business_day', 'Previous Business Day'),
+    ]
+    
+    # Policy Identity
+    policy_name = models.CharField(max_length=100, help_text="Policy name (e.g., 'Standard Consumer Loans')")
+    description = models.TextField(help_text="Description of when to use this policy")
+    is_default = models.BooleanField(default=False, help_text="Default policy for new loans")
+    
+    # Allocation Rules
+    allocation_method = models.CharField(max_length=20, choices=ALLOCATION_METHOD, default='interest_first')
+    allow_customer_directed = models.BooleanField(default=False)
+    prepayment_to_principal = models.BooleanField(default=True)
+    
+    # Late Fee Rules
+    grace_period_days = models.IntegerField(default=10, help_text="Days before late fees are assessed")
+    late_fee_amount = models.DecimalField(
+        max_digits=8, 
+        decimal_places=2, 
+        default=Decimal('25.00'),
+        help_text="Fixed late fee amount"
+    )
+    late_fee_percentage = models.DecimalField(
+        max_digits=5, 
+        decimal_places=4, 
+        default=Decimal('0.05'),
+        help_text="Late fee as percentage of payment amount (0.05 = 5%)"
+    )
+    use_percentage_fee = models.BooleanField(default=False, help_text="Use percentage fee instead of fixed amount")
+    max_late_fee = models.DecimalField(
+        max_digits=8, 
+        decimal_places=2, 
+        default=Decimal('100.00'),
+        help_text="Maximum late fee amount when using percentage"
+    )
+    
+    # Payment Posting Rules
+    weekend_posting = models.CharField(max_length=25, choices=WEEKEND_POSTING, default='next_business_day')
+    cutoff_time = models.TimeField(default='17:00', help_text="Daily cutoff time for same-day posting")
+    
+    # Interest Calculation Rules
+    daily_interest_calculation = models.BooleanField(default=True, help_text="Calculate interest daily vs monthly")
+    
+    # Status
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['company', '-is_default', 'policy_name']
+        unique_together = [['company', 'policy_name']]
+        indexes = [
+            models.Index(fields=['company', 'is_default', 'is_active']),
+            models.Index(fields=['company', 'is_active']),
+        ]
+    
+    def __str__(self):
+        default_text = " (Default)" if self.is_default else ""
+        return f"{self.policy_name}{default_text} - {self.company.name}"
+    
+    def save(self, *args, **kwargs):
+        # Ensure only one default policy per company
+        if self.is_default:
+            PaymentPolicy.objects.filter(
+                company=self.company, 
+                is_default=True
+            ).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+
+class PaymentProcessor:
+    """Industry-standard payment processing service with allocation logic"""
+    
+    def __init__(self, company=None, policy=None):
+        self.company = company
+        self.policy = policy or self._get_default_policy(company)
+    
+    def _get_default_policy(self, company):
+        """Get default payment policy for company"""
+        if company:
+            try:
+                return PaymentPolicy.objects.get(company=company, is_default=True, is_active=True)
+            except PaymentPolicy.DoesNotExist:
+                pass
+        
+        # Return basic default policy
+        return type('DefaultPolicy', (), {
+            'allocation_method': 'interest_first',
+            'grace_period_days': 10,
+            'late_fee_amount': Decimal('25.00'),
+            'use_percentage_fee': False,
+            'prepayment_to_principal': True,
+        })()
+    
+    def calculate_allocation(self, loan, payment_amount, as_of_date=None):
+        """
+        Calculate how payment should be allocated according to industry standards
+        Returns dict with allocation breakdown
+        """
+        from django.utils import timezone
+        
+        if as_of_date is None:
+            as_of_date = timezone.now().date()
+        
+        allocation = {
+            'late_fees': Decimal('0.00'),
+            'accrued_interest': Decimal('0.00'),
+            'current_interest': Decimal('0.00'),
+            'principal': Decimal('0.00'),
+            'prepayment': Decimal('0.00'),
+            'total_allocated': Decimal('0.00'),
+            'remaining_amount': payment_amount,
+            'allocation_order': []
+        }
+        
+        remaining = Decimal(str(payment_amount))
+        
+        # Step 1: Assess and collect late fees first
+        late_fees = self._calculate_late_fees(loan, as_of_date)
+        if late_fees > 0 and remaining > 0:
+            fee_payment = min(late_fees, remaining)
+            allocation['late_fees'] = fee_payment
+            remaining -= fee_payment
+            allocation['allocation_order'].append(f"Late Fees: ${fee_payment}")
+        
+        # Step 2: Collect accrued unpaid interest
+        accrued_interest = self._calculate_accrued_interest(loan, as_of_date)
+        if accrued_interest > 0 and remaining > 0:
+            interest_payment = min(accrued_interest, remaining)
+            allocation['accrued_interest'] = interest_payment
+            remaining -= interest_payment
+            allocation['allocation_order'].append(f"Accrued Interest: ${interest_payment}")
+        
+        # Step 3: Collect current period interest
+        current_interest = self._calculate_current_interest(loan, as_of_date)
+        if current_interest > 0 and remaining > 0:
+            current_payment = min(current_interest, remaining)
+            allocation['current_interest'] = current_payment
+            remaining -= current_payment
+            allocation['allocation_order'].append(f"Current Interest: ${current_payment}")
+        
+        # Step 4: Apply to principal balance
+        if remaining > 0:
+            principal_balance = loan.current_balance or Decimal('0.00')
+            principal_payment = min(principal_balance, remaining)
+            allocation['principal'] = principal_payment
+            remaining -= principal_payment
+            allocation['allocation_order'].append(f"Principal: ${principal_payment}")
+        
+        # Step 5: Handle prepayment (if enabled)
+        if remaining > 0 and self.policy.prepayment_to_principal:
+            allocation['prepayment'] = remaining
+            allocation['allocation_order'].append(f"Prepayment: ${remaining}")
+            remaining = Decimal('0.00')
+        
+        allocation['total_allocated'] = payment_amount - remaining
+        allocation['remaining_amount'] = remaining
+        
+        return allocation
+    
+    def _calculate_late_fees(self, loan, as_of_date):
+        """Calculate total late fees owed on loan"""
+        # Get all overdue scheduled payments
+        overdue_payments = loan.scheduled_payments.filter(
+            status__in=['overdue', 'partial'],
+            due_date__lt=as_of_date
+        )
+        
+        total_late_fees = Decimal('0.00')
+        for payment in overdue_payments:
+            if payment.days_overdue >= self.policy.grace_period_days:
+                # Calculate late fee if not already assessed
+                if payment.late_fees_assessed == 0:
+                    if self.policy.use_percentage_fee:
+                        fee = payment.total_amount * self.policy.late_fee_percentage
+                        fee = min(fee, self.policy.max_late_fee)
+                    else:
+                        fee = self.policy.late_fee_amount
+                    total_late_fees += fee
+                else:
+                    # Add already assessed but unpaid late fees
+                    total_late_fees += payment.late_fees_assessed
+        
+        return total_late_fees
+    
+    def _calculate_accrued_interest(self, loan, as_of_date):
+        """Calculate accrued unpaid interest"""
+        # For simplicity, return 0 for now
+        # In production, this would calculate interest accrued since last payment
+        return Decimal('0.00')
+    
+    def _calculate_current_interest(self, loan, as_of_date):
+        """Calculate current period interest due"""
+        # Get next scheduled payment
+        next_payment = loan.scheduled_payments.filter(
+            status='scheduled',
+            due_date__gte=as_of_date
+        ).first()
+        
+        if next_payment:
+            return next_payment.interest_amount
+        
+        return Decimal('0.00')
+    
+    def process_payment(self, loan, payment_amount, payment_date, payment_method, 
+                       processed_by=None, notes=''):
+        """
+        Process a payment with industry-standard allocation
+        Returns Payment object and allocation details
+        """
+        from django.db import transaction
+        
+        # Calculate allocation
+        allocation = self.calculate_allocation(loan, payment_amount, payment_date)
+        
+        with transaction.atomic():
+            # Create payment record
+            payment = Payment.objects.create(
+                company=self.company,
+                loan=loan,
+                customer=loan.customer,
+                payment_date=payment_date,
+                payment_amount=payment_amount,
+                payment_method=payment_method,
+                payment_type='regular',
+                status='completed',
+                processed_by=processed_by,
+                notes=notes,
+                net_payment_amount=payment_amount  # Assuming no processing fees for now
+            )
+            
+            # Create allocation records
+            allocation_order = 1
+            for item in allocation['allocation_order']:
+                description = item
+                if 'Late Fees' in item:
+                    alloc_type = 'late_fee'
+                    amount = allocation['late_fees']
+                elif 'Accrued Interest' in item:
+                    alloc_type = 'interest'
+                    amount = allocation['accrued_interest']
+                elif 'Current Interest' in item:
+                    alloc_type = 'interest'
+                    amount = allocation['current_interest']
+                elif 'Principal' in item:
+                    alloc_type = 'principal'
+                    amount = allocation['principal']
+                elif 'Prepayment' in item:
+                    alloc_type = 'principal'
+                    amount = allocation['prepayment']
+                else:
+                    continue
+                
+                if amount > 0:
+                    PaymentAllocation.objects.create(
+                        company=self.company,
+                        payment=payment,
+                        loan=loan,
+                        allocation_type=alloc_type,
+                        allocation_amount=amount,
+                        allocation_order=allocation_order,
+                        balance_before=loan.current_balance,
+                        balance_after=loan.current_balance - amount if alloc_type == 'principal' else loan.current_balance,
+                        description=description
+                    )
+                    allocation_order += 1
+            
+            # Update loan balance
+            if allocation['principal'] + allocation['prepayment'] > 0:
+                loan.current_balance -= (allocation['principal'] + allocation['prepayment'])
+                loan.save()
+            
+            # Update scheduled payment status
+            self._update_scheduled_payments(loan, payment, allocation)
+            
+            # Create payment history
+            PaymentHistory.objects.create(
+                company=self.company,
+                payment=payment,
+                action_type='completed',
+                performed_by=processed_by,
+                description=f"Payment processed with allocation: {', '.join(allocation['allocation_order'])}"
+            )
+        
+        return payment, allocation
+    
+    def _update_scheduled_payments(self, loan, payment, allocation):
+        """Update scheduled payment statuses based on payment allocation"""
+        # Get next due payment
+        next_payment = loan.scheduled_payments.filter(
+            status__in=['scheduled', 'overdue', 'partial']
+        ).order_by('due_date').first()
+        
+        if next_payment:
+            total_payment_applied = allocation['current_interest'] + allocation['principal']
+            
+            if total_payment_applied >= next_payment.total_amount:
+                # Payment covers full scheduled amount
+                next_payment.status = 'paid'
+                next_payment.amount_paid = next_payment.total_amount
+                next_payment.payment_date = payment.payment_date
+            elif total_payment_applied > 0:
+                # Partial payment
+                next_payment.status = 'partial'
+                next_payment.amount_paid += total_payment_applied
+            
+            next_payment.save()

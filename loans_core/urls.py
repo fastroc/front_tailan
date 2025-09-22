@@ -20,6 +20,7 @@ urlpatterns = [
     path('applications/create/', views.loan_application_create, name='application_create'),
     path('applications/<int:pk>/', views.loan_application_detail, name='application_detail'),
     path('applications/<int:pk>/approve/', views.loan_application_approve, name='application_approve'),
+    path('applications/<int:pk>/progress/', views.application_progress, name='application_progress'),
     
     # Loans
     path('loans/', views.loan_list, name='loan_list'),
@@ -32,6 +33,9 @@ urlpatterns = [
     # AJAX endpoints
     path('api/product/<int:pk>/details/', views.get_loan_product_details, name='api_product_details'),
     path('api/calculate-payment/', views.calculate_loan_payment, name='api_calculate_payment'),
+    
+    # Debug/Test endpoints
+    path('test/dropdown/', views.dropdown_test, name='dropdown_test'),
     
     # Legacy showcase URLs (redirects)
     path('showcase/dashboard/', views.showcase_dashboard, name='showcase_dashboard'),

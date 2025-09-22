@@ -73,6 +73,8 @@ INSTALLED_APPS = [
     "loans_customers",  # Customer management and KYC
     "loans_schedule",  # Payment scheduling and interest calculations
     "loans_payments",  # Payment processing and accounting integration
+    # Financial Rules System
+    "financial_rules",  # Rule-based transaction splitting and automation
 ]
 
 # Add debug toolbar only in development

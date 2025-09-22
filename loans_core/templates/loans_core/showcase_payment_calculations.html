@@ -1,0 +1,356 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Payment Calculation Showcase{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-calculator text-primary me-2"></i>
+                        Payment Calculation Showcase
+                    </h1>
+                    <p class="text-muted mb-0">Scheduled Payment Plan vs Actual Payments Analysis</p>
+                </div>
+                <div>
+                    <a href="{% url 'loans_core:dashboard' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan Information Summary -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3 bg-primary text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-info-circle me-2"></i>Loan Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Loan Number:</strong></td>
+                                    <td>{{ loan_info.loan_number }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Customer:</strong></td>
+                                    <td>{{ loan_info.customer_name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Principal Amount:</strong></td>
+                                    <td>${{ loan_info.principal_amount|floatformat:2|intcomma }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Interest Rate:</strong></td>
+                                    <td>{{ loan_info.interest_rate }}% per annum</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Term:</strong></td>
+                                    <td>{{ loan_info.term_months }} months</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Disbursement Date:</strong></td>
+                                    <td>{{ loan_info.disbursement_date|date:"F d, Y" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Monthly Payment:</strong></td>
+                                    <td><span class="badge bg-success fs-6">${{ monthly_payment|floatformat:2|intcomma }}</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Current Balance:</strong></td>
+                                    <td>${{ loan_info.current_balance|floatformat:2|intcomma }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Analysis Summary -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Paid</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ analysis.total_paid|floatformat:0|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Scheduled to Date</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ analysis.total_scheduled_to_date|floatformat:0|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-check fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-{% if analysis.payment_variance >= 0 %}success{% else %}warning{% endif %} shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-{% if analysis.payment_variance >= 0 %}success{% else %}warning{% endif %} text-uppercase mb-1">Payment Variance</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% if analysis.payment_variance >= 0 %}+{% endif %}${{ analysis.payment_variance|floatformat:0|intcomma }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-{% if analysis.payment_variance >= 0 %}arrow-up{% else %}arrow-down{% endif %} fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Payment Status</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% if analysis.on_track %}
+                                    <span class="badge bg-success">On Track</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Behind</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-{% if analysis.on_track %}check-circle{% else %}exclamation-triangle{% endif %} fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Comparison Tables -->
+    <div class="row">
+        <!-- Scheduled Payment Plan -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 bg-info text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-calendar-alt me-2"></i>Scheduled Payment Plan
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="table table-hover">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Due Date</th>
+                                    <th>Payment</th>
+                                    <th>Principal</th>
+                                    <th>Interest</th>
+                                    <th>Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in scheduled_payments %}
+                                <tr class="{% if payment.due_date <= today_date %}table-warning{% endif %}">
+                                    <td>{{ payment.payment_number }}</td>
+                                    <td>{{ payment.due_date|date:"M d, Y" }}</td>
+                                    <td><strong>${{ payment.total_payment|floatformat:2|intcomma }}</strong></td>
+                                    <td>${{ payment.principal_portion|floatformat:2|intcomma }}</td>
+                                    <td>${{ payment.interest_portion|floatformat:2|intcomma }}</td>
+                                    <td>${{ payment.remaining_balance|floatformat:2|intcomma }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Payments highlighted in yellow are past due
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actual Payments Made -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 bg-success text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-check-circle me-2"></i>Actual Payments Made
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if actual_payments %}
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-hover">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Method</th>
+                                        <th>Reference</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for payment in actual_payments %}
+                                    <tr>
+                                        <td>{{ payment.payment_date|date:"M d, Y" }}</td>
+                                        <td><strong>${{ payment.amount|floatformat:2|intcomma }}</strong></td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ payment.method|title }}</span>
+                                        </td>
+                                        <td><small>{{ payment.reference|default:"-" }}</small></td>
+                                        <td><small>{{ payment.notes|default:"-" }}</small></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Payment Summary -->
+                        <div class="border-top pt-3 mt-3">
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">Total Payments Made:</small><br>
+                                    <strong class="text-success">${{ analysis.total_paid|floatformat:2|intcomma }}</strong>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Number of Payments:</small><br>
+                                    <strong>{{ analysis.payments_made }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-credit-card fa-3x text-gray-300 mb-3"></i>
+                            <p class="text-muted">No payments recorded yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calculation Explanation -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3 bg-dark text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-lightbulb me-2"></i>How Calculations Work
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">Monthly Payment Formula</h6>
+                            <div class="bg-light p-3 rounded mb-3">
+                                <code>
+                                    PMT = P × [r(1+r)^n] / [(1+r)^n - 1]<br>
+                                    Where:<br>
+                                    • P = Principal (${{ loan_info.principal_amount|floatformat:0|intcomma }})<br>
+                                    • r = Monthly interest rate ({{ loan_info.interest_rate }}% ÷ 12)<br>
+                                    • n = Number of payments ({{ loan_info.term_months }})<br>
+                                    • PMT = Monthly payment (${{ monthly_payment|floatformat:2|intcomma }})
+                                </code>
+                            </div>
+                            
+                            <h6 class="text-primary">Interest vs Principal Split</h6>
+                            <div class="bg-light p-3 rounded">
+                                <small>
+                                    Each month:<br>
+                                    • <strong>Interest</strong> = Remaining Balance × Monthly Rate<br>
+                                    • <strong>Principal</strong> = Monthly Payment - Interest<br>
+                                    • <strong>New Balance</strong> = Previous Balance - Principal
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-primary">Payment Analysis</h6>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Payments Due to Date:</span>
+                                    <strong>{{ analysis.payments_due_to_date }}</strong>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Payments Actually Made:</span>
+                                    <strong>{{ analysis.payments_made }}</strong>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Payment Status:</span>
+                                    <strong class="{% if analysis.payments_ahead_behind >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        {% if analysis.payments_ahead_behind > 0 %}
+                                            {{ analysis.payments_ahead_behind }} ahead
+                                        {% elif analysis.payments_ahead_behind < 0 %}
+                                            {{ analysis.payments_ahead_behind|floatformat:0 }} behind
+                                        {% else %}
+                                            On schedule
+                                        {% endif %}
+                                    </strong>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Amount Variance:</span>
+                                    <strong class="{% if analysis.payment_variance >= 0 %}text-success{% else %}text-warning{% endif %}">
+                                        {% if analysis.payment_variance >= 0 %}+{% endif %}${{ analysis.payment_variance|floatformat:2|intcomma }}
+                                    </strong>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.border-left-primary {
+    border-left: 0.25rem solid #4e73df !important;
+}
+.border-left-success {
+    border-left: 0.25rem solid #1cc88a !important;
+}
+.border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+}
+.border-left-warning {
+    border-left: 0.25rem solid #f6c23e !important;
+}
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+</style>
+{% endblock %}

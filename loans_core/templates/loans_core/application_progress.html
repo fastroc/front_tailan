@@ -1,0 +1,562 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Payment Progress - {{ application.customer.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.progress-card {
+    border-left: 4px solid;
+    transition: all 0.3s ease;
+}
+.progress-card.excellent { border-left-color: #28a745; }
+.progress-card.good { border-left-color: #17a2b8; }
+.progress-card.fair { border-left-color: #ffc107; }
+.progress-card.poor { border-left-color: #dc3545; }
+
+.payment-status.paid { background: #d4edda; color: #155724; }
+.payment-status.overdue { background: #f8d7da; color: #721c24; }
+.payment-status.due_soon { background: #fff3cd; color: #856404; }
+.payment-status.scheduled { background: #d1ecf1; color: #0c5460; }
+
+.metric-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+}
+.metric-card.positive { background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%); }
+.metric-card.negative { background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%); }
+.metric-card.neutral { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+
+.payment-timeline {
+    position: relative;
+    padding-left: 30px;
+}
+.payment-timeline::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -24px;
+    top: 8px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #6c757d;
+}
+.timeline-item.paid::before { background: #28a745; }
+.timeline-item.overdue::before { background: #dc3545; }
+.timeline-item.due-soon::before { background: #ffc107; }
+
+/* Balance comparison styling */
+.balance-better { color: #28a745; font-weight: bold; }
+.balance-worse { color: #dc3545; font-weight: bold; }
+.balance-same { color: #6c757d; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'loans_core:application_list' %}">Applications</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'loans_core:application_detail' application.pk %}">{{ application.application_id }}</a></li>
+                            <li class="breadcrumb-item active">Payment Progress</li>
+                        </ol>
+                    </nav>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-chart-line text-success me-2"></i>
+                        Payment {% if application.status == 'approved' %}Progress{% else %}Projection{% endif %} Analysis
+                        {% if application.status != 'approved' %}
+                            <span class="badge bg-info ms-2">Projected</span>
+                        {% endif %}
+                    </h1>
+                    <p class="text-muted mb-0">{{ loan_info.customer_name }} - {{ loan_info.loan_product }}</p>
+                    {% if application.status != 'approved' %}
+                        <small class="text-info">
+                            <i class="fas fa-info-circle me-1"></i>
+                            This is a projected payment analysis based on application terms. Actual progress will be available after approval and disbursement.
+                        </small>
+                    {% endif %}
+                </div>
+                <div>
+                    <a href="{% url 'loans_core:application_detail' application.pk %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Application
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan Overview -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-file-contract me-2"></i>
+                        Loan Overview - {{ loan_info.loan_number }}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <h5 class="text-primary">${{ loan_info.principal_amount|floatformat:0|intcomma }}</h5>
+                                <small class="text-muted">Principal Amount</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <h5 class="text-info">{{ loan_info.interest_rate }}%</h5>
+                                <small class="text-muted">Interest Rate</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <h5 class="text-warning">{{ loan_info.term_months }} months</h5>
+                                <small class="text-muted">Loan Term</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <h5 class="text-success">${{ monthly_payment|floatformat:2|intcomma }}</h5>
+                                <small class="text-muted">Monthly Payment</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <h5 class="text-secondary">${{ loan_info.current_balance|floatformat:2|intcomma }}</h5>
+                                <small class="text-muted">Current Balance</small>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                {% with last_payment=scheduled_payments|last %}
+                                    {% if last_payment.actual_remaining_balance is not None %}
+                                        <h5 class="{% if last_payment.actual_remaining_balance < loan_info.current_balance %}text-success{% elif last_payment.actual_remaining_balance > loan_info.current_balance %}text-warning{% else %}text-muted{% endif %}">
+                                            ${{ last_payment.actual_remaining_balance|floatformat:2|intcomma }}
+                                        </h5>
+                                        <small class="text-muted">Actual Balance</small>
+                                    {% else %}
+                                        <h5 class="text-muted">${{ loan_info.current_balance|floatformat:2|intcomma }}</h5>
+                                        <small class="text-muted">Actual Balance</small>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card metric-card {% if analysis.payment_score >= 90 %}positive{% elif analysis.payment_score >= 70 %}neutral{% else %}negative{% endif %} shadow h-100 py-3">
+                <div class="card-body text-center">
+                    <h2 class="mb-2">{{ analysis.payment_score }}%</h2>
+                    <h6 class="mb-0">Payment Score</h6>
+                    <small>
+                        {% if analysis.payment_score >= 90 %}Excellent Performance
+                        {% elif analysis.payment_score >= 70 %}Good Performance
+                        {% else %}Needs Improvement{% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card metric-card {% if analysis.payment_variance >= 0 %}positive{% else %}negative{% endif %} shadow h-100 py-3">
+                <div class="card-body text-center">
+                    <h2 class="mb-2">{{ analysis.payment_variance|floatformat:0 }}</h2>
+                    <h6 class="mb-0">Payment Variance</h6>
+                    <small>
+                        {% if analysis.payment_variance >= 0 %}${{ analysis.payment_variance|floatformat:0|intcomma }} ahead
+                        {% else %}${{ analysis.payment_variance|floatformat:0|intcomma|slice:"1:" }} behind{% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card metric-card {% if analysis.on_time_payments >= analysis.late_payments %}positive{% else %}negative{% endif %} shadow h-100 py-3">
+                <div class="card-body text-center">
+                    <h2 class="mb-2">{{ analysis.on_time_payments }}/{{ analysis.payments_due_to_date }}</h2>
+                    <h6 class="mb-0">On-Time Payments</h6>
+                    <small>{{ analysis.late_payments }} late, {{ analysis.missed_payments }} missed</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card metric-card {% if analysis.on_track %}positive{% else %}negative{% endif %} shadow h-100 py-3">
+                <div class="card-body text-center">
+                    <h2 class="mb-2">
+                        {% if analysis.on_track %}<i class="fas fa-check-circle"></i>
+                        {% else %}<i class="fas fa-exclamation-triangle"></i>{% endif %}
+                    </h2>
+                    <h6 class="mb-0">Loan Status</h6>
+                    <small>
+                        {% if analysis.on_track %}On Track{% else %}At Risk{% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Analysis -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <!-- Scheduled vs Actual Payments -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-calendar-check me-2"></i>
+                        {% if application.status == 'approved' %}
+                            Detailed Payment Analysis - Scheduled vs Actual
+                        {% else %}
+                            Projected Payment Schedule Analysis
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th rowspan="2" class="align-middle">Payment #</th>
+                                    <th rowspan="2" class="align-middle">Due Date</th>
+                                    <th colspan="3" class="text-center border-bottom">Scheduled Payment</th>
+                                    <th colspan="4" class="text-center border-bottom">Actual Payment</th>
+                                    <th rowspan="2" class="align-middle">Difference</th>
+                                    <th rowspan="2" class="align-middle">Actual Remaining Balance</th>
+                                    <th rowspan="2" class="align-middle">Status</th>
+                                </tr>
+                                <tr>
+                                    <th class="text-center">Total</th>
+                                    <th class="text-center">Interest</th>
+                                    <th class="text-center">Principal</th>
+                                    <th class="text-center">Total</th>
+                                    <th class="text-center">Interest</th>
+                                    <th class="text-center">Principal</th>
+                                    <th class="text-center">Method</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for scheduled in scheduled_payments|slice:":12" %}
+                                <tr>
+                                    <td><strong>{{ scheduled.payment_number }}</strong></td>
+                                    <td>{{ scheduled.due_date|date:"M d, Y" }}</td>
+                                    
+                                    <!-- Scheduled Payment Breakdown -->
+                                    <td class="text-end">
+                                        <strong>${{ scheduled.total_payment|floatformat:2|intcomma }}</strong>
+                                    </td>
+                                    <td class="text-end text-warning">
+                                        ${{ scheduled.interest_portion|floatformat:2|intcomma }}
+                                    </td>
+                                    <td class="text-end text-primary">
+                                        ${{ scheduled.principal_portion|floatformat:2|intcomma }}
+                                    </td>
+                                    
+                                    <!-- Actual Payment Breakdown -->
+                                    <td class="text-end">
+                                        {% if scheduled.actual_payment %}
+                                            <strong class="text-success">${{ scheduled.actual_payment|floatformat:2|intcomma }}</strong>
+                                        {% elif scheduled.status == 'overdue' %}
+                                            <span class="text-danger">Not Paid</span>
+                                        {% elif scheduled.status == 'due_soon' %}
+                                            <span class="text-warning">Due Soon</span>
+                                        {% else %}
+                                            <span class="text-muted">Scheduled</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if scheduled.actual_interest_portion %}
+                                            <span class="text-warning">
+                                                ${{ scheduled.actual_interest_portion|floatformat:2|intcomma }}
+                                            </span>
+                                            {% if scheduled.interest_difference and scheduled.interest_difference != 0 %}
+                                                <br><small class="{% if scheduled.interest_difference < 0 %}text-success{% else %}text-warning{% endif %}">
+                                                    {% if scheduled.interest_difference > 0 %}+{% endif %}${{ scheduled.interest_difference|floatformat:2|intcomma }}
+                                                </small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if scheduled.actual_principal_portion %}
+                                            <span class="text-primary">
+                                                ${{ scheduled.actual_principal_portion|floatformat:2|intcomma }}
+                                            </span>
+                                            {% if scheduled.principal_difference and scheduled.principal_difference != 0 %}
+                                                <br><small class="{% if scheduled.principal_difference > 0 %}text-success{% else %}text-warning{% endif %}">
+                                                    {% if scheduled.principal_difference > 0 %}+{% endif %}${{ scheduled.principal_difference|floatformat:2|intcomma }}
+                                                </small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if scheduled.actual_payment_method %}
+                                            <span class="badge bg-info">{{ scheduled.actual_payment_method|title }}</span>
+                                            {% if scheduled.actual_payment_date %}
+                                                <br><small class="text-muted">{{ scheduled.actual_payment_date|date:"M d" }}</small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <!-- Payment Difference -->
+                                    <td class="text-end">
+                                        {% if scheduled.payment_difference is not None %}
+                                            {% if scheduled.payment_difference > 0 %}
+                                                <span class="text-success">+${{ scheduled.payment_difference|floatformat:2|intcomma }}</span>
+                                            {% elif scheduled.payment_difference < 0 %}
+                                                <span class="text-danger">${{ scheduled.payment_difference|floatformat:2|intcomma }}</span>
+                                            {% else %}
+                                                <span class="text-muted">$0.00</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if scheduled.actual_remaining_balance is not None %}
+                                            <strong class="{% if scheduled.actual_remaining_balance < scheduled.remaining_balance %}balance-better{% elif scheduled.actual_remaining_balance > scheduled.remaining_balance %}balance-worse{% else %}balance-same{% endif %}">
+                                                ${{ scheduled.actual_remaining_balance|floatformat:2|intcomma }}
+                                            </strong>
+                                            {% if scheduled.actual_remaining_balance != scheduled.remaining_balance %}
+                                                <br><small class="text-muted">
+                                                    Scheduled: ${{ scheduled.remaining_balance|floatformat:2|intcomma }}
+                                                    {% with balance_diff=scheduled.remaining_balance|add:scheduled.actual_remaining_balance|floatformat:2 %}
+                                                        {% if scheduled.actual_remaining_balance < scheduled.remaining_balance %}
+                                                            <span class="text-success">
+                                                                <i class="fas fa-arrow-down fa-sm ms-1"></i>
+                                                            </span>
+                                                        {% elif scheduled.actual_remaining_balance > scheduled.remaining_balance %}
+                                                            <span class="text-warning">
+                                                                <i class="fas fa-arrow-up fa-sm ms-1"></i>
+                                                            </span>
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                </small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">${{ scheduled.remaining_balance|floatformat:2|intcomma }}</span>
+                                            <br><small class="text-muted">(Scheduled)</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge payment-status {{ scheduled.status }}">
+                                            {% if scheduled.status == 'overdue' %}Overdue
+                                            {% elif scheduled.status == 'due_soon' %}Due Soon
+                                            {% else %}{{ scheduled.status|title }}{% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {% if scheduled_payments|length > 12 %}
+                    <div class="text-center mt-3">
+                        <small class="text-muted">Showing first 12 payments. Total: {{ scheduled_payments|length }} payments</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Summary and Performance Indicators -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <!-- Payment Summary -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Payment Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Total Scheduled (to date):</span>
+                            <strong>${{ analysis.total_scheduled_to_date|floatformat:2|intcomma }}</strong>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Total Paid:</span>
+                            <strong class="{% if analysis.total_paid >= analysis.total_scheduled_to_date %}text-success{% else %}text-warning{% endif %}">
+                                ${{ analysis.total_paid|floatformat:2|intcomma }}
+                            </strong>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Payment Variance:</span>
+                            <strong class="{% if analysis.payment_variance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if analysis.payment_variance >= 0 %}+{% endif %}${{ analysis.payment_variance|floatformat:2|intcomma }}
+                            </strong>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Payments Made:</span>
+                            <strong>{{ analysis.payments_made }} / {{ analysis.payments_due_to_date }}</strong>
+                        </div>
+                    </div>
+                    
+                    {% if analysis.next_payment_due %}
+                    <hr>
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-calendar-alt me-2"></i>Next Payment Due</h6>
+                        <p class="mb-1"><strong>{{ analysis.next_payment_due.due_date|date:"M d, Y" }}</strong></p>
+                        <p class="mb-0">${{ analysis.next_payment_due.total_payment|floatformat:2|intcomma }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <!-- Performance Indicators -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-tachometer-alt me-2"></i>
+                        Performance Indicators
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Payment Consistency</span>
+                            <span class="badge {% if analysis.payment_score >= 90 %}bg-success{% elif analysis.payment_score >= 70 %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ analysis.payment_score }}%
+                            </span>
+                        </div>
+                        <div class="progress mt-1" style="height: 6px;">
+                            <div class="progress-bar {% if analysis.payment_score >= 90 %}bg-success{% elif analysis.payment_score >= 70 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                 style="width: {{ analysis.payment_score }}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Payment History:</small>
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="text-success">
+                                    <strong>{{ analysis.on_time_payments }}</strong><br>
+                                    <small>On Time</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-warning">
+                                    <strong>{{ analysis.late_payments }}</strong><br>
+                                    <small>Late</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-danger">
+                                    <strong>{{ analysis.missed_payments }}</strong><br>
+                                    <small>Missed</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        {% if analysis.on_track %}
+                            <span class="badge bg-success">
+                                <i class="fas fa-check-circle me-1"></i>Loan is On Track
+                            </span>
+                        {% else %}
+                            <span class="badge bg-danger">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Requires Attention
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Payment Activity -->
+    {% if actual_payments %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Recent Payment Activity
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="payment-timeline">
+                        {% for payment in actual_payments|slice:":5" %}
+                        <div class="timeline-item paid">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">${{ payment.amount|floatformat:2|intcomma }}</h6>
+                                    <p class="mb-1">{{ payment.payment_date|date:"M d, Y" }} - {{ payment.method|title }}</p>
+                                    {% if payment.reference %}
+                                        <small class="text-muted">Ref: {{ payment.reference }}</small>
+                                    {% endif %}
+                                    {% if payment.notes %}
+                                        <br><small class="text-muted">{{ payment.notes }}</small>
+                                    {% endif %}
+                                </div>
+                                <span class="badge bg-success">Paid</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh every 30 seconds to show live updates
+setTimeout(function() {
+    location.reload();
+}, 30000);
+
+// Add tooltips for better UX
+$(function() {
+    $('[data-bs-toggle="tooltip"]').tooltip();
+});
+</script>
+{% endblock %}

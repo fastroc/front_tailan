@@ -24,4 +24,15 @@ urlpatterns = [
     path('ajax/split-transaction/create/', ajax_split_views.create_split_transaction, name='create_split_transaction'),
     path('ajax/split-transaction/<int:match_id>/details/', ajax_split_views.get_transaction_splits, name='get_transaction_splits'),
     path('ajax/split-transaction/validate/', ajax_split_views.validate_split_balance, name='validate_split_balance'),
+    
+    # Loan integration AJAX endpoints
+    path('ajax/search-loan-customers/', ajax_views.search_loan_customers, name='search_loan_customers'),
+    path('ajax/get-all-loan-customers/', ajax_views.get_all_loan_customers, name='get_all_loan_customers'),
+    path('ajax/detect-loan-payment/<int:transaction_id>/', ajax_views.detect_loan_payment, name='detect_loan_payment'),
+    path('ajax/create-loan-payment/', ajax_views.create_loan_payment_from_reconciliation, name='create_loan_payment'),
+    path('ajax/get-loan-payment-breakdown/', ajax_views.get_loan_payment_breakdown, name='get_loan_payment_breakdown'),
+    path('ajax/debug-loan-breakdown/', ajax_views.test_loan_breakdown_debug, name='debug_loan_breakdown'),
+    path('ajax/debug-transaction/<int:transaction_id>/', ajax_views.debug_transaction, name='debug_transaction'),
+    path('ajax/test-integration/', ajax_views.test_integration, name='test_integration'),
+    path('ajax/test-search/', ajax_views.test_search_customers, name='test_search_customers'),
 ]

@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Payment Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-credit-card text-primary me-2"></i>
+                        Payment #{{ payment.payment_id }}
+                    </h1>
+                    <p class="text-muted mb-0">Payment Details and Allocation Breakdown</p>
+                </div>
+                <div>
+                    <a href="{% url 'loans_payments:payment_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Payments
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Summary -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Payment Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted">Loan Account</label>
+                            <div class="fw-bold">{{ payment.loan.loan_number }}</div>
+                            <small class="text-muted">{{ payment.customer.full_name }}</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted">Payment Amount</label>
+                            <div class="fw-bold fs-4 text-success">${{ payment.payment_amount|floatformat:2|intcomma }}</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted">Payment Date</label>
+                            <div class="fw-bold">{{ payment.payment_date|date:"F d, Y" }}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted">Payment Method</label>
+                            <div class="fw-bold">{{ payment.get_payment_method_display }}</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted">Status</label>
+                            <div>
+                                {% if payment.status == 'completed' %}
+                                    <span class="badge bg-success">{{ payment.get_status_display }}</span>
+                                {% elif payment.status == 'pending' %}
+                                    <span class="badge bg-warning">{{ payment.get_status_display }}</span>
+                                {% elif payment.status == 'failed' %}
+                                    <span class="badge bg-danger">{{ payment.get_status_display }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ payment.get_status_display }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted">Reference Number</label>
+                            <div class="fw-bold">{{ payment.reference_number|default:"N/A" }}</div>
+                        </div>
+                    </div>
+                    {% if payment.notes %}
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label class="form-label text-muted">Notes</label>
+                            <div class="fw-bold">{{ payment.notes }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Processing Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Processed Date</label>
+                        <div class="fw-bold">
+                            {% if payment.processed_date %}
+                                {{ payment.processed_date|date:"F d, Y g:i A" }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Processed By</label>
+                        <div class="fw-bold">
+                            {% if payment.processed_by %}
+                                {{ payment.processed_by.get_full_name|default:payment.processed_by.username }}
+                            {% else %}
+                                System
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Net Amount</label>
+                        <div class="fw-bold">${{ payment.net_payment_amount|floatformat:2|intcomma }}</div>
+                    </div>
+                    {% if payment.processing_fee > 0 %}
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Processing Fee</label>
+                        <div class="fw-bold text-warning">${{ payment.processing_fee|floatformat:2|intcomma }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Allocation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Payment Allocation Breakdown</h6>
+                </div>
+                <div class="card-body">
+                    {% if allocations %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Order</th>
+                                    <th>Allocation Type</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>Balance Before</th>
+                                    <th>Balance After</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for allocation in allocations %}
+                                <tr>
+                                    <td>{{ allocation.allocation_order }}</td>
+                                    <td>
+                                        {% if allocation.allocation_type == 'late_fee' %}
+                                            <span class="badge bg-danger">{{ allocation.get_allocation_type_display }}</span>
+                                        {% elif allocation.allocation_type == 'interest' %}
+                                            <span class="badge bg-warning">{{ allocation.get_allocation_type_display }}</span>
+                                        {% elif allocation.allocation_type == 'principal' %}
+                                            <span class="badge bg-success">{{ allocation.get_allocation_type_display }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ allocation.get_allocation_type_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ allocation.description }}</td>
+                                    <td class="fw-bold">${{ allocation.allocation_amount|floatformat:2|intcomma }}</td>
+                                    <td>${{ allocation.balance_before|floatformat:2|intcomma }}</td>
+                                    <td>${{ allocation.balance_after|floatformat:2|intcomma }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-calculator fa-3x mb-3"></i>
+                        <p>No allocation details available for this payment.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment History -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Payment History</h6>
+                </div>
+                <div class="card-body">
+                    {% if history %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                    <th>Performed By</th>
+                                    <th>Description</th>
+                                    <th>Old Status</th>
+                                    <th>New Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in history %}
+                                <tr>
+                                    <td>{{ record.action_date|date:"M d, Y g:i A" }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ record.get_action_type_display }}</span>
+                                    </td>
+                                    <td>
+                                        {% if record.performed_by %}
+                                            {{ record.performed_by.get_full_name|default:record.performed_by.username }}
+                                        {% else %}
+                                            System
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ record.description }}</td>
+                                    <td>
+                                        {% if record.old_status %}
+                                            <span class="badge bg-secondary">{{ record.old_status|title }}</span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if record.new_status %}
+                                            <span class="badge bg-primary">{{ record.new_status|title }}</span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-history fa-3x mb-3"></i>
+                        <p>No payment history available.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

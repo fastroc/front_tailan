@@ -1,0 +1,423 @@
+{% extends 'base.html' %}
+
+{% block title %}Rule Details - {{ rule.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rule-card {
+        border-left: 4px solid #007bff;
+        transition: all 0.3s ease;
+    }
+    .rule-active {
+        border-left-color: #28a745;
+    }
+    .rule-inactive {
+        border-left-color: #dc3545;
+    }
+    .condition-tag {
+        background-color: #e9ecef;
+        border-radius: 12px;
+        padding: 4px 12px;
+        font-size: 0.85em;
+        margin: 2px;
+    }
+    .action-tag {
+        background-color: #d4edda;
+        border-radius: 12px;
+        padding: 4px 12px;
+        font-size: 0.85em;
+        margin: 2px;
+    }
+    .test-results {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'financial_rules:rule_list' %}">Rules</a></li>
+                <li class="breadcrumb-item active">{{ rule.name }}</li>
+            </ol>
+        </nav>
+        <h2>
+            {% if rule.is_active %}
+                <i class="fas fa-check-circle text-success me-2"></i>
+            {% else %}
+                <i class="fas fa-times-circle text-danger me-2"></i>
+            {% endif %}
+            {{ rule.name }}
+        </h2>
+    </div>
+    <div>
+        <a href="{% url 'financial_rules:rule_edit' rule.id %}" class="btn btn-primary">
+            <i class="fas fa-edit me-1"></i>Edit Rule
+        </a>
+        <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#testModal">
+            <i class="fas fa-vial me-1"></i>Test Rule
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Rule Information -->
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle me-2"></i>Rule Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Name:</strong><br>
+                        <span class="text-muted">{{ rule.name }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Company:</strong><br>
+                        <span class="badge bg-info">{{ rule.company.name }}</span>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Rule Type:</strong><br>
+                        <span class="badge bg-primary">{{ rule.rule_type|title }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Priority:</strong><br>
+                        <span class="badge bg-secondary">{{ rule.priority }}</span>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Status:</strong><br>
+                        {% if rule.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactive</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Usage Count:</strong><br>
+                        <span class="text-muted">{{ rule.usage_count }} times</span>
+                    </div>
+                </div>
+                {% if rule.description %}
+                    <hr>
+                    <div>
+                        <strong>Description:</strong><br>
+                        <p class="text-muted">{{ rule.description }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Rule Conditions -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-filter me-2"></i>Conditions ({{ rule.conditions.count }})</h5>
+                <small class="text-muted">{{ rule.condition_logic|upper }} logic applied</small>
+            </div>
+            <div class="card-body">
+                {% if rule.conditions.all %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Field</th>
+                                    <th>Operator</th>
+                                    <th>Value</th>
+                                    <th>Case Sensitive</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for condition in rule.conditions.all %}
+                                    <tr>
+                                        <td><code>{{ condition.field }}</code></td>
+                                        <td>
+                                            <span class="badge bg-light text-dark">{{ condition.get_operator_display }}</span>
+                                        </td>
+                                        <td><strong>{{ condition.value }}</strong></td>
+                                        <td>
+                                            {% if condition.case_sensitive %}
+                                                <i class="fas fa-check text-success"></i>
+                                            {% else %}
+                                                <i class="fas fa-times text-muted"></i>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-3">
+                        <i class="fas fa-filter fa-2x text-muted mb-2"></i>
+                        <p class="text-muted">No conditions defined. This rule will match all transactions.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Rule Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-cog me-2"></i>Actions ({{ rule.actions.count }})</h5>
+            </div>
+            <div class="card-body">
+                {% if rule.actions.all %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Action Type</th>
+                                    <th>Target Account</th>
+                                    <th>Amount/Percentage</th>
+                                    <th>Parameters</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for action in rule.actions.all %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-success">{{ action.get_action_type_display }}</span>
+                                        </td>
+                                        <td><strong>{{ action.target_account }}</strong></td>
+                                        <td>
+                                            {% if action.amount %}
+                                                ${{ action.amount }}
+                                            {% elif action.percentage %}
+                                                {{ action.percentage }}%
+                                            {% else %}
+                                                <span class="text-muted">Remainder</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if action.parameters %}
+                                                <code>{{ action.parameters }}</code>
+                                            {% else %}
+                                                <span class="text-muted">None</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-3">
+                        <i class="fas fa-cog fa-2x text-muted mb-2"></i>
+                        <p class="text-muted">No actions defined. This rule will not perform any splits.</p>
+                        <a href="{% url 'financial_rules:rule_edit' rule.id %}" class="btn btn-outline-primary">
+                            Add Actions
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Rule Statistics and Recent Usage -->
+    <div class="col-md-4">
+        <!-- Quick Stats -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6><i class="fas fa-chart-bar me-2"></i>Quick Stats</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <h4 class="text-primary">{{ rule.usage_count }}</h4>
+                            <small class="text-muted">Total Uses</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-info">{{ rule.conditions.count }}</h4>
+                        <small class="text-muted">Conditions</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <h4 class="text-success">{{ rule.actions.count }}</h4>
+                            <small class="text-muted">Actions</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-warning">{{ rule.priority }}</h4>
+                        <small class="text-muted">Priority</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Execution Logs -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6><i class="fas fa-history me-2"></i>Recent Usage</h6>
+            </div>
+            <div class="card-body">
+                {% if recent_logs %}
+                    {% for log in recent_logs %}
+                        <div class="border-bottom pb-2 mb-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <small class="text-muted">{{ log.executed_at|date:"M d, H:i" }}</small>
+                                    {% if log.success %}
+                                        <i class="fas fa-check text-success ms-1"></i>
+                                    {% else %}
+                                        <i class="fas fa-times text-danger ms-1"></i>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">${{ log.input_data.amount|default:"0.00" }}</small>
+                            </div>
+                            {% if log.success %}
+                                <small class="text-success">Successfully applied</small>
+                            {% else %}
+                                <small class="text-danger">{{ log.error_message|truncatewords:8 }}</small>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    <div class="text-center">
+                        <a href="#" class="btn btn-sm btn-outline-primary">View All Logs</a>
+                    </div>
+                {% else %}
+                    <div class="text-center py-3">
+                        <i class="fas fa-history fa-2x text-muted mb-2"></i>
+                        <p class="text-muted">No usage history yet</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Rule Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-tools me-2"></i>Rule Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#testModal">
+                        <i class="fas fa-vial me-1"></i>Test Rule
+                    </button>
+                    <a href="{% url 'financial_rules:rule_edit' rule.id %}" class="btn btn-outline-primary">
+                        <i class="fas fa-edit me-1"></i>Edit Rule
+                    </a>
+                    <button class="btn btn-outline-secondary" onclick="toggleRuleStatus({{ rule.id }})">
+                        {% if rule.is_active %}
+                            <i class="fas fa-pause me-1"></i>Deactivate
+                        {% else %}
+                            <i class="fas fa-play me-1"></i>Activate
+                        {% endif %}
+                    </button>
+                    <hr>
+                    <a href="{% url 'financial_rules:rule_delete' rule.id %}" class="btn btn-outline-danger">
+                        <i class="fas fa-trash me-1"></i>Delete Rule
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test Rule Modal -->
+<div class="modal fade" id="testModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Test Rule: {{ rule.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="test-amount" class="form-label">Transaction Amount *</label>
+                            <input type="number" class="form-control" id="test-amount" 
+                                   placeholder="Enter amount..." step="0.01" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="test-description" class="form-label">Transaction Description</label>
+                            <input type="text" class="form-control" id="test-description" 
+                                   placeholder="Enter description...">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="test-contact" class="form-label">Contact/Payee</label>
+                            <input type="text" class="form-control" id="test-contact" 
+                                   placeholder="Contact name...">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="test-reference" class="form-label">Reference</label>
+                            <input type="text" class="form-control" id="test-reference" 
+                                   placeholder="Reference number...">
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="test-results"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="testSingleRule({{ rule.id }})">
+                    <i class="fas fa-vial me-1"></i>Run Test
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function testSingleRule(ruleId) {
+        const testData = {
+            amount: document.getElementById('test-amount').value,
+            description: document.getElementById('test-description').value,
+            contact: document.getElementById('test-contact').value,
+            reference: document.getElementById('test-reference').value
+        };
+        
+        fetch(`/financial_rules/api/test_rule/${ruleId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(testData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            displayTestResults(data);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('test-results').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error testing rule. Please try again.
+                </div>
+            `;
+        });
+    }
+</script>
+{% endblock %}

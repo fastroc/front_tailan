@@ -1,0 +1,372 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Record Payment - Loan Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .loan-result:hover {
+        background-color: #f8f9fa;
+    }
+    .dropdown-menu {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(0, 0, 0, 0.125);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Record Payment</h1>
+        <p class="mb-0 text-muted">Record incoming loan payments</p>
+    </div>
+
+    <!-- Payment Statistics -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Today's Payments
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.today_payments|default:"0"|floatformat:0|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Active Loans
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.active_loans|default:"0" }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-handshake fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Payment Count
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_payments|default:"0" }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Monthly Collection
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.monthly_collection|default:"0"|floatformat:0|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simple Payment Recording Form -->
+    <div class="row mb-4">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Record Incoming Payment</h6>
+                </div>
+                <div class="card-body">
+                    <form id="payment-form" method="post" action="{% url 'loans_payments:payment_create' %}">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="loan-search" class="form-label">Loan Account *</label>
+                                <input type="text" class="form-control" id="loan-search" placeholder="Search loan number or customer name..." autocomplete="off" required>
+                                <input type="hidden" id="loan-id" name="loan_id" required>
+                                <div id="loan-search-results" class="dropdown-menu" style="display: none; width: 100%;"></div>
+                                <div id="selected-loan-info" class="mt-2" style="display: none;">
+                                    <div class="alert alert-info">
+                                        <strong id="selected-loan-display"></strong><br>
+                                        <small>Current Balance: $<span id="selected-loan-balance">0.00</span></small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="payment-amount" class="form-label">Payment Amount *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="payment-amount" name="payment_amount" step="0.01" min="0.01" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="payment-method" class="form-label">Payment Method *</label>
+                                <select class="form-select" id="payment-method" name="payment_method" required>
+                                    <option value="">Select Method</option>
+                                    <option value="cash">Cash</option>
+                                    <option value="check">Check</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="online">Online Payment</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="payment-date" class="form-label">Payment Date *</label>
+                                <input type="date" class="form-control" id="payment-date" name="payment_date" value="{{ today_date|date:'Y-m-d' }}" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="reference-number" class="form-label">Reference Number</label>
+                                <input type="text" class="form-control" id="reference-number" name="reference_number" placeholder="Check #, Transaction ID, etc.">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="payment-notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="payment-notes" name="notes" rows="2" placeholder="Additional notes about this payment..."></textarea>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear</button>
+                            <button type="submit" class="btn btn-primary" id="record-payment-btn" disabled>
+                                <i class="fas fa-save me-2"></i>Record Payment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Payments -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Payments</h6>
+                </div>
+                <div class="card-body">
+                    {% if payments %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Loan Account</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                    <th>Method</th>
+                                    <th>Reference</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in payments %}
+                                <tr>
+                                    <td>{{ payment.payment_date|date:"M d, Y" }}</td>
+                                    <td>{{ payment.loan.loan_number }}</td>
+                                    <td>{{ payment.loan.customer.full_name }}</td>
+                                    <td>${{ payment.amount|floatformat:2 }}</td>
+                                    <td>
+                                        <span class="badge bg-info">
+                                            {{ payment.get_payment_method_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if payment.reference_number %}
+                                            {{ payment.reference_number }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-receipt fa-3x mb-3"></i>
+                        <p>No payments recorded yet</p>
+                        <small>Recorded payments will appear here</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// Simple Payment Recording Script
+document.addEventListener('DOMContentLoaded', function() {
+    const loanSearchInput = document.getElementById('loan-search');
+    const loanIdInput = document.getElementById('loan-id');
+    const paymentAmountInput = document.getElementById('payment-amount');
+    const recordPaymentBtn = document.getElementById('record-payment-btn');
+    const selectedLoanInfo = document.getElementById('selected-loan-info');
+    const searchResults = document.getElementById('loan-search-results');
+    
+    let searchTimeout;
+    let selectedLoan = null;
+
+    // Loan search functionality
+    loanSearchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            hideSearchResults();
+            clearSelectedLoan();
+            return;
+        }
+
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => searchLoans(query), 300);
+    });
+
+    // Hide search results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!loanSearchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            hideSearchResults();
+        }
+    });
+
+    // Form validation
+    [paymentAmountInput, document.getElementById('payment-method')].forEach(input => {
+        input.addEventListener('input', updateFormState);
+        input.addEventListener('change', updateFormState);
+    });
+
+    function searchLoans(query) {
+        fetch(`{% url 'loans_payments:api_loan_search' %}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displaySearchResults(data.loans);
+                } else {
+                    console.error('Loan search failed:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+            });
+    }
+
+    function displaySearchResults(loans) {
+        if (loans.length === 0) {
+            searchResults.innerHTML = '<div class="dropdown-item text-muted">No loans found</div>';
+        } else {
+            searchResults.innerHTML = loans.map(loan => `
+                <div class="dropdown-item loan-result" data-loan='${JSON.stringify(loan)}' style="cursor: pointer;">
+                    <div class="fw-bold">${loan.loan_number} - ${loan.customer_name}</div>
+                    <small class="text-muted">Balance: $${loan.current_balance}</small>
+                </div>
+            `).join('');
+
+            // Add click handlers to results
+            searchResults.querySelectorAll('.loan-result').forEach(item => {
+                item.addEventListener('click', function() {
+                    const loan = JSON.parse(this.dataset.loan);
+                    selectLoan(loan);
+                });
+            });
+        }
+        
+        searchResults.style.display = 'block';
+        searchResults.classList.add('show');
+    }
+
+    function hideSearchResults() {
+        searchResults.style.display = 'none';
+        searchResults.classList.remove('show');
+    }
+
+    function selectLoan(loan) {
+        selectedLoan = loan;
+        loanSearchInput.value = `${loan.loan_number} - ${loan.customer_name}`;
+        loanIdInput.value = loan.id;
+        
+        // Update loan info display
+        document.getElementById('selected-loan-display').textContent = 
+            `${loan.loan_number} - ${loan.customer_name}`;
+        document.getElementById('selected-loan-balance').textContent = loan.current_balance;
+        
+        selectedLoanInfo.style.display = 'block';
+        hideSearchResults();
+        updateFormState();
+    }
+
+    function clearSelectedLoan() {
+        selectedLoan = null;
+        loanIdInput.value = '';
+        selectedLoanInfo.style.display = 'none';
+        updateFormState();
+    }
+
+    function updateFormState() {
+        const isValid = selectedLoan && 
+                       paymentAmountInput.value > 0 && 
+                       document.getElementById('payment-method').value;
+        recordPaymentBtn.disabled = !isValid;
+    }
+
+    window.clearForm = function() {
+        document.getElementById('payment-form').reset();
+        clearSelectedLoan();
+        loanSearchInput.value = '';
+        document.getElementById('payment-date').value = '{{ today_date|date:"Y-m-d" }}';
+    };
+
+    // Form submission validation
+    document.getElementById('payment-form').addEventListener('submit', function(e) {
+        if (!selectedLoan) {
+            e.preventDefault();
+            alert('Please select a loan account.');
+            return false;
+        }
+        
+        if (!paymentAmountInput.value || paymentAmountInput.value <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid payment amount.');
+            return false;
+        }
+        
+        // Show processing state
+        recordPaymentBtn.disabled = true;
+        recordPaymentBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Recording...';
+    });
+});
+</script>
+
+{% endblock %}

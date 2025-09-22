@@ -59,6 +59,12 @@
     border-bottom-right-radius: 0 !important;
   }
   
+  /* Ensure consistent field heights */
+  .matching-form .form-control,
+  .matching-form .hybrid-input {
+    height: calc(1.5em + 0.5rem + 2px);
+  }
+  
   /* Hide datalist dropdown arrow to avoid duplication */
   .hybrid-input::-webkit-calendar-picker-indicator,
   .hybrid-input::-webkit-list-button {
@@ -364,16 +370,36 @@
                     <div class="row mb-2">
                       <div class="col-6">
                         <label class="pillar-label text-info mb-1"><i class="bi bi-person me-1"></i>Who</label>
-                        <input class="form-control form-control-sm" 
-                               name="who_{{ t.id }}" 
-                               placeholder="Name of the contact…" 
-                               list="contactSuggestions"
-                               value="{% if t.id == 1 %}Acme Corporation{% endif %}"/>
-                        <datalist id="contactSuggestions">
-                          {% for c in contacts %}
-                          <option value="{{ c }}">{{ c }}</option>
-                          {% endfor %}
-                        </datalist>
+                        <div class="input-group input-group-sm position-relative">
+                          <input type="text" 
+                                 class="form-control hybrid-input" 
+                                 name="who_text_{{ t.id }}"
+                                 placeholder="Type customer or contact name..."
+                                 value=""
+                                 list="mainWhoSuggestions_{{ t.id }}"
+                                 oninput="handleMainWhoInput(this, {{ t.id }})"
+                                 autocomplete="off">
+                          <input type="hidden" name="who_{{ t.id }}" id="who_hidden_{{ t.id }}" value="">
+                          <datalist id="mainWhoSuggestions_{{ t.id }}">
+                            <!-- Loan customers and contacts will be populated by JavaScript -->
+                          </datalist>
+                          <button class="btn btn-outline-secondary hybrid-dropdown-btn" 
+                                  type="button" 
+                                  onclick="showMainWhoDropdown(this, {{ t.id }})"
+                                  title="Browse all customers and contacts">
+                            <i class="bi bi-chevron-down"></i>
+                          </button>
+                        </div>
+                          
+                        <!-- Loan payment indicator -->
+                        <div class="loan-payment-indicator mt-1" 
+                             id="loan-indicator-{{ t.id }}" 
+                             style="display: none;">
+                          <small class="text-success">
+                            <i class="bi bi-bank me-1"></i>
+                            <span class="indicator-text">Potential loan payment detected</span>
+                          </small>
+                        </div>
                       </div>
                       <div class="col-6">
                         <label class="pillar-label text-warning mb-1"><i class="bi bi-graph-up me-1"></i>What *</label>
@@ -411,7 +437,7 @@
                         <input class="form-control form-control-sm" name="why_{{ t.id }}" placeholder="Enter a description…" value="{% if t.id == 1 %}Monthly web development services{% else %}{{ t.description|default:'' }}{% endif %}"/>
                       </div>
                       <div class="col-6">
-                        <label class="form-label small mb-1">Tax</label>
+                        <label class="pillar-label text-primary mb-1"><i class="bi bi-percent me-1"></i>Tax</label>
                         <div class="input-group input-group-sm position-relative">
                           <input type="text" 
                                  class="form-control hybrid-input" 
@@ -493,6 +519,13 @@
     }{% if not forloop.last %},{% endif %}
     {% endfor %}
   ];
+
+  // Real Contacts from Django
+  const contacts = [
+    {% for contact in contacts %}
+    "{{ contact|escapejs }}"{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
 </script>
 
 <script>
@@ -535,12 +568,14 @@
 
   async function okMatch(id) {
     const row = document.querySelector(`[data-transaction-id="${id}"]`);
-    const contactField = row.querySelector(`[name="who_${id}"]`);
-    const accountField = row.querySelector(`[name="what_${id}"]`);
-    const taxField = row.querySelector(`[name="tax_${id}"]`);
-    const notesField = row.querySelector(`[name="notes_${id}"]`);
+    const contactField = row.querySelector(`[name="who_${id}"]`); // This is now the hidden input
+    const accountField = row.querySelector(`[name="what_${id}"]`); // Hidden input for account
+    const taxField = row.querySelector(`[name="tax_${id}"]`); // Hidden input for tax
+    const notesField = row.querySelector(`[name="why_${id}"]`); // The description field
     
-    const contact = contactField?.value || '';
+    // Get contact from hidden input or visible text input
+    const contactTextInput = row.querySelector(`[name="who_text_${id}"]`);
+    const contact = contactTextInput ? contactTextInput.value : (contactField?.value || '');
     const accountId = accountField?.value;
     const taxTreatment = taxField?.value || 'no_gst';
     const notes = notesField?.value || '';
@@ -582,6 +617,16 @@
       if (result.success) {
         // Freeze fields
         row.querySelectorAll('select, input').forEach(el => el.disabled = true);
+
+        // Show loan payment success message if created
+        if (result.loan_payment && result.loan_payment.created) {
+          const loanPayment = result.loan_payment;
+          showAlert(`💰 Loan Payment Recorded!\n\nCustomer: ${loanPayment.customer}\nLoan: ${loanPayment.loan_number}\nAmount: $${loanPayment.amount.toFixed(2)}\nPayment ID: ${loanPayment.payment_id}`, 'success');
+          
+          // Show detailed allocation info in console
+          console.log('🏦 Loan Payment Details:', loanPayment);
+          console.log('📊 Payment Allocation:', loanPayment.allocation_summary);
+        }
 
         // Visual confirmation
         okBtn.innerHTML = '<i class="bi bi-check me-1"></i>Matched';
@@ -864,6 +909,314 @@
 
     // Initialize split lines with transaction data
     initializeSplitLines(transactionData.amount, transactionData);
+  }
+
+  // Show loan-specific split transaction modal with pre-populated data
+  function showLoanSplitTransactionModal(transactionData, loanBreakdown) {
+    // Create modal backdrop
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    backdrop.style.zIndex = '1040';
+    
+    // Create modal container
+    const modal = document.createElement('div');
+    modal.className = 'modal fade show';
+    modal.style.display = 'block';
+    modal.style.zIndex = '1050';
+    modal.setAttribute('tabindex', '-1');
+    
+    const customer = loanBreakdown.customer;
+    const loan = loanBreakdown.loans && loanBreakdown.loans.length > 0 ? loanBreakdown.loans[0] : null;
+    
+    // Modal content with loan-specific split transaction interface
+    modal.innerHTML = `
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <!-- Modal Header -->
+          <div class="modal-header bg-primary text-white">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-bank me-2" style="font-size: 1.2rem;"></i>
+              <h5 class="modal-title mb-0">🏦 Loan Payment Split Transaction</h5>
+            </div>
+            <button type="button" class="btn-close btn-close-white" onclick="closeSplitModal()"></button>
+          </div>
+
+          <!-- Modal Body -->
+          <div class="modal-body">
+            <div class="container-fluid">
+              <!-- Loan Info Header -->
+              <div class="alert alert-info mb-4">
+                <div class="row">
+                  <div class="col-md-8">
+                    <strong>🏦 Loan Payment for ${customer.name}</strong><br>
+                    ${loan ? `<strong>Loan Number:</strong> ${loan.loan_number} | <strong>Current Balance:</strong> ${loan.balance}<br>` : ''}
+                    <small class="text-muted">Automatically allocated according to loan payment rules (Late Fees → Interest → Principal)</small>
+                  </div>
+                  <div class="col-md-4 text-end">
+                    <div class="fs-5 fw-bold text-primary" id="originalAmount">$${transactionData.amount.toFixed(2)}</div>
+                    <small class="text-muted">Total Payment Amount</small>
+                  </div>
+                </div>
+                <!-- Hidden transaction ID for form submission -->
+                <input type="hidden" id="transactionId" value="${transactionData.id}">
+              </div>
+
+              <!-- Header fields -->
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <label class="form-label">Date:</label>
+                  <input type="date" class="form-control" value="${transactionData.date || new Date().toISOString().split('T')[0]}" readonly>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label"><i class="bi bi-person me-1"></i>Customer:</label>
+                  <input type="text" class="form-control who-input" value="${customer.name}" readonly>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label"><i class="bi bi-chat-text me-1"></i>Description:</label>
+                  <input type="text" class="form-control" id="splitDescription" value="Loan Payment${loan ? ` - ${loan.loan_number}` : ''}" placeholder="Enter description">
+                </div>
+              </div>
+
+              <!-- Split Lines Table with Loan Data -->
+              <div class="table-responsive">
+                <table class="table table-bordered align-middle" id="splitLinesTable">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="min-width:300px">Description</th>
+                      <th style="min-width:250px">Account</th>
+                      <th style="min-width:150px">Tax Rate</th>
+                      <th style="min-width:150px" class="text-end">Amount</th>
+                      <th style="width:50px"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="loanSplitLineBody">
+                    <!-- Loan payment allocation lines will be added here -->
+                  </tbody>
+                  <tfoot>
+                    <tr class="table-success">
+                      <td colspan="3" class="text-end fw-semibold">Split Total:</td>
+                      <td class="text-end fw-semibold" id="splitTotalAmount">$${transactionData.amount.toFixed(2)}</td>
+                      <td></td>
+                    </tr>
+                    <tr id="balanceValidationRow" class="border-top-0">
+                      <td colspan="3" class="text-end">
+                        <div class="d-flex justify-content-end align-items-center gap-3">
+                          <div>
+                            <small class="text-muted">Original Amount:</small>
+                            <span class="fw-semibold" id="originalAmountFooter">$${transactionData.amount.toFixed(2)}</span>
+                          </div>
+                          <div>
+                            <small class="text-muted">Difference:</small>
+                            <span class="fw-semibold" id="balanceDifference">$0.00</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="text-end">
+                        <span class="badge bg-success" id="balanceStatus">
+                          <i class="bi bi-check-circle"></i> Balanced
+                        </span>
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="row mt-4">
+                <div class="col-md-6">
+                  <div class="alert alert-success">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <strong>Payment Allocation:</strong> This transaction has been automatically split according to loan payment rules.
+                  </div>
+                </div>
+                <div class="col-md-6 text-end">
+                  <button type="button" class="btn btn-secondary me-2" onclick="closeSplitModal()">
+                    <i class="bi bi-x me-1"></i>Cancel
+                  </button>
+                  <button type="button" class="btn btn-success" onclick="saveLoanSplitTransaction()">
+                    <i class="bi bi-check me-1"></i>Save Loan Payment Split
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Add modal to DOM
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modal);
+    document.body.classList.add('modal-open');
+
+    console.log('🎭 Modal added to DOM, waiting for initialization...');
+    
+    // Initialize split lines with loan payment breakdown (with delay to ensure DOM is ready)
+    setTimeout(() => {
+      console.log('⏰ Timeout triggered, initializing split lines...');
+      initializeLoanSplitLines(loanBreakdown);
+    }, 200);
+  }
+
+  // Initialize split lines with loan payment breakdown
+  function initializeLoanSplitLines(loanBreakdown) {
+    console.log('🎯 Initializing loan split lines with:', loanBreakdown);
+    console.log('📋 Payment breakdown:', loanBreakdown.payment_breakdown);
+    
+    const tbody = document.getElementById('loanSplitLineBody');
+    if (!tbody) {
+      console.error('❌ Could not find loanSplitLineBody element');
+      return;
+    }
+    console.log('✅ Found table body:', tbody);
+    tbody.innerHTML = '';
+
+    loanBreakdown.payment_breakdown.forEach((allocation, index) => {
+      console.log(`➕ Adding allocation ${index}:`, allocation);
+      addLoanSplitLineRow(allocation, index, loanBreakdown.gl_accounts);
+    });
+
+    updateSplitTotal();
+    
+    // Debug: Show the actual table HTML after adding all rows
+    setTimeout(() => {
+      const tbody = document.getElementById('loanSplitLineBody');
+      console.log('🔍 FINAL TABLE BODY HTML:', tbody.innerHTML);
+      console.log('🔍 FINAL TABLE BODY CHILDREN:', tbody.children.length);
+      console.log('🔍 TABLE BODY COMPUTED STYLES:', window.getComputedStyle(tbody));
+      
+      // Force scroll to show the table rows
+      setTimeout(() => {
+        tbody.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log('📜 Scrolled table into view');
+      }, 100);
+    }, 100);
+  }
+
+  // Add loan split line row with pre-populated data
+  function addLoanSplitLineRow(allocation, index, glAccounts) {
+    console.log('🔨 Creating row for allocation:', allocation);
+    
+    const tbody = document.getElementById('loanSplitLineBody');
+    if (!tbody) {
+      console.error('❌ Could not find loanSplitLineBody for adding row');
+      return;
+    }
+    
+    const row = document.createElement('tr');
+    
+    const glAccount = glAccounts[allocation.account_code];
+    const accountDisplay = glAccount ? `${glAccount.code} — ${glAccount.name}` : `${allocation.account_code} — ${allocation.account_name}`;
+    console.log('🏦 Account display:', accountDisplay);
+    
+    // Determine description based on allocation type
+    let description = '';
+    let badgeClass = '';
+    let icon = '';
+    
+    switch(allocation.type) {
+      case 'late_fees':
+        description = 'Late Fee Collection';
+        badgeClass = 'bg-warning';
+        icon = '⚠️';
+        break;
+      case 'interest':
+        description = 'Interest Payment';
+        badgeClass = 'bg-info';
+        icon = '💰';
+        break;
+      case 'principal':
+        description = 'Principal Payment';
+        badgeClass = 'bg-success';
+        icon = '🏦';
+        break;
+      default:
+        description = 'Loan Payment';
+        badgeClass = 'bg-secondary';
+        icon = '💳';
+    }
+    
+    row.innerHTML = `
+      <td>
+        <div class="d-flex align-items-center">
+          <span class="me-2">${icon}</span>
+          <input type="text" class="form-control form-control-sm" 
+                 value="${description}" 
+                 placeholder="Line description">
+          <span class="badge ${badgeClass} ms-2">${allocation.type.replace('_', ' ').toUpperCase()}</span>
+        </div>
+      </td>
+      <td>
+        <div class="input-group input-group-sm position-relative">
+          <input type="text" 
+                 class="form-control hybrid-input" 
+                 placeholder="Type account code or name..."
+                 value="${accountDisplay}"
+                 list="accountSuggestions_${index}"
+                 oninput="handleSplitAccountInput(this, ${index})"
+                 autocomplete="off">
+          <input type="hidden" id="split_account_hidden_${index}" value="${glAccount ? glAccount.id : ''}">
+          <datalist id="accountSuggestions_${index}">
+            {% for group, accounts in coa_groups.items %}
+              {% for acc in accounts %}
+              <option value="{{ acc.code }} — {{ acc.name }}" data-id="{{ acc.id }}">
+              {% endfor %}
+            {% endfor %}
+          </datalist>
+          <button class="btn btn-outline-secondary hybrid-dropdown-btn" 
+                  type="button" 
+                  onclick="showSplitAccountDropdown(this, ${index})"
+                  title="Browse all accounts">
+            <i class="bi bi-chevron-down"></i>
+          </button>
+        </div>
+      </td>
+      <td>
+        <select class="form-select form-select-sm">
+          <option value="no_gst" selected>Tax Exempt</option>
+          <option value="gst_free">GST Free</option>
+          <option value="input_taxed">Input Taxed</option>
+        </select>
+      </td>
+      <td class="text-end">
+        <input type="number" 
+               class="form-control form-control-sm text-end split-amount" 
+               value="${parseFloat(allocation.amount).toFixed(2)}" 
+               step="0.01" 
+               min="0"
+               onchange="updateSplitTotal()"
+               placeholder="0.00">
+      </td>
+      <td class="text-center">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSplitLine(this)" title="Remove line">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    `;
+    
+    console.log('✅ Row HTML created, appending to tbody:', tbody);
+    tbody.appendChild(row);
+    console.log('🎉 Row successfully added to table. Total rows now:', tbody.children.length);
+  }
+
+  // Save loan split transaction (enhanced version)
+  function saveLoanSplitTransaction() {
+    // Check balance before saving
+    const originalAmount = parseFloat(document.getElementById('originalAmount').textContent.replace(/[$,]/g, '')) || 0;
+    const splitTotal = parseFloat(document.getElementById('splitTotalAmount').textContent.replace(/[$,]/g, '')) || 0;
+    const difference = Math.abs(splitTotal - originalAmount);
+    
+    if (difference > 0.01) {
+      showAlert('⚠️ Balance Validation Failed\n\nSplit total ($' + splitTotal.toFixed(2) + ') does not match original amount ($' + originalAmount.toFixed(2) + ').\n\nPlease adjust the split amounts to balance the transaction.', 'error');
+      return;
+    }
+    
+    // Show success and close modal
+    showAlert('🏦 Loan Payment Split Transaction Saved!\n\nThe payment has been properly allocated according to loan payment rules.', 'success');
+    
+    // Call the regular save split transaction function
+    saveSplitTransaction();
   }
 
   // Initialize split lines with transaction-specific data or blank lines
@@ -1438,6 +1791,166 @@
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
+  // ========== MAIN WHO (CONTACT/CUSTOMER) HYBRID INPUTS ==========
+  
+  // Handle main who input
+  function handleMainWhoInput(input, transactionId) {
+    const value = input.value;
+    const hiddenInput = document.getElementById(`who_hidden_${transactionId}`);
+    
+    // Try to find matching contact/customer from datalist
+    const datalist = document.getElementById(`mainWhoSuggestions_${transactionId}`);
+    const options = datalist.querySelectorAll('option');
+    
+    let foundMatch = false;
+    options.forEach(option => {
+      if (option.value === value) {
+        hiddenInput.value = option.getAttribute('data-id') || '';
+        foundMatch = true;
+        
+        // Check if this is a loan customer and show indicator
+        const customerType = option.getAttribute('data-type');
+        const loanInfo = option.getAttribute('data-loan-info');
+        if (customerType === 'loan_customer') {
+          showLoanPaymentIndicator(transactionId, value, loanInfo);
+          // Auto-detect loan payment for this transaction
+          if (transactionId && !isNaN(parseInt(transactionId))) {
+            detectLoanPayment(parseInt(transactionId));
+          }
+          
+          // NEW: Auto-trigger split transaction modal for loan payments when typing
+          setTimeout(() => {
+            console.log('🏦 Auto-triggering loan payment split for typed customer:', value);
+            triggerLoanPaymentSplitTransaction(transactionId, value);
+          }, 500); // Slightly longer delay for typed input
+          
+        } else {
+          hideLoanPaymentIndicator(transactionId);
+        }
+      }
+    });
+    
+    if (!foundMatch) {
+      hiddenInput.value = '';
+      hideLoanPaymentIndicator(transactionId);
+      
+      // NEW: Check if typed value might be a loan customer (fuzzy matching)
+      if (value.trim().length > 2) {
+        setTimeout(() => {
+          checkIfPotentialLoanCustomer(transactionId, value.trim());
+        }, 800); // Longer delay for fuzzy matching
+      }
+    }
+    
+    // Simple suggestion logic for fuzzy matching
+    const lowerValue = value.toLowerCase();
+    if (lowerValue.includes('johnson') || lowerValue.includes('mary') || lowerValue.includes('rodriguez')) {
+      console.log('Suggesting: Loan customers');
+    } else if (lowerValue.includes('corp') || lowerValue.includes('company') || lowerValue.includes('ltd')) {
+      console.log('Suggesting: Business contacts');
+    }
+  }
+
+  // Show main who dropdown
+  function showMainWhoDropdown(button, transactionId) {
+    closeAllDropdowns();
+    
+    const inputGroup = button.parentElement;
+    const input = inputGroup.querySelector('.hybrid-input');
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'hybrid-dropdown main-who-dropdown';
+
+    let dropdownHTML = '';
+    
+    // Loan Customers Section
+    if (allLoanCustomers && allLoanCustomers.length > 0) {
+      dropdownHTML += `<div class="category-header">Loan Customers</div>`;
+      allLoanCustomers.forEach(customer => {
+        dropdownHTML += `
+          <div class="dropdown-item" onclick="selectMainWho('${customer.display_name}', '${customer.id}', ${transactionId}, 'loan_customer', '${customer.loan_info || ''}')">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="d-flex flex-column">
+                <span class="fw-semibold text-primary">${customer.display_name}</span>
+                <small class="text-muted">ID: ${customer.customer_id}</small>
+              </div>
+              <div class="text-end">
+                <span class="badge bg-info">Loan Customer</span>
+                ${customer.loan_info ? `<small class="text-muted d-block">${customer.loan_info}</small>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    }
+    
+    // General Contacts Section
+    if (typeof contacts !== 'undefined' && contacts.length > 0) {
+      dropdownHTML += `<div class="category-header">General Contacts</div>`;
+      contacts.forEach(contact => {
+        dropdownHTML += `
+          <div class="dropdown-item" onclick="selectMainWho('${contact}', '', ${transactionId}, 'general_contact', '')">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-semibold text-secondary">${contact}</span>
+              <span class="badge bg-secondary">Contact</span>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // If no data available, show message
+    if (!dropdownHTML) {
+      dropdownHTML = `<div class="dropdown-item text-muted">No customers or contacts available</div>`;
+    }
+
+    dropdown.innerHTML = dropdownHTML;
+    inputGroup.appendChild(dropdown);
+
+    // Add click outside listener
+    setTimeout(() => {
+      document.addEventListener('click', function closeDropdown(e) {
+        if (!dropdown.contains(e.target) && e.target !== button) {
+          dropdown.remove();
+          document.removeEventListener('click', closeDropdown);
+        }
+      });
+    }, 100);
+  }
+
+  // Select main who (contact/customer)
+  function selectMainWho(contactText, contactId, transactionId, contactType, loanInfo) {
+    const input = document.querySelector(`input[name="who_text_${transactionId}"]`);
+    const hiddenInput = document.getElementById(`who_hidden_${transactionId}`);
+    
+    input.value = contactText;
+    hiddenInput.value = contactId;
+    
+    closeAllDropdowns();
+    
+    // Show loan payment indicator if this is a loan customer
+    if (contactType === 'loan_customer') {
+      showLoanPaymentIndicator(transactionId, contactText, loanInfo);
+      // Auto-detect loan payment for this transaction
+      if (transactionId && !isNaN(parseInt(transactionId))) {
+        detectLoanPayment(parseInt(transactionId));
+      }
+      
+      // NEW: Auto-trigger split transaction modal for loan payments
+      setTimeout(() => {
+        triggerLoanPaymentSplitTransaction(transactionId, contactText);
+      }, 300); // Small delay to ensure UI updates complete
+      
+    } else {
+      hideLoanPaymentIndicator(transactionId);
+    }
+    
+    // Trigger validation
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    checkOK(transactionId);
+  }
+
   // Save split transaction - Full Backend Integration
   function saveSplitTransaction() {
     // Check balance before saving
@@ -1800,6 +2313,9 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     updateDiffBadge();
+    
+    // Load loan customers for dropdowns
+    loadAllLoanCustomers();
   });
 
   // ============= EDIT FUNCTIONALITY =============
@@ -2047,5 +2563,940 @@
       alert('Error removing match. Please try again.');
     }
   }
+
+  // ====== LOAN CUSTOMER SEARCH FUNCTIONS ======
+  
+  let searchTimeout;
+  let activeDropdown;
+
+  // ====== SIMPLE DROPDOWN APPROACH FOR LOAN CUSTOMERS ======
+  
+  let allLoanCustomers = []; // Cache for loan customers
+  
+  // Load all loan customers when page loads
+  async function loadAllLoanCustomers() {
+    try {
+      console.log('Loading all loan customers...');
+      const response = await fetch('/reconciliation/ajax/get-all-loan-customers/');
+      const data = await response.json();
+      
+      if (data.customers) {
+        allLoanCustomers = data.customers;
+        populateAllDropdowns();
+        populateWhoDataLists(); // Add this line to populate hybrid datalists
+        console.log(`Loaded ${allLoanCustomers.length} loan customers`);
+      } else {
+        console.error('No customers data received:', data);
+      }
+    } catch (error) {
+      console.error('Error loading loan customers:', error);
+    }
+  }
+
+  // Populate all WHO datalists for hybrid inputs
+  function populateWhoDataLists() {
+    try {
+      // Find all WHO datalists
+      const datalists = document.querySelectorAll('datalist[id^="mainWhoSuggestions_"]');
+      console.log(`Populating ${datalists.length} WHO datalists`);
+      
+      datalists.forEach(datalist => {
+        // Clear existing options
+        datalist.innerHTML = '';
+        
+        // Add loan customers
+        if (allLoanCustomers && allLoanCustomers.length > 0) {
+          allLoanCustomers.forEach(customer => {
+            const option = document.createElement('option');
+            option.value = customer.display_name;
+            option.setAttribute('data-id', customer.id);
+            option.setAttribute('data-type', 'loan_customer');
+            option.setAttribute('data-loan-info', customer.loan_info || '');
+            datalist.appendChild(option);
+          });
+          console.log(`Added ${allLoanCustomers.length} loan customers to datalists`);
+        }
+        
+        // Add general contacts
+        if (typeof contacts !== 'undefined' && contacts && contacts.length > 0) {
+          contacts.forEach(contact => {
+            const option = document.createElement('option');
+            option.value = contact;
+            option.setAttribute('data-id', '');
+            option.setAttribute('data-type', 'general_contact');
+            option.setAttribute('data-loan-info', '');
+            datalist.appendChild(option);
+          });
+          console.log(`Added ${contacts.length} general contacts to datalists`);
+        } else {
+          console.log('No general contacts available or contacts variable undefined');
+        }
+      });
+    } catch (error) {
+      console.error('Error populating WHO datalists:', error);
+    }
+  }
+  
+  // Populate all WHO dropdowns with loan customers (Legacy - now handled by populateWhoDataLists)
+  function populateAllDropdowns() {
+    // This function is kept for compatibility but functionality moved to populateWhoDataLists
+    // Check if there are any old-style dropdowns still present
+    const dropdowns = document.querySelectorAll('.loan-customer-dropdown');
+    
+    if (dropdowns.length > 0) {
+      // Legacy support: populate old-style dropdowns if they exist
+      dropdowns.forEach(dropdown => {
+        dropdown.innerHTML = '<option value="">Select loan customer...</option>';
+        
+        allLoanCustomers.forEach(customer => {
+          const option = document.createElement('option');
+          option.value = customer.id;
+          option.textContent = customer.display_name;
+          option.setAttribute('data-customer-id', customer.customer_id);
+          option.setAttribute('data-loan-info', customer.loan_info);
+          dropdown.appendChild(option);
+        });
+      });
+    }
+    
+    console.log('Legacy dropdown population completed. Found', dropdowns.length, 'old-style dropdowns.');
+  }
+  
+  // Handle customer selection from dropdown (Legacy - kept for compatibility)
+  function selectLoanCustomer(selectElement) {
+    // Check if this is an old-style select element or new hybrid input
+    if (!selectElement) return;
+    
+    if (selectElement.tagName === 'SELECT') {
+      // Legacy select dropdown handling
+      const selectedOption = selectElement.options[selectElement.selectedIndex];
+      const transactionId = selectElement.getAttribute('data-transaction-id');
+      
+      if (selectedOption.value) {
+        const customerId = selectedOption.value;
+        const customerName = selectedOption.textContent;
+        const customerIdNumber = selectedOption.getAttribute('data-customer-id');
+        const loanInfo = selectedOption.getAttribute('data-loan-info');
+        
+        console.log(`Selected loan customer (legacy): ${customerName} (ID: ${customerId})`);
+        
+        // Show loan payment indicator
+        showLoanPaymentIndicator(transactionId, customerName, loanInfo);
+        
+        // Auto-detect loan payment for this transaction
+        if (transactionId && !isNaN(parseInt(transactionId))) {
+          detectLoanPayment(parseInt(transactionId));
+        }
+      } else {
+        // Hide loan payment indicator if no customer selected
+        hideLoanPaymentIndicator(transactionId);
+      }
+    } else {
+      console.log('selectLoanCustomer called with non-select element, ignoring');
+    }
+  }
+  
+  // Show loan payment indicator
+  function showLoanPaymentIndicator(transactionId, customerName, loanInfo) {
+    const indicator = document.getElementById(`loan-indicator-${transactionId}`);
+    if (indicator) {
+      const indicatorText = indicator.querySelector('.indicator-text');
+      if (indicatorText) {
+        indicatorText.textContent = `Loan payment for ${customerName}${loanInfo ? ' - ' + loanInfo : ''}`;
+      }
+      indicator.style.display = 'block';
+    }
+  }
+  
+  // Hide loan payment indicator
+  function hideLoanPaymentIndicator(transactionId) {
+    const indicator = document.getElementById(`loan-indicator-${transactionId}`);
+    if (indicator) {
+      indicator.style.display = 'none';
+    }
+  }
+
+  // Check if manually typed value might be a loan customer
+  async function checkIfPotentialLoanCustomer(transactionId, customerName) {
+    try {
+      console.log('🔍 Checking if potential loan customer:', customerName);
+      
+      // Get transaction amount first
+      const transactionRow = document.querySelector(`[data-transaction-id="${transactionId}"]`);
+      if (!transactionRow) {
+        console.log('❌ Transaction row not found');
+        return;
+      }
+      
+      const amountElement = transactionRow.querySelector('.amount-pos, .amount-neg');
+      const amountText = amountElement ? amountElement.textContent.trim() : '';
+      const amount = parseFloat(amountText.replace(/[$,+]/g, ''));
+      
+      if (!amount || amount <= 0) {
+        console.log('❌ Invalid amount:', amountText);
+        return;
+      }
+      
+      console.log('💰 Checking loan customer with amount:', amount);
+      
+      // Call our endpoint to check if this is a loan customer
+      const baseUrl = '{% url "reconciliation:get_loan_payment_breakdown" %}';
+      const fullUrl = `${baseUrl}?customer_name=${encodeURIComponent(customerName)}&amount=${amount}`;
+      console.log('🔍 Generated base URL:', baseUrl);
+      console.log('🔍 Full URL:', fullUrl);
+      const response = await fetch(fullUrl);
+      
+      if (response.ok) {
+        const breakdown = await response.json();
+        
+        if (breakdown.success && breakdown.is_loan_customer) {
+          console.log('✅ Confirmed loan customer, triggering split modal');
+          
+          // Show confirmation notification with correct loan reference
+          const loanInfo = breakdown.loans && breakdown.loans.length > 0 ? breakdown.loans[0] : null;
+          const loanDisplay = loanInfo ? `\nLoan: ${loanInfo.loan_number}` : '';
+          showAlert(`🏦 Loan Customer Detected!\n\nCustomer: ${breakdown.customer.name}${loanDisplay}\n\nTriggering split transaction with payment breakdown...`, 'success');
+          
+          // Trigger the split modal with a short delay
+          setTimeout(() => {
+            triggerLoanPaymentSplitTransaction(transactionId, customerName);
+          }, 1000);
+        } else {
+          console.log('ℹ️ Not a loan customer or no active loans');
+        }
+      } else {
+        console.log('⚠️ API call failed, not a loan customer');
+      }
+      
+    } catch (error) {
+      console.log('❌ Error checking loan customer:', error);
+    }
+  }
+
+  // Auto-trigger split transaction modal for loan payments
+  async function triggerLoanPaymentSplitTransaction(transactionId, customerName) {
+    try {
+      console.log('🏦 AUTO-TRIGGER CALLED:', customerName, 'Transaction:', transactionId);
+      
+      // Get transaction data
+      const transactionRow = document.querySelector(`[data-transaction-id="${transactionId}"]`);
+      if (!transactionRow) {
+        console.error('❌ Transaction row not found for ID:', transactionId);
+        console.log('Available transaction rows:', document.querySelectorAll('[data-transaction-id]').length);
+        return;
+      }
+      
+      console.log('✅ Found transaction row');
+      
+      // Extract amount from transaction
+      const amountElement = transactionRow.querySelector('.amount-pos, .amount-neg');
+      const amountText = amountElement ? amountElement.textContent.trim() : '';
+      const amount = parseFloat(amountText.replace(/[$,+]/g, ''));
+      
+      console.log('💰 Amount element:', amountElement);
+      console.log('💰 Amount text:', amountText);
+      console.log('💰 Parsed amount:', amount);
+      
+      if (!amount || amount <= 0) {
+        console.error('❌ Invalid amount found:', amountText);
+        return;
+      }
+      
+      console.log('🌐 Making API call to get loan payment breakdown...');
+      
+      // Get loan payment breakdown from backend
+      const baseUrl = '{% url "reconciliation:get_loan_payment_breakdown" %}';
+      const cacheBuster = Date.now(); // Force fresh request
+      const url = `${baseUrl}?customer_name=${encodeURIComponent(customerName)}&amount=${amount}&_cb=${cacheBuster}`;
+      console.log('🔍 Generated base URL:', baseUrl);
+      console.log('📡 API URL:', url);
+      
+      const response = await fetch(url);
+      console.log('📡 Response status:', response.status);
+      
+      const breakdown = await response.json();
+      console.log('📊 Full API response:', breakdown);
+      
+      if (!breakdown.success) {
+        console.warn('⚠️ API returned error:', breakdown.error);
+        
+        // Show user notification
+        if (breakdown.error.includes('No customer found')) {
+          showAlert(`💡 Loan Customer Detection\n\n"${customerName}" was detected as a loan customer, but no matching customer found in the loan system.\n\nYou can still process this manually using the Split Transaction feature.`, 'info');
+        } else if (breakdown.error.includes('No active loans')) {
+          showAlert(`📋 No Active Loans\n\nCustomer "${customerName}" was found but has no active loans.\n\nYou can process this as a regular transaction.`, 'info');
+        } else {
+          showAlert(`⚠️ Error: ${breakdown.error}`, 'warning');
+        }
+        return;
+      }
+      
+      console.log('✅ Successfully got loan breakdown');
+      
+      // Handle multiple loans case
+      if (breakdown.multiple_loans) {
+        console.log('🏦 Multiple loans detected, showing selection');
+        showMultipleLoanSelection(transactionId, breakdown);
+        return;
+      }
+      
+      console.log('🎉 Single loan found, showing split modal');
+      
+      // Show success notification with loan details
+      const loanInfo = breakdown.loans && breakdown.loans.length > 0 ? breakdown.loans[0] : null;
+      const customer = breakdown.customer;
+      
+      if (loanInfo) {
+        showAlert(`🏦 Loan Payment Detected!\n\nCustomer: ${customer.name}\nLoan: ${loanInfo.loan_number}\nCurrent Balance: ${loanInfo.balance}\n\nOpening Split Transaction with recommended allocation...`, 'success');
+      } else {
+        showAlert(`🏦 Loan Payment Detected!\n\nCustomer: ${customer.name}\n\nOpening Split Transaction with recommended allocation...`, 'success');
+      }
+      
+      // Small delay to show notification, then open split modal
+      setTimeout(() => {
+        showLoanPaymentSplitModal(transactionId, breakdown);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error triggering loan payment split:', error);
+      showAlert('⚠️ Error getting loan payment breakdown. You can still use the Split Transaction feature manually.', 'warning');
+    }
+  }
+
+  // Show multiple loan selection dialog
+  function showMultipleLoanSelection(transactionId, breakdown) {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    backdrop.style.zIndex = '1040';
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal fade show';
+    modal.style.display = 'block';
+    modal.style.zIndex = '1050';
+    
+    const customer = breakdown.customer;
+    const loanOptions = breakdown.loan_options;
+    
+    let optionsHTML = '';
+    loanOptions.forEach(loan => {
+      optionsHTML += `
+        <div class="loan-option border rounded p-3 mb-2" style="cursor: pointer;" onclick="selectLoanForSplit(${transactionId}, '${customer.name}', '${loan.loan_id}', '${loan.loan_number}')">
+          <div class="d-flex justify-content-between">
+            <div>
+              <strong>Loan ${loan.loan_number}</strong>
+            </div>
+            <div class="text-end">
+              <span class="badge bg-info">Balance: ${loan.formatted_balance}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    
+    modal.innerHTML = `
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">🏦 Multiple Loans Found</h5>
+            <button type="button" class="btn-close" onclick="closeMultipleLoanModal()"></button>
+          </div>
+          <div class="modal-body">
+            <p><strong>Customer:</strong> ${customer.name}</p>
+            <p>This customer has multiple active loans. Please select which loan this payment is for:</p>
+            ${optionsHTML}
+            <hr>
+            <div class="text-center">
+              <button class="btn btn-secondary" onclick="closeMultipleLoanModal()">Cancel - Process Manually</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    modal.id = 'multipleLoanModal';
+    backdrop.id = 'multipleLoanBackdrop';
+    
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modal);
+  }
+
+  // Close multiple loan selection modal
+  function closeMultipleLoanModal() {
+    const modal = document.getElementById('multipleLoanModal');
+    const backdrop = document.getElementById('multipleLoanBackdrop');
+    if (modal) modal.remove();
+    if (backdrop) backdrop.remove();
+  }
+
+  // Select specific loan for split transaction
+  async function selectLoanForSplit(transactionId, customerName, loanId, loanNumber) {
+    closeMultipleLoanModal();
+    
+    try {
+      // Get amount from transaction
+      const transactionRow = document.querySelector(`[data-transaction-id="${transactionId}"]`);
+      const amountElement = transactionRow.querySelector('.amount-pos, .amount-neg');
+      const amount = parseFloat(amountElement.textContent.trim().replace(/[$,+]/g, ''));
+      
+      // Get breakdown for specific loan
+      const response = await fetch(`{% url 'reconciliation:get_loan_payment_breakdown' %}?customer_name=${encodeURIComponent(customerName)}&amount=${amount}&loan_id=${loanId}`);
+      const breakdown = await response.json();
+      
+      if (breakdown.success) {
+        showAlert(`💰 Processing payment for Loan ${loanNumber}`, 'success');
+        setTimeout(() => {
+          showLoanPaymentSplitModal(transactionId, breakdown);
+        }, 800);
+      } else {
+        showAlert('⚠️ Error getting loan details. Processing manually.', 'warning');
+      }
+    } catch (error) {
+      console.error('Error selecting loan for split:', error);
+      showAlert('⚠️ Error processing loan selection. You can use Split Transaction manually.', 'warning');
+    }
+  }
+
+  // Show split transaction modal with pre-populated loan data
+  function showLoanPaymentSplitModal(transactionId, breakdown) {
+    console.log('🎯 showLoanPaymentSplitModal called with:', transactionId, breakdown);
+    
+    // Get transaction data
+    const transactionRow = document.querySelector(`[data-transaction-id="${transactionId}"]`);
+    if (!transactionRow) {
+      console.error('❌ Transaction row not found for ID:', transactionId);
+      return;
+    }
+    
+    console.log('📋 Found transaction row:', transactionRow);
+    
+    const descElement = transactionRow.querySelector('.description');
+    const amountElement = transactionRow.querySelector('.amount-pos, .amount-neg');
+    const dateElement = transactionRow.querySelector('.date');
+
+    console.log('🔍 Description element:', descElement);
+    console.log('💰 Amount element:', amountElement);
+    console.log('📅 Date element:', dateElement);
+
+    const transactionData = {
+      id: transactionId,
+      description: descElement ? descElement.textContent.trim() : '',
+      amount: parseFloat(amountElement.textContent.trim().replace(/[$,+]/g, '')),
+      date: dateElement ? dateElement.textContent.trim() : '',
+      payee: breakdown.customer.name
+    };
+    
+    console.log('📊 Final transaction data:', transactionData);
+    
+    // Show customized split modal with loan data
+    showLoanSplitTransactionModal(transactionData, breakdown);
+  }
+
+  // ====== LEGACY SEARCH FUNCTIONS (KEPT FOR COMPATIBILITY) ======
+
+  async function searchLoanCustomers(input) {
+    const query = input.value.trim();
+    const transactionId = input.getAttribute('data-transaction-id');
+    const dropdown = document.getElementById(`loan-dropdown-${transactionId}`);
+    
+    // Clear previous timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    // Hide dropdown if query is empty
+    if (query.length === 0) {
+      dropdown.style.display = 'none';
+      return;
+    }
+    
+    // Debounce search
+    searchTimeout = setTimeout(async () => {
+      try {
+        const response = await fetch(`/reconciliation/ajax/search-loan-customers/?q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        
+        if (data.customers && data.customers.length > 0) {
+          showCustomerResults(dropdown, data.customers, transactionId);
+        } else {
+          hideCustomerDropdown(dropdown);
+        }
+        
+        // Auto-detect loan payment for this transaction
+        if (transactionId && !isNaN(parseInt(transactionId))) {
+          detectLoanPayment(transactionId);
+        }
+        
+      } catch (error) {
+        console.error('Error searching loan customers:', error);
+        hideCustomerDropdown(dropdown);
+      }
+    }, 300);
+  }
+
+  function showCustomerResults(dropdown, customers, transactionId) {
+    let html = '';
+    
+    customers.forEach(customer => {
+      html += `
+        <div class="customer-item p-2 border-bottom" style="cursor: pointer;" 
+             onclick="selectLoanCustomer('${customer.id}', '${customer.name}', ${transactionId})">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <strong>${customer.name}</strong>
+              <small class="text-muted d-block">ID: ${customer.customer_id}</small>
+            </div>
+            <span class="badge bg-primary">${customer.loans.length} loan${customer.loans.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="mt-1">
+            ${customer.loans.map(loan => `
+              <small class="text-info d-block">
+                ${loan.loan_number}: $${loan.balance.toLocaleString()} balance, 
+                $${loan.monthly_payment.toLocaleString()}/month
+              </small>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    });
+    
+    dropdown.innerHTML = html;
+    dropdown.style.display = 'block';
+    activeDropdown = dropdown;
+  }
+
+  function selectLoanCustomer(customerId, customerName, transactionId) {
+    const input = document.querySelector(`[name="who_${transactionId}"]`);
+    const dropdown = document.getElementById(`loan-dropdown-${transactionId}`);
+    
+    input.value = customerName;
+    input.setAttribute('data-customer-id', customerId);
+    dropdown.style.display = 'none';
+    
+    // Show loan payment indicator
+    showLoanPaymentIndicator(transactionId, 'Customer selected - ready for loan payment');
+    
+    // Trigger checkOK to enable submit button
+    checkOK(transactionId);
+  }
+
+  function showCustomerDropdown(input) {
+    const transactionId = input.getAttribute('data-transaction-id');
+    const dropdown = document.getElementById(`loan-dropdown-${transactionId}`);
+    
+    if (input.value.trim().length > 0) {
+      searchLoanCustomers(input);
+    }
+  }
+
+  function hideCustomerDropdown(dropdown) {
+    dropdown.style.display = 'none';
+  }
+
+  async function detectLoanPayment(transactionId) {
+    try {
+      const response = await fetch(`/reconciliation/ajax/detect-loan-payment/${transactionId}/`);
+      
+      if (!response.ok) {
+        console.warn(`Failed to detect loan payment for transaction ${transactionId}: ${response.status}`);
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        console.warn(`Loan payment detection error for transaction ${transactionId}:`, data.error);
+        return;
+      }
+      
+      if (data.is_loan_payment && data.suggestions.length > 0) {
+        showLoanPaymentIndicator(transactionId, 
+          `Detected potential loan payment (${data.suggestions.length} suggestion${data.suggestions.length !== 1 ? 's' : ''})`);
+        
+        // Auto-suggest the highest confidence customer
+        const topSuggestion = data.suggestions[0];
+        if (topSuggestion.confidence > 70) {
+          const input = document.querySelector(`[name="who_${transactionId}"]`);
+          if (input && !input.value.trim()) {
+            input.value = topSuggestion.customer_name;
+            input.setAttribute('data-customer-id', topSuggestion.customer_id);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Error detecting loan payment for transaction', transactionId, ':', error);
+    }
+  }
+
+  function showLoanPaymentIndicator(transactionId, message) {
+    const indicator = document.getElementById(`loan-indicator-${transactionId}`);
+    const indicatorText = indicator.querySelector('.indicator-text');
+    
+    indicatorText.textContent = message;
+    indicator.style.display = 'block';
+  }
+
+  function hideLoanPaymentIndicator(transactionId) {
+    const indicator = document.getElementById(`loan-indicator-${transactionId}`);
+    indicator.style.display = 'none';
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    if (activeDropdown && !activeDropdown.contains(e.target) && 
+        !e.target.classList.contains('loan-customer-search')) {
+      activeDropdown.style.display = 'none';
+      activeDropdown = null;
+    }
+  });
+
+  // Auto-detect loan payments on page load - DISABLED for now
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('Loan detection auto-run disabled. Detection will run when users type in WHO field.');
+    // Auto-detection disabled to prevent 500 errors on non-existent transaction IDs
+    // Detection will be triggered when users type in the WHO field instead
+  });
+
+  // Show split transaction modal with pre-populated loan payment data
+  function showLoanSplitTransactionModal(transactionData, breakdown) {
+    console.log('🎯 showLoanSplitTransactionModal called with:', transactionData, breakdown);
+    
+    // Close any existing modals
+    closeSplitModal();
+    
+    // Create backdrop
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    backdrop.style.zIndex = '1040';
+    backdrop.id = 'loanSplitBackdrop';
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'modal fade show';
+    modal.style.display = 'block';
+    modal.style.zIndex = '1050';
+    modal.id = 'loanSplitModal';
+    
+    // Prepare split lines from breakdown
+    let splitLinesHTML = '';
+    if (breakdown.payment_breakdown && breakdown.payment_breakdown.length > 0) {
+      console.log('💰 Building split lines from payment_breakdown:', breakdown.payment_breakdown);
+      
+      breakdown.payment_breakdown.forEach((line, index) => {
+        const accountName = `${line.account_code} — ${line.account_name}`;
+        const amount = parseFloat(line.amount || 0);
+        
+        splitLinesHTML += `
+          <tr>
+            <td>
+              <input type="text" class="form-control" value="${line.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}" placeholder="Description">
+            </td>
+            <td>
+              <select class="form-control account-select" data-account-code="${line.account_code}">
+                <option value="${line.account_code}" selected>${accountName}</option>
+              </select>
+            </td>
+            <td>
+              <select class="form-control">
+                <option value="no_gst" selected>No GST</option>
+                <option value="gst_10">GST 10%</option>
+                <option value="gst_free">GST Free</option>
+              </select>
+            </td>
+            <td>
+              <input type="number" class="form-control amount-input text-end" 
+                     value="${amount.toFixed(2)}" 
+                     step="0.01" 
+                     placeholder="0.00"
+                     onchange="updateSplitTotal()">
+            </td>
+            <td>
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSplitLine(this)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    } else {
+      console.warn('⚠️ No payment_breakdown found in breakdown object');
+      // Add default empty line
+      splitLinesHTML = `
+        <tr>
+          <td>
+            <input type="text" class="form-control" placeholder="Description">
+          </td>
+          <td>
+            <select class="form-control account-select">
+              <option value="">Select Account...</option>
+            </select>
+          </td>
+          <td>
+            <select class="form-control">
+              <option value="no_gst">No GST</option>
+              <option value="gst_10">GST 10%</option>
+              <option value="gst_free">GST Free</option>
+            </select>
+          </td>
+          <td>
+            <input type="number" class="form-control amount-input text-end" 
+                   value="0.00" 
+                   step="0.01" 
+                   placeholder="0.00"
+                   onchange="updateSplitTotal()">
+          </td>
+          <td>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSplitLine(this)">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }
+    
+    // Build modal HTML
+    modal.innerHTML = `
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <!-- Modal Header -->
+          <div class="modal-header bg-primary text-white">
+            <div>
+              <h5 class="modal-title mb-0">🏦 Loan Payment Split Transaction</h5>
+            </div>
+            <button type="button" class="btn-close btn-close-white" onclick="closeLoanSplitModal()"></button>
+          </div>
+
+          <!-- Modal Body -->
+          <div class="modal-body">
+            <div class="container-fluid">
+              <!-- Loan Payment Info Header -->
+              <div class="alert alert-success mb-4">
+                <div class="row">
+                  <div class="col-md-8">
+                    <strong>🏦 Loan Payment for ${breakdown.customer.name}</strong><br>
+                    <small class="text-muted">Automatically allocated according to loan payment rules (Late Fees → Interest → Principal)</small>
+                  </div>
+                  <div class="col-md-4 text-end">
+                    <div class="fs-5 fw-bold text-success">$${transactionData.amount.toFixed(2)}</div>
+                    <small class="text-muted">Total Payment Amount</small>
+                  </div>
+                </div>
+                <input type="hidden" id="loanTransactionId" value="${transactionData.id}">
+              </div>
+
+              <!-- Header fields -->
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <label class="form-label">Date:</label>
+                  <input type="date" class="form-control" value="${transactionData.date || new Date().toISOString().split('T')[0]}" readonly>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label"><i class="bi bi-person me-1"></i>Customer:</label>
+                  <input type="text" class="form-control" value="${breakdown.customer.name}" readonly>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label"><i class="bi bi-chat-text me-1"></i>Description:</label>
+                  <input type="text" class="form-control" value="Loan Payment" readonly>
+                </div>
+              </div>
+
+              <!-- Split Lines Table -->
+              <div class="table-responsive">
+                <table class="table table-bordered align-middle" id="loanSplitLinesTable">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="min-width:200px">Description</th>
+                      <th style="min-width:250px">Account</th>
+                      <th style="min-width:120px">Tax Rate</th>
+                      <th style="min-width:120px" class="text-end">Amount</th>
+                      <th style="width:50px"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="loanSplitLineBody">
+                    ${splitLinesHTML}
+                  </tbody>
+                  <tfoot>
+                    <tr class="table-secondary">
+                      <td colspan="3" class="text-end fw-semibold">Split Total:</td>
+                      <td class="text-end fw-semibold" id="loanSplitTotalAmount">$${transactionData.amount.toFixed(2)}</td>
+                      <td></td>
+                    </tr>
+                    <tr id="loanBalanceValidationRow" class="border-top-0">
+                      <td colspan="3" class="text-end">
+                        <div class="d-flex justify-content-end align-items-center gap-3">
+                          <div>
+                            <small class="text-muted">Original Amount:</small>
+                            <span class="fw-semibold">$${transactionData.amount.toFixed(2)}</span>
+                          </div>
+                          <div>
+                            <small class="text-muted">Difference:</small>
+                            <span class="fw-semibold" id="loanBalanceDifference">$0.00</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="text-end">
+                        <span class="badge bg-success" id="loanBalanceStatus">
+                          <i class="bi bi-check-circle"></i> Balanced
+                        </span>
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <div class="text-center mt-3">
+                <div class="alert alert-info">
+                  <i class="bi bi-info-circle"></i> <strong>Payment Allocation:</strong> This transaction has been automatically split according to loan payment rules.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal Footer -->
+          <div class="modal-footer">
+            <div class="me-auto">
+              <span class="badge bg-success">Loan Payment Ready</span>
+              <small class="text-muted ms-2">Split allocation completed</small>
+            </div>
+            <button type="button" class="btn btn-success" onclick="saveLoanSplitTransaction()">
+              <i class="bi bi-check me-1"></i>Process Loan Payment
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="closeLoanSplitModal()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add modal to page
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modal);
+    
+    console.log('✅ Loan split modal created and displayed');
+    
+    // Update split total after modal is displayed
+    setTimeout(() => {
+      updateLoanSplitTotal();
+    }, 100);
+  }
+
+  // Close loan split modal
+  function closeLoanSplitModal() {
+    const modal = document.getElementById('loanSplitModal');
+    const backdrop = document.getElementById('loanSplitBackdrop');
+    if (modal) modal.remove();
+    if (backdrop) backdrop.remove();
+  }
+
+  // Update loan split total
+  function updateLoanSplitTotal() {
+    const amountInputs = document.querySelectorAll('#loanSplitLineBody .amount-input');
+    let total = 0;
+    
+    amountInputs.forEach(input => {
+      const value = parseFloat(input.value) || 0;
+      total += value;
+    });
+    
+    const totalElement = document.getElementById('loanSplitTotalAmount');
+    const differenceElement = document.getElementById('loanBalanceDifference');
+    const statusElement = document.getElementById('loanBalanceStatus');
+    
+    if (totalElement) {
+      totalElement.textContent = `$${total.toFixed(2)}`;
+    }
+    
+    // Calculate difference
+    const originalAmount = parseFloat(document.getElementById('loanTransactionId').value) || 0;
+    const transactionRow = document.querySelector(`[data-transaction-id="${originalAmount}"]`);
+    let targetAmount = 0;
+    
+    if (transactionRow) {
+      const amountElement = transactionRow.querySelector('.amount-pos, .amount-neg');
+      if (amountElement) {
+        targetAmount = parseFloat(amountElement.textContent.trim().replace(/[$,+]/g, ''));
+      }
+    }
+    
+    const difference = total - targetAmount;
+    
+    if (differenceElement) {
+      differenceElement.textContent = `$${difference.toFixed(2)}`;
+    }
+    
+    if (statusElement) {
+      if (Math.abs(difference) < 0.01) {
+        statusElement.innerHTML = '<i class="bi bi-check-circle"></i> Balanced';
+        statusElement.className = 'badge bg-success';
+      } else {
+        statusElement.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Unbalanced';
+        statusElement.className = 'badge bg-warning';
+      }
+    }
+  }
+
+  // Save loan split transaction
+  function saveLoanSplitTransaction() {
+    showAlert('💰 Loan Payment Split Transaction would be saved here (Demo Mode)', 'info');
+    closeLoanSplitModal();
+  }
+
+  // ====== DEBUG FUNCTIONS FOR TESTING ======
+  
+  // Add test button to page for easy testing
+  document.addEventListener('DOMContentLoaded', function() {
+    const testButton = document.createElement('button');
+    testButton.innerHTML = '🧪 Test Loan Split';
+    testButton.className = 'btn btn-warning position-fixed';
+    testButton.style.top = '10px';
+    testButton.style.right = '10px';
+    testButton.style.zIndex = '9999';
+    testButton.onclick = function() {
+      console.log('🧪 MANUAL TEST BUTTON CLICKED');
+      window.testLoanPaymentSplit('John Smith');
+    };
+    document.body.appendChild(testButton);
+  });
+  
+  // Test function to manually trigger loan payment split (call from browser console)
+  window.testLoanPaymentSplit = function(customerName = 'John Smith') {
+    console.log('🧪 MANUAL TEST: Testing loan payment split functionality');
+    
+    // Find the first transaction on the page
+    const firstTransaction = document.querySelector('[data-transaction-id]');
+    if (!firstTransaction) {
+      console.error('❌ No transactions found on page');
+      alert('❌ No transactions found on page');
+      return;
+    }
+    
+    const transactionId = firstTransaction.getAttribute('data-transaction-id');
+    console.log('🧪 Using transaction ID:', transactionId);
+    
+    // Trigger the function
+    triggerLoanPaymentSplitTransaction(transactionId, customerName);
+  };
+  
+  // Test function to check if API endpoint works
+  window.testLoanAPI = async function(customerName = 'John Smith', amount = 500) {
+    console.log('🧪 MANUAL TEST: Testing loan API endpoint');
+    
+    const url = `{% url 'reconciliation:get_loan_payment_breakdown' %}?customer_name=${encodeURIComponent(customerName)}&amount=${amount}`;
+    console.log('📡 Testing URL:', url);
+    
+    try {
+      const response = await fetch(url);
+      console.log('📡 Response status:', response.status);
+      
+      const data = await response.json();
+      console.log('📊 API Response:', data);
+      
+      return data;
+    } catch (error) {
+      console.error('❌ API Error:', error);
+      return null;
+    }
+  };
+
+  // ====== END DEBUG FUNCTIONS ======
 </script>
 {% endblock %}

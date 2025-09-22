@@ -12,9 +12,9 @@
                 <div>
                     <h1 class="h3 mb-0 text-gray-800">
                         <i class="fas fa-credit-card text-primary me-2"></i>
-                        Loan Payments Management
+                        Record Payment
                     </h1>
-                    <p class="text-muted mb-0">Process payments and manage repayment schedules</p>
+                    <p class="text-muted mb-0">Record incoming loan payments</p>
                 </div>
                 <div>
                     <a href="#" class="btn btn-primary">
@@ -100,248 +100,139 @@
         </div>
     </div>
 
-    <!-- Payment Processing -->
+    <!-- Simple Payment Recording Form -->
     <div class="row mb-4">
-        <div class="col-lg-8">
+        <div class="col-lg-8 mx-auto">
             <div class="card shadow">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Process Payment</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">Record Incoming Payment</h6>
                 </div>
                 <div class="card-body">
-                    <form>
+                    <form id="payment-form" method="post" action="{% url 'loans_payments:payment_create' %}">
+                        {% csrf_token %}
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="loan-account" class="form-label">Loan Account</label>
-                                <select class="form-select" id="loan-account" required>
-                                    <option value="">Select Loan Account</option>
+                                <label for="loan-account" class="form-label">Loan Account *</label>
+                                <select class="form-select" id="loan-account" name="loan_id" required>
+                                    <option value="">Select loan account...</option>
                                     {% for loan in active_loans %}
-                                    <option value="{{ loan.loan_number }}">{{ loan.loan_number }} - {{ loan.customer.full_name }} (${{ loan.next_payment_amount|default:"0"|floatformat:2 }} due)</option>
-                                    {% empty %}
-                                    <option value="LN-001">LN-001 - Alice Brown ($2,500 due)</option>
-                                    <option value="LN-002">LN-002 - Bob Green ($1,850 due)</option>
-                                    <option value="LN-003">LN-003 - Carol White ($3,200 due)</option>
-                                    <option value="LN-004">LN-004 - David Black ($1,950 overdue)</option>
+                                        <option value="{{ loan.id }}" 
+                                                data-customer="{{ loan.customer.first_name }} {{ loan.customer.last_name }}" 
+                                                data-balance="{{ loan.outstanding_balance|default:'0.00' }}"
+                                                data-product="{{ loan.loan_product.name }}">
+                                            {{ loan.loan_number }} - {{ loan.customer.first_name }} {{ loan.customer.last_name }}
+                                        </option>
                                     {% endfor %}
                                 </select>
+                                <input type="text" class="form-control mt-2" id="loan-search" placeholder="Or search by loan number or customer name..." style="display: none;">
+                                <small class="text-muted">
+                                    <a href="#" id="toggle-search">Switch to search mode</a>
+                                </small>
+                                <div id="selected-loan-info" class="mt-2" style="display: none;">
+                                    <div class="alert alert-info">
+                                        <strong id="selected-loan-display"></strong><br>
+                                        <small>Current Balance: $<span id="selected-loan-balance">0.00</span></small>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="payment-amount" class="form-label">Payment Amount</label>
+                                <label for="payment-amount" class="form-label">Payment Amount *</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="payment-amount" step="0.01" required>
+                                    <input type="number" class="form-control" id="payment-amount" name="payment_amount" step="0.01" min="0.01" required>
                                 </div>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="payment-method" class="form-label">Payment Method</label>
-                                <select class="form-select" id="payment-method" required>
+                                <label for="payment-method" class="form-label">Payment Method *</label>
+                                <select class="form-select" id="payment-method" name="payment_method" required>
                                     <option value="">Select Method</option>
                                     <option value="cash">Cash</option>
                                     <option value="check">Check</option>
                                     <option value="bank_transfer">Bank Transfer</option>
                                     <option value="online">Online Payment</option>
-                                    <option value="debit_card">Debit Card</option>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="payment-date" class="form-label">Payment Date</label>
-                                <input type="date" class="form-control" id="payment-date" value="{{ today_date|date:'Y-m-d' }}" required>
+                                <label for="payment-date" class="form-label">Payment Date *</label>
+                                <input type="date" class="form-control" id="payment-date" name="payment_date" value="{{ today_date|date:'Y-m-d' }}" required>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="reference-number" class="form-label">Reference Number</label>
-                                <input type="text" class="form-control" id="reference-number" placeholder="Check #, Transaction ID, etc.">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="bank-account" class="form-label">Deposit To Account</label>
-                                <select class="form-select" id="bank-account">
-                                    <option value="">Select Bank Account</option>
-                                    <option value="checking">Main Checking Account</option>
-                                    <option value="savings">Loan Collections Account</option>
-                                    <option value="business">Business Operating Account</option>
-                                </select>
+                                <input type="text" class="form-control" id="reference-number" name="reference_number" placeholder="Check #, Transaction ID, etc.">
                             </div>
                         </div>
                         <div class="mb-3">
                             <label for="payment-notes" class="form-label">Notes</label>
-                            <textarea class="form-control" id="payment-notes" rows="2" placeholder="Additional notes about this payment..."></textarea>
+                            <textarea class="form-control" id="payment-notes" name="notes" rows="2" placeholder="Additional notes about this payment..."></textarea>
                         </div>
-                        <div class="d-flex justify-content-end">
-                            <button type="button" class="btn btn-secondary me-2">Clear</button>
-                            <button type="submit" class="btn btn-primary">Process Payment</button>
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear</button>
+                            <button type="submit" class="btn btn-primary" id="record-payment-btn" disabled>
+                                <i class="fas fa-save me-2"></i>Record Payment
+                            </button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
-
-        <div class="col-lg-4">
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Payment Allocation</h6>
-                </div>
-                <div class="card-body">
-                    <div id="payment-breakdown" class="d-none">
-                        <div class="mb-3">
-                            <label class="form-label">Payment Breakdown</label>
-                            <div class="table-responsive">
-                                <table class="table table-sm">
-                                    <tbody>
-                                        <tr>
-                                            <td>Principal:</td>
-                                            <td class="text-end" id="principal-amount">$0.00</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Interest:</td>
-                                            <td class="text-end" id="interest-amount">$0.00</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Late Fees:</td>
-                                            <td class="text-end" id="late-fees">$0.00</td>
-                                        </tr>
-                                        <tr class="table-active">
-                                            <td><strong>Total:</strong></td>
-                                            <td class="text-end"><strong id="total-amount">$0.00</strong></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="alert alert-success">
-                            <i class="fas fa-check-circle me-2"></i>
-                            Payment will be automatically allocated according to loan terms.
-                        </div>
-                    </div>
-                    <div id="no-selection" class="text-center text-muted">
-                        <i class="fas fa-calculator fa-3x mb-3"></i>
-                        <p>Select a loan account to see payment breakdown</p>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
-    <!-- Recent Payments and Schedule -->
+    <!-- Recent Payments -->
     <div class="row">
-        <div class="col-lg-6 mb-4">
+        <div class="col-12">
             <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">Recent Payments</h6>
                 </div>
                 <div class="card-body">
+                    {% if payments %}
                     <div class="table-responsive">
-                        <table class="table table-sm">
+                        <table class="table table-hover">
                             <thead>
                                 <tr>
                                     <th>Date</th>
-                                    <th>Account</th>
-                                    <th>Amount</th>
-                                    <th>Method</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for payment in recent_payments %}
-                                <tr>
-                                    <td>{{ payment.payment_date|date:"M d" }}</td>
-                                    <td>{{ payment.loan.loan_number }}</td>
-                                    <td>${{ payment.amount|floatformat:2|intcomma }}</td>
-                                    <td><span class="badge bg-success">{{ payment.method|title }}</span></td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td>Sep 16</td>
-                                    <td>LN-001</td>
-                                    <td>$2,500.00</td>
-                                    <td><span class="badge bg-success">Bank Transfer</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Sep 15</td>
-                                    <td>LN-005</td>
-                                    <td>$1,200.00</td>
-                                    <td><span class="badge bg-info">Online</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Sep 15</td>
-                                    <td>LN-003</td>
-                                    <td>$3,200.00</td>
-                                    <td><span class="badge bg-warning">Check</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Sep 14</td>
-                                    <td>LN-007</td>
-                                    <td>$950.00</td>
-                                    <td><span class="badge bg-secondary">Cash</span></td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-6 mb-4">
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Upcoming Due Dates</h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Due Date</th>
-                                    <th>Account</th>
+                                    <th>Loan Account</th>
                                     <th>Customer</th>
                                     <th>Amount</th>
+                                    <th>Method</th>
+                                    <th>Reference</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for due_payment in upcoming_payments %}
-                                <tr {% if due_payment.is_overdue %}class="table-danger"{% elif due_payment.due_soon %}class="table-warning"{% endif %}>
+                                {% for payment in payments %}
+                                <tr>
+                                    <td>{{ payment.payment_date|date:"M d, Y" }}</td>
+                                    <td>{{ payment.loan.loan_number }}</td>
+                                    <td>{{ payment.loan.customer.full_name }}</td>
+                                    <td>${{ payment.amount|floatformat:2 }}</td>
                                     <td>
-                                        {{ due_payment.due_date|date:"M d" }}
-                                        {% if due_payment.is_overdue %}
-                                            <small class="text-danger">(Overdue)</small>
-                                        {% elif due_payment.due_soon %}
-                                            <small class="text-warning">({{ due_payment.days_until_due }} days)</small>
+                                        <span class="badge bg-info">
+                                            {{ payment.get_payment_method_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if payment.reference_number %}
+                                            {{ payment.reference_number }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ due_payment.loan.loan_number }}</td>
-                                    <td>{{ due_payment.loan.customer.full_name }}</td>
-                                    <td>${{ due_payment.amount|floatformat:2|intcomma }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr class="table-danger">
-                                    <td>Sep 10 <small class="text-danger">(Overdue)</small></td>
-                                    <td>LN-004</td>
-                                    <td>David Black</td>
-                                    <td>$1,950.00</td>
-                                </tr>
-                                <tr class="table-warning">
-                                    <td>Sep 18 <small class="text-warning">(2 days)</small></td>
-                                    <td>LN-008</td>
-                                    <td>Frank Miller</td>
-                                    <td>$2,800.00</td>
-                                </tr>
-                                <tr>
-                                    <td>Sep 20</td>
-                                    <td>LN-002</td>
-                                    <td>Bob Green</td>
-                                    <td>$1,850.00</td>
-                                </tr>
-                                <tr>
-                                    <td>Sep 22</td>
-                                    <td>LN-006</td>
-                                    <td>Grace Wilson</td>
-                                    <td>$3,100.00</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-receipt fa-3x mb-3"></i>
+                        <p>No payments recorded yet</p>
+                        <small>Recorded payments will appear here</small>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -349,46 +240,274 @@
 </div>
 
 <script>
-// Demo JavaScript for payment calculation
+// Advanced Payment Processing with Real-time Allocation
 document.addEventListener('DOMContentLoaded', function() {
-    const loanAccountSelect = document.getElementById('loan-account');
+    const loanSearchInput = document.getElementById('loan-search');
+    const loanIdInput = document.getElementById('loan-id');
     const paymentAmountInput = document.getElementById('payment-amount');
     const paymentBreakdown = document.getElementById('payment-breakdown');
     const noSelection = document.getElementById('no-selection');
+    const allocationLoading = document.getElementById('allocation-loading');
+    const processPaymentBtn = document.getElementById('process-payment-btn');
+    const selectedLoanInfo = document.getElementById('selected-loan-info');
+    const searchResults = document.getElementById('loan-search-results');
+    
+    let searchTimeout;
+    let selectedLoan = null;
 
-    loanAccountSelect.addEventListener('change', function() {
-        if (this.value) {
-            // Show payment breakdown
-            paymentBreakdown.classList.remove('d-none');
-            noSelection.classList.add('d-none');
-            
-            // Sample calculation (in real app, this would be calculated based on loan terms)
-            const amount = parseFloat(paymentAmountInput.value) || 0;
-            updatePaymentBreakdown(amount);
-        } else {
-            paymentBreakdown.classList.add('d-none');
-            noSelection.classList.remove('d-none');
-        }
-    });
-
-    paymentAmountInput.addEventListener('input', function() {
-        if (loanAccountSelect.value) {
-            const amount = parseFloat(this.value) || 0;
-            updatePaymentBreakdown(amount);
-        }
-    });
-
-    function updatePaymentBreakdown(amount) {
-        // Sample allocation logic
-        const interestRate = 0.15; // 15% of payment goes to interest
-        const interest = amount * interestRate;
-        const principal = amount - interest;
+    // Loan search functionality
+    loanSearchInput.addEventListener('input', function() {
+        const query = this.value.trim();
         
-        document.getElementById('principal-amount').textContent = '$' + principal.toFixed(2);
-        document.getElementById('interest-amount').textContent = '$' + interest.toFixed(2);
-        document.getElementById('late-fees').textContent = '$0.00';
-        document.getElementById('total-amount').textContent = '$' + amount.toFixed(2);
+        if (query.length < 2) {
+            hideSearchResults();
+            clearSelectedLoan();
+            return;
+        }
+
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            searchLoans(query);
+        }, 300);
+    });
+
+    // Hide search results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!loanSearchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            hideSearchResults();
+        }
+    });
+
+    // Payment amount change handler
+    paymentAmountInput.addEventListener('input', function() {
+        if (selectedLoan && this.value > 0) {
+            updatePaymentAllocation();
+        }
+    });
+
+    function searchLoans(query) {
+        fetch(`{% url 'loans_payments:api_loan_search' %}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displaySearchResults(data.loans);
+                } else {
+                    console.error('Loan search failed:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+            });
     }
+
+    function displaySearchResults(loans) {
+        if (loans.length === 0) {
+            searchResults.innerHTML = '<div class="dropdown-item text-muted">No loans found</div>';
+        } else {
+            searchResults.innerHTML = loans.map(loan => `
+                <div class="dropdown-item loan-result" data-loan='${JSON.stringify(loan)}' style="cursor: pointer;">
+                    <div class="fw-bold">${loan.loan_number} - ${loan.customer_name}</div>
+                    <small class="text-muted">Balance: $${loan.current_balance} | Next Payment: $${loan.next_payment_amount}</small>
+                    ${loan.status === 'overdue' ? '<span class="badge bg-danger ms-2">OVERDUE</span>' : ''}
+                    ${loan.status === 'partial' ? '<span class="badge bg-warning ms-2">PARTIAL</span>' : ''}
+                </div>
+            `).join('');
+
+            // Add click handlers to results
+            searchResults.querySelectorAll('.loan-result').forEach(item => {
+                item.addEventListener('click', function() {
+                    const loan = JSON.parse(this.dataset.loan);
+                    selectLoan(loan);
+                });
+            });
+        }
+        
+        searchResults.style.display = 'block';
+        searchResults.classList.add('show');
+    }
+
+    function hideSearchResults() {
+        searchResults.style.display = 'none';
+        searchResults.classList.remove('show');
+    }
+
+    function selectLoan(loan) {
+        selectedLoan = loan;
+        loanSearchInput.value = `${loan.loan_number} - ${loan.customer_name}`;
+        loanIdInput.value = loan.id;
+        
+        // Update loan info display
+        document.getElementById('selected-loan-display').textContent = 
+            `${loan.loan_number} - ${loan.customer_name}`;
+        document.getElementById('selected-loan-balance').textContent = loan.current_balance;
+        document.getElementById('selected-loan-payment').textContent = loan.next_payment_amount;
+        
+        selectedLoanInfo.style.display = 'block';
+        hideSearchResults();
+        
+        // Enable form submission
+        updateFormState();
+        
+        // Update allocation if amount is entered
+        if (paymentAmountInput.value > 0) {
+            updatePaymentAllocation();
+        }
+    }
+
+    function clearSelectedLoan() {
+        selectedLoan = null;
+        loanIdInput.value = '';
+        selectedLoanInfo.style.display = 'none';
+        paymentBreakdown.classList.add('d-none');
+        noSelection.style.display = 'block';
+        updateFormState();
+    }
+
+    function updateFormState() {
+        const isValid = selectedLoan && 
+                       paymentAmountInput.value > 0 && 
+                       document.getElementById('payment-method').value;
+        processPaymentBtn.disabled = !isValid;
+    }
+
+    // Add validation to form fields
+    document.getElementById('payment-method').addEventListener('change', updateFormState);
+    paymentAmountInput.addEventListener('input', updateFormState);
+
+    function updatePaymentAllocation() {
+        if (!selectedLoan || !paymentAmountInput.value || paymentAmountInput.value <= 0) {
+            return;
+        }
+
+        // Show loading
+        allocationLoading.style.display = 'block';
+        paymentBreakdown.classList.add('d-none');
+        noSelection.style.display = 'none';
+
+        const amount = parseFloat(paymentAmountInput.value);
+        
+        fetch(`{% url 'loans_payments:api_allocation_preview' %}?loan_id=${selectedLoan.id}&payment_amount=${amount}`)
+            .then(response => response.json())
+            .then(data => {
+                allocationLoading.style.display = 'none';
+                
+                if (data.success) {
+                    displayAllocationBreakdown(data.allocation);
+                } else {
+                    console.error('Allocation calculation failed:', data.error);
+                    noSelection.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Allocation error:', error);
+                allocationLoading.style.display = 'none';
+                noSelection.style.display = 'block';
+            });
+    }
+
+    function displayAllocationBreakdown(allocation) {
+        // Update allocation amounts
+        updateAllocationRow('late-fees', allocation.late_fees);
+        updateAllocationRow('accrued-interest', allocation.accrued_interest);
+        updateAllocationRow('current-interest', allocation.current_interest);
+        updateAllocationRow('principal', allocation.principal);
+        updateAllocationRow('prepayment', allocation.prepayment);
+        
+        document.getElementById('total-allocated-amount').textContent = `$${parseFloat(allocation.total_allocated).toFixed(2)}`;
+        
+        // Update allocation order
+        const orderList = document.getElementById('allocation-order-list');
+        if (allocation.allocation_order && allocation.allocation_order.length > 0) {
+            orderList.innerHTML = allocation.allocation_order.map(item => 
+                `<li class="list-group-item">${item}</li>`
+            ).join('');
+            document.getElementById('allocation-order').style.display = 'block';
+        } else {
+            document.getElementById('allocation-order').style.display = 'none';
+        }
+        
+        // Show breakdown
+        paymentBreakdown.classList.remove('d-none');
+        noSelection.style.display = 'none';
+    }
+
+    function updateAllocationRow(type, amount) {
+        const row = document.getElementById(`${type}-row`);
+        const amountElement = document.getElementById(`${type}-amount`);
+        
+        if (amount && parseFloat(amount) > 0) {
+            amountElement.textContent = `$${parseFloat(amount).toFixed(2)}`;
+            row.style.display = 'table-row';
+        } else {
+            row.style.display = 'none';
+        }
+    }
+
+    // Clear form function
+    window.clearPaymentForm = function() {
+        document.getElementById('payment-form').reset();
+        document.getElementById('loan-dropdown').value = '';
+        clearSelectedLoan();
+        loanSearchInput.value = '';
+        updateFormState();
+    };
+
+    // Select loan from dropdown
+    window.selectLoanFromDropdown = function() {
+        const dropdown = document.getElementById('loan-dropdown');
+        const selectedOption = dropdown.options[dropdown.selectedIndex];
+        
+        if (selectedOption.value) {
+            const loan = {
+                id: selectedOption.value,
+                loan_number: selectedOption.dataset.loanNumber,
+                customer_name: selectedOption.dataset.customerName,
+                current_balance: selectedOption.dataset.currentBalance,
+                next_payment_amount: selectedOption.dataset.nextPayment,
+                status: selectedOption.dataset.paymentStatus
+            };
+            
+            selectLoan(loan);
+            loanSearchInput.value = `${loan.loan_number} - ${loan.customer_name}`;
+        }
+    };
+
+    // Set scheduled payment amount
+    window.setScheduledAmount = function() {
+        if (selectedLoan && selectedLoan.next_payment_amount) {
+            paymentAmountInput.value = parseFloat(selectedLoan.next_payment_amount).toFixed(2);
+            updatePaymentAllocation();
+            updateFormState();
+        }
+    };
+
+    // Set full payoff amount
+    window.setFullPayoff = function() {
+        if (selectedLoan && selectedLoan.current_balance) {
+            paymentAmountInput.value = parseFloat(selectedLoan.current_balance).toFixed(2);
+            updatePaymentAllocation();
+            updateFormState();
+        }
+    };
+
+    // Form submission validation
+    document.getElementById('payment-form').addEventListener('submit', function(e) {
+        if (!selectedLoan) {
+            e.preventDefault();
+            alert('Please select a loan account.');
+            return false;
+        }
+        
+        if (!paymentAmountInput.value || paymentAmountInput.value <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid payment amount.');
+            return false;
+        }
+        
+        // Show processing state
+        processPaymentBtn.disabled = true;
+        processPaymentBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+    });
 });
 </script>
 {% endblock %}

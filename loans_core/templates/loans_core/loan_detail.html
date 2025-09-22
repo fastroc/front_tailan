@@ -14,20 +14,157 @@
     </div>
     
     <div class="row">
+        <!-- Loan Information -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Loan Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <p><strong>Customer:</strong><br>{{ loan.customer.full_name }}</p>
+                            <p><strong>Product:</strong><br>{{ loan.loan_product.name }}</p>
+                            <p><strong>Principal Amount:</strong><br>${{ loan.principal_amount|floatformat:2 }}</p>
+                            <p><strong>Current Balance:</strong><br>${{ loan.current_balance|floatformat:2 }}</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p><strong>Interest Rate:</strong><br>{{ loan.interest_rate }}%</p>
+                            <p><strong>Term:</strong><br>{{ loan.term_months }} months</p>
+                            <p><strong>Monthly Payment:</strong><br>${{ loan.monthly_payment|floatformat:2 }}</p>
+                            <p><strong>Status:</strong><br><span class="badge badge-{{ loan.status|lower }}">{{ loan.status|title }}</span></p>
+                        </div>
+                    </div>
+                    
+                    {% if loan.disbursement_date %}
+                    <hr>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <p><strong>Disbursement Date:</strong><br>{{ loan.disbursement_date }}</p>
+                            <p><strong>First Payment Date:</strong><br>{{ loan.first_payment_date }}</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p><strong>Maturity Date:</strong><br>{{ loan.maturity_date }}</p>
+                            <p><strong>Next Payment Date:</strong><br>{{ loan.next_payment_date }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Payment Summary -->
+        {% if payment_schedule %}
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">
+                        <i class="fas fa-calculator me-1"></i>
+                        Payment Schedule Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <p><strong>Schedule Type:</strong><br>
+                                {% if payment_schedule.schedule_type == 'equal_payment' %}
+                                    Equal Payment
+                                {% elif payment_schedule.schedule_type == 'equal_principal' %}
+                                    Equal Principal
+                                {% else %}
+                                    {{ payment_schedule.schedule_type|title }}
+                                {% endif %}
+                            </p>
+                            <p><strong>Payment Frequency:</strong><br>{{ payment_schedule.payment_frequency|title }}</p>
+                            <p><strong>Total Payments:</strong><br>{{ payment_summary.total_payments }}</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p><strong>Total Amount:</strong><br>${{ payment_summary.total_amount|floatformat:2 }}</p>
+                            <p><strong>Total Principal:</strong><br>${{ payment_summary.total_principal|floatformat:2 }}</p>
+                            <p><strong>Total Interest:</strong><br>${{ payment_summary.total_interest|floatformat:2 }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Payment Schedule Table -->
+    {% if scheduled_payments %}
+    <div class="row">
         <div class="col-12">
             <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-calendar-alt me-1"></i>
+                        Payment Schedule ({{ scheduled_payments|length }} payments)
+                    </h6>
+                </div>
                 <div class="card-body">
-                    <h5>Loan Information</h5>
-                    <p><strong>Customer:</strong> {{ loan.customer.full_name }}</p>
-                    <p><strong>Product:</strong> {{ loan.loan_product.name }}</p>
-                    <p><strong>Principal Amount:</strong> ${{ loan.principal_amount|floatformat:0 }}</p>
-                    <p><strong>Current Balance:</strong> ${{ loan.current_balance|floatformat:0 }}</p>
-                    <p><strong>Interest Rate:</strong> {{ loan.interest_rate }}%</p>
-                    <p><strong>Term:</strong> {{ loan.term_months }} months</p>
-                    <p><strong>Status:</strong> {{ loan.status|title }}</p>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Payment #</th>
+                                    <th>Due Date</th>
+                                    <th>Beginning Balance</th>
+                                    <th>Principal</th>
+                                    <th>Interest</th>
+                                    <th>Total Payment</th>
+                                    <th>Ending Balance</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in scheduled_payments %}
+                                <tr>
+                                    <td>{{ payment.payment_number }}</td>
+                                    <td>{{ payment.due_date }}</td>
+                                    <td>${{ payment.beginning_balance|floatformat:2 }}</td>
+                                    <td>${{ payment.principal_amount|floatformat:2 }}</td>
+                                    <td>${{ payment.interest_amount|floatformat:2 }}</td>
+                                    <td><strong>${{ payment.total_amount|floatformat:2 }}</strong></td>
+                                    <td>${{ payment.ending_balance|floatformat:2 }}</td>
+                                    <td>
+                                        <span class="badge badge-{{ payment.status|lower }}">
+                                            {{ payment.status|title }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-calendar-times text-muted fa-3x mb-3"></i>
+                    <h5 class="text-muted">No Payment Schedule Available</h5>
+                    <p class="text-muted">This loan doesn't have a payment schedule configured yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
+
+<style>
+.badge-active { background-color: #28a745; }
+.badge-scheduled { background-color: #6c757d; }
+.badge-paid { background-color: #17a2b8; }
+.badge-overdue { background-color: #dc3545; }
+.badge-approved { background-color: #28a745; }
+.badge-pending { background-color: #ffc107; color: #212529; }
+.badge-rejected { background-color: #dc3545; }
+</style>
 {% endblock %}

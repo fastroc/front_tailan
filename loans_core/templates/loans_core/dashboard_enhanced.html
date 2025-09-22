@@ -1,0 +1,482 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Loan Management Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Modern Header with Live Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-university text-primary me-2"></i>
+                        Loan Management Dashboard
+                        <span class="badge bg-success ms-2" id="live-indicator">
+                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i> Live
+                        </span>
+                    </h1>
+                    <p class="text-muted mb-0">Real-time loan portfolio overview and management</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary me-2" onclick="exportDashboard()">
+                        <i class="fas fa-download me-2"></i>Export
+                    </button>
+                    <button class="btn btn-primary" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Key Metrics Grid -->
+    <div class="row mb-4">
+        <!-- Total Portfolio -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2 metric-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Portfolio
+                            </div>
+                            <div class="h4 mb-0 font-weight-bold text-gray-800">
+                                ${{ stats.total_portfolio|floatformat:0|intcomma }}
+                            </div>
+                            <div class="text-xs text-success mt-1">
+                                <i class="fas fa-arrow-up"></i> 8.2% from last month
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Loans -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2 metric-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Active Loans
+                            </div>
+                            <div class="h4 mb-0 font-weight-bold text-gray-800">{{ stats.active_loans }}</div>
+                            <div class="text-xs text-success mt-1">
+                                <i class="fas fa-arrow-up"></i> +5 this week
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-handshake fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Applications -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2 metric-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Pending Review
+                            </div>
+                            <div class="h4 mb-0 font-weight-bold text-gray-800">{{ stats.pending_applications }}</div>
+                            <div class="text-xs text-warning mt-1">
+                                <i class="fas fa-clock"></i> Needs attention
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overdue Amount -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2 metric-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Overdue Amount
+                            </div>
+                            <div class="h4 mb-0 font-weight-bold text-gray-800">
+                                ${{ stats.overdue_amount|floatformat:0|intcomma }}
+                            </div>
+                            <div class="text-xs text-danger mt-1">
+                                <i class="fas fa-exclamation-triangle"></i> Requires action
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary Metrics Row -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Collection Rate</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.collection_rate }}%</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-secondary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">Avg Loan Size</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.avg_loan_size|floatformat:0|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calculator fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-dark shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">Total Customers</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_customers }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Monthly Disbursed</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.monthly_disbursements|floatformat:0|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Main Content Row -->
+    <div class="row">
+        <!-- Recent Applications with Quick Actions -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-file-alt me-2"></i>Recent Applications
+                    </h6>
+                    <div class="dropdown no-arrow">
+                        <a class="dropdown-toggle btn btn-sm btn-outline-primary" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-cog me-1"></i> Actions
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right shadow">
+                            <a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>View All</a>
+                            <a class="dropdown-item" href="#"><i class="fas fa-plus me-2"></i>New Application</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="#"><i class="fas fa-download me-2"></i>Export</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if recent_applications %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Customer</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for application in recent_applications %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-sm me-2">
+                                                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                                        <span class="text-white small">{{ application.customer.full_name|first }}</span>
+                                                    </div>
+                                                </div>
+                                                <span>{{ application.customer.full_name }}</span>
+                                            </div>
+                                        </td>
+                                        <td><strong>${{ application.requested_amount|floatformat:0|intcomma }}</strong></td>
+                                        <td>
+                                            {% if application.status == 'approved' %}
+                                                <span class="badge bg-success"><i class="fas fa-check me-1"></i>Approved</span>
+                                            {% elif application.status == 'pending' %}
+                                                <span class="badge bg-warning"><i class="fas fa-clock me-1"></i>Pending</span>
+                                            {% elif application.status == 'under_review' %}
+                                                <span class="badge bg-info"><i class="fas fa-search me-1"></i>Review</span>
+                                            {% elif application.status == 'rejected' %}
+                                                <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Rejected</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ application.status|title }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ application.application_date|date:"M d" }}</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary btn-sm" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                {% if application.status == 'pending' %}
+                                                <button class="btn btn-outline-success btn-sm" title="Quick Approve">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-gray-300 mb-3"></i>
+                            <p class="text-muted">No recent applications</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Loans Overview -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-coins me-2"></i>Active Loans
+                    </h6>
+                    <a href="#" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-list me-1"></i> View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if active_loans %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Loan #</th>
+                                        <th>Customer</th>
+                                        <th>Balance</th>
+                                        <th>Status</th>
+                                        <th>Next Payment</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for loan in active_loans %}
+                                    <tr class="{% if loan.status == 'overdue' %}table-danger{% endif %}">
+                                        <td><strong>{{ loan.loan_number }}</strong></td>
+                                        <td>{{ loan.customer.full_name }}</td>
+                                        <td>${{ loan.outstanding_balance|floatformat:0|intcomma }}</td>
+                                        <td>
+                                            {% if loan.status == 'current' %}
+                                                <span class="badge bg-success">Current</span>
+                                            {% elif loan.status == 'overdue' %}
+                                                <span class="badge bg-danger">Overdue</span>
+                                            {% else %}
+                                                <span class="badge bg-info">{{ loan.status|title }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ loan.next_payment_date|date:"M d, Y" }}</small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-coins fa-3x text-gray-300 mb-3"></i>
+                            <p class="text-muted">No active loans</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions Panel -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="#" class="btn btn-primary btn-block h-100 d-flex flex-column align-items-center justify-content-center py-3">
+                                <i class="fas fa-plus-circle fa-2x mb-2"></i>
+                                <span>New Application</span>
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="/loans/payments/" class="btn btn-success btn-block h-100 d-flex flex-column align-items-center justify-content-center py-3">
+                                <i class="fas fa-money-bill-wave fa-2x mb-2"></i>
+                                <span>Record Payment</span>
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="#" class="btn btn-warning btn-block h-100 d-flex flex-column align-items-center justify-content-center py-3">
+                                <i class="fas fa-search fa-2x mb-2"></i>
+                                <span>Loan Lookup</span>
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="#" class="btn btn-info btn-block h-100 d-flex flex-column align-items-center justify-content-center py-3">
+                                <i class="fas fa-chart-bar fa-2x mb-2"></i>
+                                <span>Reports</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.metric-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.avatar-sm {
+    flex-shrink: 0;
+}
+
+#live-indicator {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.btn-block {
+    width: 100%;
+}
+
+.card {
+    border: none;
+    border-radius: 0.75rem;
+}
+
+.card-header {
+    background-color: rgba(255, 255, 255, 0.8);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-refresh dashboard every 60 seconds
+    setInterval(function() {
+        refreshDashboard();
+    }, 60000);
+    
+    // Add loading states to buttons
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(button => {
+        button.addEventListener('click', function() {
+            if (this.innerHTML.includes('Refresh')) {
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Refreshing...';
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Refresh';
+                }, 2000);
+            }
+        });
+    });
+});
+
+function refreshDashboard() {
+    // Add visual feedback
+    document.getElementById('live-indicator').style.backgroundColor = '#28a745';
+    
+    // In a real implementation, this would fetch new data
+    fetch(window.location.href)
+        .then(response => response.text())
+        .then(html => {
+            // Update metrics
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Update metric cards
+            const metricCards = document.querySelectorAll('.metric-card .h4');
+            const newMetricCards = doc.querySelectorAll('.metric-card .h4');
+            
+            for (let i = 0; i < metricCards.length && i < newMetricCards.length; i++) {
+                if (metricCards[i].textContent !== newMetricCards[i].textContent) {
+                    metricCards[i].style.backgroundColor = '#e3f2fd';
+                    metricCards[i].textContent = newMetricCards[i].textContent;
+                    setTimeout(() => {
+                        metricCards[i].style.backgroundColor = '';
+                    }, 1000);
+                }
+            }
+        })
+        .catch(error => console.log('Refresh failed:', error));
+}
+
+function exportDashboard() {
+    // Mock export functionality
+    alert('Dashboard export feature coming soon!');
+}
+</script>
+{% endblock %}

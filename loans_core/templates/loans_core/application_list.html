@@ -3,6 +3,16 @@
 
 {% block title %}Loan Applications{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Simple dropdown styling */
+.dropdown-menu {
+    z-index: 1050;
+    min-width: 200px;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4">
     <!-- Header -->
@@ -20,6 +30,10 @@
                     <a href="{% url 'loans_core:application_create' %}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>New Application
                     </a>
+                    <!-- DEBUG: Simple test button -->
+                    <button class="btn btn-warning ms-2" onclick="console.log('🧪 TEST BUTTON CLICKED!'); alert('JavaScript is working!');">
+                        Test JS
+                    </button>
                 </div>
             </div>
         </div>
@@ -230,86 +244,248 @@
                                         <small class="text-muted">{{ application.created_at|timesince }} ago</small>
                                     </td>
                                     <td>
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <a href="{% url 'loans_core:application_detail' application.pk %}" 
-                                               class="btn btn-outline-primary" 
-                                               title="View Application Details" 
-                                               data-bs-toggle="tooltip">
-                                                <i class="fas fa-eye me-1"></i>View
-                                            </a>
-                                            {% if application.status == 'submitted' or application.status == 'under_review' %}
-                                            <a href="{% url 'loans_core:application_approve' application.pk %}" 
-                                               class="btn btn-outline-success" 
-                                               title="Review & Approve/Reject" 
-                                               data-bs-toggle="tooltip">
-                                                <i class="fas fa-gavel me-1"></i>Review
-                                            </a>
-                                            {% endif %}
-                                            {% if application.status == 'draft' %}
-                                            <a href="#" 
-                                               class="btn btn-outline-info" 
-                                               title="Edit Application" 
-                                               data-bs-toggle="tooltip">
-                                                <i class="fas fa-edit me-1"></i>Edit
-                                            </a>
-                                            {% endif %}
-                                            {% if application.status == 'approved' %}
-                                            <a href="#" 
-                                               class="btn btn-outline-info" 
-                                               title="Create Loan Contract" 
-                                               data-bs-toggle="tooltip">
-                                                <i class="fas fa-file-contract me-1"></i>Contract
-                                            </a>
-                                            {% endif %}
                                             <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{% url 'loans_core:application_detail' application.pk %}" 
+                                                   class="btn btn-outline-primary" 
+                                                   title="View Application Details" 
+                                                   data-bs-toggle="tooltip">
+                                                    <i class="fas fa-eye me-1"></i>View
+                                                </a>
+
+                                                {% if application.status == 'submitted' or application.status == 'under_review' %}
+                                                <a href="{% url 'loans_core:application_approve' application.pk %}" 
+                                                   class="btn btn-outline-success" 
+                                                   title="Review & Approve/Reject" 
+                                                   data-bs-toggle="tooltip">
+                                                    <i class="fas fa-gavel me-1"></i>Review
+                                                </a>
+                                                {% endif %}
+
+                                                {% if application.status == 'draft' %}
+                                                <a href="#" 
+                                                   class="btn btn-outline-info" 
+                                                   title="Edit Application" 
+                                                   data-bs-toggle="tooltip">
+                                                    <i class="fas fa-edit me-1"></i>Edit
+                                                </a>
+                                                {% endif %}
+
+                                                {% comment %}
+                                                Progress button - Show for applications with sufficient data for analysis
+                                                Required: interest_rate, term_months, and requested_amount (minimum)
+                                                {% endcomment %}
+                                                {% if application.interest_rate and application.term_months and application.requested_amount %}
+                                                <!-- Progress Button - Available for any application with complete loan terms -->
+                                                <a href="{% url 'loans_core:application_progress' application.pk %}" 
+                                                   class="btn btn-outline-{% if application.status == 'approved' %}success{% else %}info{% endif %}" 
+                                                   title="View Payment Analysis {% if application.status != 'approved' %}(Projected){% endif %}" 
+                                                   data-bs-toggle="tooltip">
+                                                    <i class="fas fa-chart-line me-1"></i>Progress
+                                                    {% if application.status != 'approved' %}
+                                                        <small class="d-block" style="font-size: 0.7em;">Projected</small>
+                                                    {% endif %}
+                                                </a>
+                                                {% endif %}
+
+                                                {% if application.status == 'approved' %}
+                                                <!-- Contract and Schedule buttons for approved applications -->
+                                                <a href="#" 
+                                                   class="btn btn-outline-info" 
+                                                   title="Create Loan Contract" 
+                                                   data-bs-toggle="tooltip">
+                                                    <i class="fas fa-file-contract me-1"></i>Contract
+                                                </a>
                                                 <button type="button" 
-                                                        class="btn btn-outline-secondary dropdown-toggle" 
-                                                        data-bs-toggle="dropdown" 
-                                                        title="More Actions">
-                                                    <i class="fas fa-ellipsis-h me-1"></i>More
+                                                        class="btn btn-outline-secondary toggle-schedule" 
+                                                        data-application-id="{{ application.pk }}"
+                                                        title="Toggle Payment Schedule" 
+                                                        data-bs-toggle="tooltip">
+                                                    <i class="fas fa-calendar-alt me-1"></i>Schedule
                                                 </button>
-                                                <ul class="dropdown-menu">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{% url 'loans_customers:customer_detail' application.customer.pk %}">
-                                                            <i class="fas fa-user me-2 text-info"></i>View Customer
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="{% url 'loans_customers:customer_documents' application.customer.pk %}">
-                                                            <i class="fas fa-folder me-2 text-info"></i>Customer Documents
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="#" onclick="printApplication({{ application.pk }})">
-                                                            <i class="fas fa-print me-2 text-secondary"></i>Print Application
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="#" onclick="downloadApplication({{ application.pk }})">
-                                                            <i class="fas fa-download me-2 text-secondary"></i>Download PDF
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    {% if application.status == 'draft' %}
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" onclick="deleteApplication({{ application.pk }}, '{{ application.customer.full_name|escapejs }}')">
-                                                            <i class="fas fa-trash me-2"></i>Delete Application
-                                                        </a>
-                                                    </li>
-                                                    {% endif %}
-                                                    {% if application.status == 'submitted' %}
-                                                    <li>
-                                                        <a class="dropdown-item text-warning" href="#" onclick="requestDocuments({{ application.pk }})">
-                                                            <i class="fas fa-file-upload me-2"></i>Request Documents
-                                                        </a>
-                                                    </li>
-                                                    {% endif %}
-                                                </ul>
+                                                {% endif %}
+
+                                                <!-- Simple More Button (just for other actions) -->
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" 
+                                                            class="btn btn-outline-secondary dropdown-toggle" 
+                                                            data-bs-toggle="dropdown" 
+                                                            aria-expanded="false"
+                                                            title="More Actions">
+                                                        <i class="fas fa-ellipsis-h"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end">
+                                                        <li>
+                                                            <a class="dropdown-item" href="{% url 'loans_customers:customer_detail' application.customer.pk %}">
+                                                                <i class="fas fa-user me-2 text-info"></i>View Customer
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" href="{% url 'loans_customers:customer_documents' application.customer.pk %}">
+                                                                <i class="fas fa-folder me-2 text-info"></i>Customer Documents
+                                                            </a>
+                                                        </li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li>
+                                                            <a class="dropdown-item" href="#" onclick="printApplication({{ application.pk }})">
+                                                                <i class="fas fa-print me-2 text-secondary"></i>Print Application
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" href="#" onclick="downloadApplication({{ application.pk }})">
+                                                                <i class="fas fa-download me-2 text-secondary"></i>Download PDF
+                                                            </a>
+                                                        </li>
+                                                        {% if application.status == 'draft' %}
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li>
+                                                            <a class="dropdown-item text-danger" href="#" onclick="deleteApplication({{ application.pk }}, '{{ application.customer.full_name|escapejs }}')">
+                                                                <i class="fas fa-trash me-2"></i>Delete Application
+                                                            </a>
+                                                        </li>
+                                                        {% endif %}
+                                                        {% if application.status == 'submitted' %}
+                                                        <li>
+                                                            <a class="dropdown-item text-warning" href="#" onclick="requestDocuments({{ application.pk }})">
+                                                                <i class="fas fa-file-upload me-2"></i>Request Documents
+                                                            </a>
+                                                        </li>
+                                                        {% endif %}
+                                                    </ul>
+                                                </div>
                                             </div>
-                                        </div>
                                     </td>
                                 </tr>
+
+                                {# Collapsible Payment Schedule Row(s) #}
+                                {% if application.status == 'approved' %}
+                                    {% if application.loan %}
+                                    <!-- REAL schedule row (unique ID) -->
+                                    <tr class="schedule-row d-none" id="schedule-{{ application.pk }}">
+                                        <td colspan="8" class="p-0">
+                                            <div class="card border-0 shadow-sm m-2">
+                                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                                    <h6 class="mb-0">
+                                                        <i class="fas fa-calendar-alt text-primary me-2"></i>
+                                                        Payment Schedule - Loan #{{ application.loan.loan_number }}
+                                                    </h6>
+                                                    <small class="text-muted">
+                                                        {{ application.loan.payment_schedule.schedule_type|title }} Schedule
+                                                    </small>
+                                                </div>
+                                                <div class="card-body">
+                                                    {% if application.loan.payment_schedule %}
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-3">
+                                                            <div class="text-center">
+                                                                <h5 class="text-primary">${{ application.loan.payment_schedule.total_amount|floatformat:2|intcomma }}</h5>
+                                                                <small class="text-muted">Total Amount</small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-center">
+                                                                <h5 class="text-success">${{ application.loan.payment_schedule.total_principal|floatformat:2|intcomma }}</h5>
+                                                                <small class="text-muted">Principal</small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-center">
+                                                                <h5 class="text-info">${{ application.loan.payment_schedule.total_interest|floatformat:2|intcomma }}</h5>
+                                                                <small class="text-muted">Interest</small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-center">
+                                                                <h5 class="text-warning">{{ application.loan.payment_schedule.total_payments }}</h5>
+                                                                <small class="text-muted">Payments</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm table-hover">
+                                                            <thead class="table-light">
+                                                                <tr>
+                                                                    <th>#</th>
+                                                                    <th>Due Date</th>
+                                                                    <th>Principal</th>
+                                                                    <th>Interest</th>
+                                                                    <th>Total Payment</th>
+                                                                    <th>Balance</th>
+                                                                    <th>Status</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {% for payment in application.loan.payment_schedule.scheduled_payments.all|slice:":10" %}
+                                                                <tr>
+                                                                    <td>
+                                                                        <strong>{{ payment.payment_number }}</strong>
+                                                                        {% if payment.is_custom_amount %}
+                                                                            <span class="badge badge-sm bg-info ms-1" title="Custom Amount">C</span>
+                                                                        {% endif %}
+                                                                    </td>
+                                                                    <td>{{ payment.due_date|date:"M d, Y" }}</td>
+                                                                    <td>
+                                                                        <span class="{% if payment.principal_amount == 0 %}text-warning{% endif %}">
+                                                                            ${{ payment.principal_amount|floatformat:2|intcomma }}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>${{ payment.interest_amount|floatformat:2|intcomma }}</td>
+                                                                    <td><strong>${{ payment.total_amount|floatformat:2|intcomma }}</strong></td>
+                                                                    <td>${{ payment.ending_balance|floatformat:2|intcomma }}</td>
+                                                                    <td>
+                                                                        {% if payment.status == 'paid' %}
+                                                                            <span class="badge bg-success">Paid</span>
+                                                                        {% elif payment.status == 'overdue' %}
+                                                                            <span class="badge bg-danger">Overdue</span>
+                                                                        {% else %}
+                                                                            <span class="badge bg-secondary">Scheduled</span>
+                                                                        {% endif %}
+                                                                    </td>
+                                                                </tr>
+                                                                {% empty %}
+                                                                <tr>
+                                                                    <td colspan="7" class="text-center text-muted py-3">
+                                                                        <i class="fas fa-spinner fa-spin me-2"></i>Loading payment schedule...
+                                                                    </td>
+                                                                </tr>
+                                                                {% endfor %}
+                                                                {% if application.loan.payment_schedule.scheduled_payments.count > 10 %}
+                                                                <tr>
+                                                                    <td colspan="7" class="text-center text-muted">
+                                                                        <small>... and {{ application.loan.payment_schedule.scheduled_payments.count|add:"-10" }} more payments</small>
+                                                                        <a href="{% url 'loans_core:loan_detail' application.loan.pk %}" class="btn btn-sm btn-outline-primary ms-2">
+                                                                            View Full Schedule
+                                                                        </a>
+                                                                    </td>
+                                                                </tr>
+                                                                {% endif %}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                    {% else %}
+                                                    <div class="text-center text-muted py-3">
+                                                        <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                                                        <h6>No Payment Schedule Found</h6>
+                                                        <p>Payment schedule has not been generated for this loan.</p>
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <!-- TEST/Placeholder row when no loan exists (distinct ID) -->
+                                    <tr class="schedule-row d-none" id="schedule-test-{{ application.pk }}">
+                                        <td colspan="8" class="p-3 bg-light">
+                                            <div class="alert alert-info mb-0">
+                                                <h5>🧪 TEST SCHEDULE for Application {{ application.pk }}</h5>
+                                                <p><strong>❌ No loan found for this approved application.</strong></p>
+                                                <p>This placeholder verifies the toggle works even without a payment schedule.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                {% endif %}
                                 {% empty %}
                                 <tr>
                                     <td colspan="8" class="text-center py-4">
@@ -333,7 +509,7 @@
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <!-- Pagination -->
                     {% if page_obj.has_other_pages %}
                     <nav aria-label="Applications pagination">
@@ -346,13 +522,13 @@
                                     <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">Previous</a>
                                 </li>
                             {% endif %}
-                            
+
                             <li class="page-item active">
                                 <span class="page-link">
                                     Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
                                 </span>
                             </li>
-                            
+
                             {% if page_obj.has_next %}
                                 <li class="page-item">
                                     <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">Next</a>
@@ -372,123 +548,142 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- jQuery for enhanced functionality -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
 <script>
-$(document).ready(function() {
-    // Initialize tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Application list JavaScript loaded');
+    
+    // Initialize Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl)
+        return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 });
 
-// Print Application Function
+// ---------- CSRF helper ----------
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return '';
+}
+const CSRF_TOKEN = getCookie('csrftoken');
+
+// ---------- Print / Download ----------
 function printApplication(applicationId) {
-    window.open(`/loans/applications/${applicationId}/print/`, '_blank');
+  window.open(`/loans/applications/${applicationId}/print/`, '_blank');
 }
-
-// Download Application PDF Function
 function downloadApplication(applicationId) {
-    window.location.href = `/loans/applications/${applicationId}/download/`;
+  window.location.href = `/loans/applications/${applicationId}/download/`;
 }
 
-// Delete Application Function
+// ---------- Delete ----------
 function deleteApplication(applicationId, customerName) {
-    if (confirm(`Are you sure you want to DELETE the loan application for "${customerName}"?\n\nThis action cannot be undone.`)) {
-        if (confirm(`FINAL CONFIRMATION: Delete application for "${customerName}"?`)) {
-            // Show loading
-            const loadingHtml = `
-                <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                    <i class="fas fa-spinner fa-spin me-2"></i>
-                    Deleting application for "${customerName}"...
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            `;
-            $('.container-fluid > .row:first').after(loadingHtml);
-            
-            // Make AJAX request to delete application
-            $.ajax({
-                url: `/loans/applications/${applicationId}/delete/`,
-                type: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Show success message and reload page
-                        const successHtml = `
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                <i class="fas fa-check-circle me-2"></i>
-                                Application for "${customerName}" deleted successfully!
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        `;
-                        $('.container-fluid > .row:first').after(successHtml);
-                        
-                        // Reload page after short delay
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 2000);
-                    } else {
-                        alert('Error: ' + (response.error || 'Failed to delete application'));
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while deleting the application.');
-                }
-            });
-        }
+  if (!confirm(`Are you sure you want to DELETE the loan application for "${customerName}"?\n\nThis action cannot be undone.`)) return;
+  if (!confirm(`FINAL CONFIRMATION: Delete application for "${customerName}"?`)) return;
+
+  const loadingHtml = `
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+      <i class="fas fa-spinner fa-spin me-2"></i>
+      Deleting application for "${customerName}"...
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>`;
+  $('.container-fluid > .row:first').after(loadingHtml);
+
+  $.ajax({
+    url: `/loans/applications/${applicationId}/delete/`,
+    type: 'POST',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    success: function (response) {
+      if (response.success) {
+        const successHtml = `
+          <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            Application for "${customerName}" deleted successfully!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>`;
+        $('.container-fluid > .row:first').after(successHtml);
+        setTimeout(() => window.location.reload(), 1200);
+      } else {
+        alert('Error: ' + (response.error || 'Failed to delete application'));
+      }
+    },
+    error: function () {
+      alert('An error occurred while deleting the application.');
     }
+  });
 }
 
-// Request Documents Function
+// ---------- Request docs ----------
 function requestDocuments(applicationId) {
-    const message = prompt('What additional documents do you need from the customer?\n\nEnter your request:');
-    if (message && message.trim()) {
-        // Show loading
-        const loadingHtml = `
-            <div class="alert alert-info alert-dismissible fade show" role="alert">
-                <i class="fas fa-spinner fa-spin me-2"></i>
-                Sending document request...
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        `;
-        $('.container-fluid > .row:first').after(loadingHtml);
-        
-        // Make AJAX request
-        $.ajax({
-            url: `/loans/applications/${applicationId}/request-documents/`,
-            type: 'POST',
-            data: {
-                'message': message.trim()
-            },
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
-            },
-            success: function(response) {
-                if (response.success) {
-                    // Show success message
-                    const successHtml = `
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <i class="fas fa-check-circle me-2"></i>
-                            Document request sent to customer successfully!
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    `;
-                    $('.container-fluid > .row:first').after(successHtml);
-                } else {
-                    alert('Error: ' + (response.error || 'Failed to send document request'));
-                }
-            },
-            error: function() {
-                alert('An error occurred while sending the document request.');
-            }
-        });
+  const message = prompt('What additional documents do you need from the customer?\n\nEnter your request:');
+  if (!message || !message.trim()) return;
+
+  const loadingHtml = `
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+      <i class="fas fa-spinner fa-spin me-2"></i>
+      Sending document request...
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>`;
+  $('.container-fluid > .row:first').after(loadingHtml);
+
+  $.ajax({
+    url: `/loans/applications/${applicationId}/request-documents/`,
+    type: 'POST',
+    data: { 'message': message.trim() },
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    success: function (response) {
+      if (response.success) {
+        const successHtml = `
+          <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            Document request sent to customer successfully!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>`;
+        $('.container-fluid > .row:first').after(successHtml);
+      } else {
+        alert('Error: ' + (response.error || 'Failed to send document request'));
+      }
+    },
+    error: function () {
+      alert('An error occurred while sending the document request.');
     }
+  });
 }
+
+// ---------- Payment Schedule Toggle ----------
+$(function () {
+  $(document).on('click', '.toggle-schedule', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const appId = $(this).data('application-id');
+    let $row = $('#schedule-' + appId);           // real schedule row
+    if ($row.length === 0) $row = $('#schedule-test-' + appId); // fallback test row
+
+    if ($row.length === 0) {
+      console.warn('[schedule] No schedule row found for app', appId);
+      alert('Schedule row not found for application ' + appId);
+      return;
+    }
+
+    const wasVisible = !$row.hasClass('d-none');
+    $row.toggleClass('d-none'); // show/hide
+
+    // Update button look/text
+    $(this)
+      .toggleClass('btn-outline-success', wasVisible)
+      .toggleClass('btn-outline-danger', !wasVisible)
+      .html(wasVisible
+        ? '<i class="fas fa-calendar-alt me-1"></i>Schedule'
+        : '<i class="fas fa-times me-1"></i>Hide')
+      .attr('title', wasVisible ? 'View Payment Schedule' : 'Hide Payment Schedule');
+  });
+});
 </script>
 {% endblock %}

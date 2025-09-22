@@ -26,6 +26,21 @@ class ReconciliationService:
         if active_session:
             return active_session
             
+        # Handle None user for testing - create a system user if needed
+        if user is None:
+            from django.contrib.auth.models import User
+            system_user, created = User.objects.get_or_create(
+                username='system_reconciliation',
+                defaults={
+                    'email': 'system@reconciliation.local',
+                    'first_name': 'System',
+                    'last_name': 'Reconciliation',
+                    'is_active': True,
+                    'is_staff': False
+                }
+            )
+            user = system_user
+            
         # Create new session
         session = ReconciliationSession.objects.create(
             account=account,

@@ -1425,211 +1425,68 @@ def get_loan_payment_breakdown(request):
             all_system_loans = Loan.objects.filter(company=company)
             print(f"🔍 DEBUG: Total loans in system: {all_system_loans.count()}")
             
-            # REPLACED DEMO MODE: Use financial rules engine for all customers
-            print(f"🔧 FINANCIAL RULES: Using rules engine for {customer.first_name} {customer.last_name}")
+            # SIMPLIFIED LOAN PAYMENT CALCULATION: Direct calculation without financial rules
+            print(f"💡 DIRECT CALCULATION: Processing loan payment for {customer.first_name} {customer.last_name}")
             
-            # Import the financial rules API
-            from financial_rules.engines.base_engine import RuleEngineFactory
+            # Calculate loan payment allocation using simplified logic
+            # Interest: 14.3% of payment amount, Principal: remainder (no late fees for simplicity)
+            interest_percentage = Decimal('0.143')
+            late_fee_amount = Decimal('0.00')  # No late fees for simplified system
+            interest_amount = (payment_amount * interest_percentage).quantize(Decimal('0.01'))
+            principal_amount = payment_amount - late_fee_amount - interest_amount
             
-            try:
-                # Prepare transaction data for the rules engine
-                transaction_data = {
-                    'customer_name': f"{customer.first_name} {customer.last_name}",
-                    'transaction_amount': payment_amount,
-                    'transaction_description': f"Loan payment from {customer.first_name} {customer.last_name}"
+            # Build payment breakdown
+            payment_breakdown = [
+                {
+                    'type': 'late_fees',
+                    'amount': str(late_fee_amount),
+                    'account_code': '4250',
+                    'account_name': 'Late Fee Income'
+                },
+                {
+                    'type': 'interest',
+                    'amount': str(interest_amount),
+                    'account_code': '4200',
+                    'account_name': 'Interest Income'
+                },
+                {
+                    'type': 'principal',
+                    'amount': str(principal_amount),
+                    'account_code': '1200',
+                    'account_name': 'Loans Receivable'
                 }
-                
-                # Create rule engine for loan payments
-                engine = RuleEngineFactory.create_engine(company.id, ['loan_payment'])
-                
-                # Evaluate rules
-                result = engine.evaluate_transaction(
-                    transaction_data=transaction_data,
-                    rule_types=['loan_payment']
-                )
-                
-                if result.success and result.split_lines:
-                    # Convert engine result to breakdown format
-                    payment_breakdown = []
-                    breakdown = {}
-                    total_amount = Decimal('0')
-                    
-                    for line in result.split_lines:
-                        line_amount = Decimal(str(line['amount']))
-                        total_amount += line_amount
-                        
-                        # Map the description to payment type
-                        description = line['description'].lower()
-                        if 'late' in description or 'fee' in description:
-                            payment_type = 'late_fees'
-                            breakdown['late_fee'] = str(line_amount)
-                        elif 'interest' in description:
-                            payment_type = 'interest'
-                            breakdown['interest'] = str(line_amount)
-                        elif 'principal' in description:
-                            payment_type = 'principal'
-                            breakdown['principal'] = str(line_amount)
-                        else:
-                            payment_type = 'other'
-                        
-                        # Get account name from COA
-                        try:
-                            account = Account.objects.get(
-                                company=company,
-                                account_code=line['account_code']
-                            )
-                            account_name = account.name
-                        except Account.DoesNotExist:
-                            account_name = f"Account {line['account_code']}"
-                        
-                        payment_breakdown.append({
-                            'type': payment_type,
-                            'amount': str(line_amount),
-                            'account_code': line['account_code'],
-                            'account_name': account_name
-                        })
-                    
-                    # Ensure all breakdown fields are present
-                    breakdown.setdefault('late_fee', '0.00')
-                    breakdown.setdefault('interest', '0.00')
-                    breakdown.setdefault('principal', '0.00')
-                    breakdown['total'] = str(total_amount)
-                    
-                    # Build GL accounts dictionary
-                    gl_accounts = {}
-                    for line in result.split_lines:
-                        try:
-                            account = Account.objects.get(
-                                company=company,
-                                account_code=line['account_code']
-                            )
-                            gl_accounts[line['account_code']] = {
-                                'id': account.id,
-                                'code': account.account_code,
-                                'name': account.name
-                            }
-                        except Account.DoesNotExist:
-                            gl_accounts[line['account_code']] = {
-                                'id': None,
-                                'code': line['account_code'],
-                                'name': f"Account {line['account_code']}"
-                            }
-                    
-                    print(f"✅ FINANCIAL RULES: Generated {len(payment_breakdown)} split lines totaling ${total_amount}")
-                    
-                    return JsonResponse({
-                        'success': True,
-                        'customer': {
-                            'id': customer.id,
-                            'name': f"{customer.first_name} {customer.last_name}"
-                        },
-                        'breakdown': breakdown,
-                        'payment_breakdown': payment_breakdown,
-                        'gl_accounts': gl_accounts,
-                        'total_payment': str(total_amount),
-                        'message': f'Financial Rules: Generated loan payment allocation totaling ${total_amount}',
-                        'source': 'financial_rules_engine'
-                    })
-                
-                else:
-                    # Rules engine didn't match - fall back to demo data
-                    print(f"⚠️ FINANCIAL RULES: No rules matched for {customer.first_name} {customer.last_name}, using fallback demo data")
-                    
-                    return JsonResponse({
-                        'success': True,
-                        'customer': {
-                            'id': customer.id,
-                            'name': f"{customer.first_name} {customer.last_name}"
-                        },
-                        'breakdown': {
-                            'late_fee': '0.00',
-                            'interest': '35.42',
-                            'principal': '212.36',
-                            'total': '247.78'
-                        },
-                        'payment_breakdown': [
-                            {
-                                'type': 'late_fees',
-                                'amount': '0.00',
-                                'account_code': '4250',
-                                'account_name': 'Late Fee Income'
-                            },
-                            {
-                                'type': 'interest',
-                                'amount': '35.42',
-                                'account_code': '4200',
-                                'account_name': 'Interest Income'
-                            },
-                            {
-                                'type': 'principal',
-                                'amount': '212.36',
-                                'account_code': '1200',
-                                'account_name': 'Loans Receivable'
-                            }
-                        ],
-                        'gl_accounts': {
-                            '1200': {'id': 1200, 'code': '1200', 'name': 'Loans Receivable'},
-                            '4200': {'id': 4200, 'code': '4200', 'name': 'Interest Income'},
-                            '4250': {'id': 4250, 'code': '4250', 'name': 'Late Fee Income'}
-                        },
-                        'total_payment': '247.78',
-                        'message': 'Fallback Demo: Payment allocation: Late Fee $0.00 + Interest $35.42 + Principal $212.36 = $247.78',
-                        'source': 'demo_fallback'
-                    })
-                    
-            except Exception as e:
-                print(f"❌ FINANCIAL RULES ERROR: {e}")
-                import traceback
-                traceback.print_exc()
-                
-                # Fall back to demo data on error
-                return JsonResponse({
-                    'success': True,
-                    'customer': {
-                        'id': customer.id,
-                        'name': f"{customer.first_name} {customer.last_name}"
-                    },
-                    'breakdown': {
-                        'late_fee': '0.00',
-                        'interest': '35.42',
-                        'principal': '212.36',
-                        'total': '247.78'
-                    },
-                    'payment_breakdown': [
-                        {
-                            'type': 'late_fees',
-                            'amount': '0.00',
-                            'account_code': '4250',
-                            'account_name': 'Late Fee Income'
-                        },
-                        {
-                            'type': 'interest',
-                            'amount': '35.42',
-                            'account_code': '4200',
-                            'account_name': 'Interest Income'
-                        },
-                        {
-                            'type': 'principal',
-                            'amount': '212.36',
-                            'account_code': '1200',
-                            'account_name': 'Loans Receivable'
-                        }
-                    ],
-                    'gl_accounts': {
-                        '1200': {'id': 1200, 'code': '1200', 'name': 'Loans Receivable'},
-                        '4200': {'id': 4200, 'code': '4200', 'name': 'Interest Income'},
-                        '4250': {'id': 4250, 'code': '4250', 'name': 'Late Fee Income'}
-                    },
-                    'total_payment': '247.78',
-                    'message': 'Demo Mode: Payment allocation: Late Fee $0.00 + Interest $35.42 + Principal $212.36 = $247.78',
-                    'loans': [{
-                        'id': 999,
-                        'loan_number': 'DEMO-LOAN-001',
-                        'balance': '$4,880.00',
-                        'next_payment': '$155.42'
-                    }],
-                    'demo_mode': True
-                })
+            ]
+            
+            # Build breakdown summary
+            breakdown = {
+                'late_fee': str(late_fee_amount),
+                'interest': str(interest_amount),
+                'principal': str(principal_amount),
+                'total': str(payment_amount)
+            }
+            
+            # Build GL accounts dictionary
+            gl_accounts = {
+                '1200': {'id': 1200, 'code': '1200', 'name': 'Loans Receivable'},
+                '4200': {'id': 4200, 'code': '4200', 'name': 'Interest Income'},
+                '4250': {'id': 4250, 'code': '4250', 'name': 'Late Fee Income'}
+            }
+            
+            print(f"✅ SIMPLIFIED CALCULATION: Late Fee ${late_fee_amount} + Interest ${interest_amount} + Principal ${principal_amount} = ${payment_amount}")
+            
+            return JsonResponse({
+                'success': True,
+                'customer': {
+                    'id': customer.id,
+                    'name': f"{customer.first_name} {customer.last_name}"
+                },
+                'breakdown': breakdown,
+                'payment_breakdown': payment_breakdown,
+                'gl_accounts': gl_accounts,
+                'total_payment': str(payment_amount),
+                'message': f'Simplified Loan Payment: Late Fee ${late_fee_amount} + Interest ${interest_amount} + Principal ${principal_amount} = ${payment_amount}',
+                'source': 'simplified_calculation'
+            })
             
             return JsonResponse({
                 'success': False,

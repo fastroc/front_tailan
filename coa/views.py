@@ -1,4 +1,4 @@
-from django.shortcuts import redirect, get_object_or_404
+from django.shortcuts import redirect, get_object_or_404, render
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
@@ -11,11 +11,12 @@ from django.views.generic import (
     CreateView,
     UpdateView,
     DeleteView,
+    View,
 )
 from django.urls import reverse_lazy
 from core.mixins import CompanyRequiredMixin, CompanyContextMixin
 from .models import Account, TaxRate, AccountType
-from .forms import TaxRateForm, TaxRateEditForm, AccountForm
+from .forms import TaxRateForm, TaxRateEditForm, AccountForm, AccountExcelUploadForm
 
 
 class CompanyAwareAccountMixin(CompanyRequiredMixin):
@@ -729,3 +730,314 @@ def tax_rate_api_create(request):
         return JsonResponse({"error": "Invalid JSON data"}, status=400)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
+
+@method_decorator(login_required, name="dispatch")
+class AccountExcelUploadView(CompanyRequiredMixin, View):
+    """Company-aware Excel upload view for Chart of Accounts."""
+    
+    template_name = "coa/account_excel_upload.html"
+    
+    def get(self, request):
+        """Display upload form."""
+        form = AccountExcelUploadForm(company=self.active_company)
+        
+        context = {
+            'form': form,
+            'active_company': self.active_company,
+            'account_types': AccountType.get_grouped_choices(),
+            'tax_rates': TaxRate.objects.for_company(self.active_company).filter(is_active=True),
+            'valid_types': [choice[0] for choice in AccountType.choices],
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def post(self, request):
+        """Process uploaded Excel file."""
+        form = AccountExcelUploadForm(request.POST, request.FILES, company=self.active_company)
+        
+        # Handle save action with session data (no new file upload needed)
+        if request.POST.get('action') == 'save' and 'coa_upload_data' in request.session:
+            try:
+                processed_data = request.session.get('coa_upload_data')
+                result = self._save_processed_data(processed_data, request.user)
+                
+                if result['success']:
+                    messages.success(
+                        request, 
+                        f"Successfully created {result['created_count']} accounts! "
+                        f"Skipped {result['skipped_count']} invalid rows."
+                    )
+                    # Clear session data after successful save
+                    request.session.pop('coa_upload_data', None)
+                    request.session.pop('coa_upload_filename', None)
+                    return redirect('coa:chart_of_accounts')
+                else:
+                    messages.error(request, f"Error saving accounts: {result['error']}")
+                    # Show preview again with error
+                    context = {
+                        'form': AccountExcelUploadForm(company=self.active_company),
+                        'active_company': self.active_company,
+                        'processed_data': processed_data,
+                        'account_types': AccountType.get_grouped_choices(),
+                        'tax_rates': TaxRate.objects.for_company(self.active_company).filter(is_active=True),
+                        'valid_types': [choice[0] for choice in AccountType.choices],
+                        'show_preview': True,
+                        'uploaded_filename': request.session.get('coa_upload_filename', 'uploaded file'),
+                    }
+                    return render(request, self.template_name, context)
+            except Exception as e:
+                messages.error(request, f"Error saving accounts: {str(e)}")
+        
+        # Handle preview action with existing session data (Upload New File clicked)
+        if request.POST.get('action') == 'preview' and 'coa_upload_data' in request.session and not request.FILES:
+            # Clear session to allow new upload
+            request.session.pop('coa_upload_data', None)
+            request.session.pop('coa_upload_filename', None)
+            messages.info(request, "Ready to upload a new file.")
+            
+            context = {
+                'form': AccountExcelUploadForm(company=self.active_company),
+                'active_company': self.active_company,
+                'account_types': AccountType.get_grouped_choices(),
+                'tax_rates': TaxRate.objects.for_company(self.active_company).filter(is_active=True),
+                'valid_types': [choice[0] for choice in AccountType.choices],
+            }
+            return render(request, self.template_name, context)
+        
+        if not form.is_valid():
+            context = {
+                'form': form,
+                'active_company': self.active_company,
+                'account_types': AccountType.get_grouped_choices(),
+                'tax_rates': TaxRate.objects.for_company(self.active_company).filter(is_active=True),
+                'valid_types': [choice[0] for choice in AccountType.choices],
+            }
+            return render(request, self.template_name, context)
+        
+        # Process the Excel file
+        excel_file = form.cleaned_data['excel_file']
+        
+        try:
+            # Process Excel file with company context
+            processed_data = self._process_excel_file(excel_file)
+            
+            # Store processed data in session for later use
+            request.session['coa_upload_data'] = processed_data
+            request.session['coa_upload_filename'] = excel_file.name
+            
+            # If this is a preview request, show preview
+            if request.POST.get('action') == 'preview':
+                context = {
+                    'form': form,
+                    'active_company': self.active_company,
+                    'processed_data': processed_data,
+                    'account_types': AccountType.get_grouped_choices(),
+                    'tax_rates': TaxRate.objects.for_company(self.active_company).filter(is_active=True),
+                    'valid_types': [choice[0] for choice in AccountType.choices],
+                    'show_preview': True,
+                    'uploaded_filename': excel_file.name,
+                }
+                return render(request, self.template_name, context)
+            
+            # If this is a save request, save the data
+            elif request.POST.get('action') == 'save':
+                result = self._save_processed_data(processed_data, request.user)
+                
+                if result['success']:
+                    messages.success(
+                        request, 
+                        f"Successfully created {result['created_count']} accounts! "
+                        f"Skipped {result['skipped_count']} invalid rows."
+                    )
+                    # Clear session data after successful save
+                    request.session.pop('coa_upload_data', None)
+                    request.session.pop('coa_upload_filename', None)
+                    return redirect('coa:chart_of_accounts')
+                else:
+                    messages.error(request, f"Error saving accounts: {result['error']}")
+            
+        except Exception as e:
+            messages.error(request, f"Error processing Excel file: {str(e)}")
+        
+        # Return to form with errors
+        context = {
+            'form': form,
+            'active_company': self.active_company,
+            'account_types': AccountType.get_grouped_choices(),
+            'tax_rates': TaxRate.objects.for_company(self.active_company).filter(is_active=True),
+            'valid_types': [choice[0] for choice in AccountType.choices],
+        }
+        return render(request, self.template_name, context)
+    
+    def _get_restricted_account_codes(self):
+        """
+        Get account codes that are restricted from Excel upload.
+        These accounts must be created manually for proper integration.
+        
+        NOTE: CURRENT_ASSET accounts are NOT restricted - they can be created via Excel
+        and then manually converted to bank accounts later if needed.
+        """
+        return {
+            # Removing all restrictions - all account types can be created via Excel
+            # Bank accounts will be created as CURRENT_ASSET first, then converted manually
+        }
+    
+    def _process_excel_file(self, excel_file):
+        """Process Excel file and return validated data with company context."""
+        import openpyxl
+        from io import BytesIO
+        
+        # Load workbook
+        wb = openpyxl.load_workbook(BytesIO(excel_file.read()))
+        ws = wb.active
+        
+        processed_data = {
+            'valid_rows': [],
+            'invalid_rows': [],
+            'total_rows': 0
+        }
+        
+        # Get existing account codes for this company
+        existing_codes = set(
+            Account.objects.for_company(self.active_company)
+            .values_list('code', flat=True)
+        )
+        
+        # Get existing tax rates for this company
+        tax_rates_map = {
+            tax_rate.name: tax_rate for tax_rate in 
+            TaxRate.objects.for_company(self.active_company).filter(is_active=True)
+        }
+        
+        # Valid account types
+        valid_types = {choice[0]: choice[1] for choice in AccountType.choices}
+        
+        # Get restricted account codes
+        restricted_accounts = self._get_restricted_account_codes()
+        all_restricted_codes = {}
+        
+        for category, info in restricted_accounts.items():
+            for code in info['codes']:
+                all_restricted_codes[code] = {
+                    'category': category,
+                    'reason': info['reason']
+                }
+        
+        # Process rows (skip header row)
+        for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            if not any(row):  # Skip empty rows
+                continue
+                
+            processed_data['total_rows'] += 1
+            
+            # Extract data from row
+            code = str(row[0]).strip() if row[0] else ""
+            name = str(row[1]).strip() if row[1] else ""
+            account_type = str(row[2]).strip() if row[2] else ""
+            tax_rate_name = str(row[3]).strip() if row[3] and str(row[3]).strip() else None
+            
+            # Validation
+            errors = []
+            warnings = []
+            
+            # Check for restricted account codes first
+            if code and code in all_restricted_codes:
+                restriction_info = all_restricted_codes[code]
+                errors.append(f"❌ Code '{code}' is RESTRICTED: {restriction_info['reason']}")
+            
+            # Validate Code (required and unique)
+            if not code:
+                errors.append("Code is required")
+            elif code in existing_codes:
+                errors.append(f"Code '{code}' already exists in this company")
+            elif len(code) > 10:
+                errors.append("Code must be 10 characters or less")
+            
+            # Validate Name (required)
+            if not name:
+                errors.append("Name is required")
+            elif len(name) > 150:
+                errors.append("Name must be 150 characters or less")
+            
+            # Validate Account Type (required and must be valid)
+            if not account_type:
+                errors.append("Type is required")
+            elif account_type not in valid_types:
+                errors.append(f"Invalid account type '{account_type}'. Must be one of: {', '.join(valid_types.keys())}")
+            
+            # Validate Tax Rate (optional but must exist if provided)
+            tax_rate_obj = None
+            if tax_rate_name:
+                if tax_rate_name in tax_rates_map:
+                    tax_rate_obj = tax_rates_map[tax_rate_name]
+                else:
+                    warnings.append(f"Tax rate '{tax_rate_name}' not found for this company - will be set to None")
+            
+            row_data = {
+                'row_number': row_num,
+                'code': code,
+                'name': name,
+                'account_type': account_type,
+                'account_type_display': valid_types.get(account_type, account_type),
+                'tax_rate_name': tax_rate_name,
+                'tax_rate_obj': tax_rate_obj,
+                'errors': errors,
+                'warnings': warnings,
+                'is_valid': len(errors) == 0
+            }
+            
+            if row_data['is_valid']:
+                processed_data['valid_rows'].append(row_data)
+                # Add to existing codes to prevent duplicates within the same file
+                existing_codes.add(code)
+            else:
+                processed_data['invalid_rows'].append(row_data)
+        
+        return processed_data
+    
+    def _save_processed_data(self, processed_data, user):
+        """Save valid rows to database with company context."""
+        created_count = 0
+        skipped_count = len(processed_data['invalid_rows'])
+        
+        try:
+            from django.db import transaction
+            
+            with transaction.atomic():
+                for row_data in processed_data['valid_rows']:
+                    if row_data['is_valid']:
+                        account = Account(
+                            company=self.active_company,
+                            code=row_data['code'],
+                            name=row_data['name'],
+                            account_type=row_data['account_type'],
+                            tax_rate=row_data['tax_rate_obj'],
+                            created_by=user,
+                            updated_by=user,
+                            ytd_balance=0.00,
+                            current_balance=0.00,
+                            opening_balance=0.00
+                        )
+                        account.save()
+                        created_count += 1
+                    else:
+                        skipped_count += 1
+            
+            return {
+                'success': True,
+                'created_count': created_count,
+                'skipped_count': skipped_count
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'created_count': created_count,
+                'skipped_count': skipped_count
+            }
+
+
+# Function-based view wrapper for compatibility
+account_excel_upload_view = AccountExcelUploadView.as_view()

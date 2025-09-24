@@ -1,0 +1,409 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Upload Chart of Accounts - Excel{% endblock %}
+
+{% block extra_head %}
+<style>
+    .upload-card {
+        border: 2px dashed #007bff;
+        border-radius: 10px;
+        padding: 2rem;
+        text-align: center;
+        background: linear-gradient(135deg, #f8f9ff 0%, #e3f2fd 100%);
+        transition: all 0.3s ease;
+    }
+    
+    .upload-card:hover {
+        border-color: #0056b3;
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    }
+    
+    .file-input-wrapper {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+        max-width: 400px;
+    }
+    
+    .validation-table {
+        font-size: 0.9rem;
+    }
+    
+    .validation-table .valid-row {
+        background-color: #d4edda;
+    }
+    
+    .validation-table .invalid-row {
+        background-color: #f8d7da;
+    }
+    
+    .validation-table .warning-row {
+        background-color: #fff3cd;
+    }
+    
+    .type-badge {
+        font-size: 0.8rem;
+        padding: 2px 6px;
+    }
+    
+    .format-example {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .preview-section {
+        margin-top: 2rem;
+        border-top: 2px solid #007bff;
+        padding-top: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-file-excel text-success me-2"></i>Upload Chart of Accounts</h2>
+                    <p class="text-muted">Import accounts from Excel file for {{ active_company.name }}</p>
+                </div>
+                <div>
+                    <a href="{% url 'coa:chart_of_accounts' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Chart of Accounts
+                    </a>
+                </div>
+            </div>
+
+            <!-- Upload Form -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="upload-form">
+                        {% csrf_token %}
+                        
+                        <div class="upload-card mb-4">
+                            <div id="upload-display">
+                                {% if show_preview and uploaded_filename %}
+                                    <i class="fas fa-file-excel fa-3x text-success mb-3"></i>
+                                    <h5>File Uploaded: {{ uploaded_filename }}</h5>
+                                    <p class="text-muted">File processed successfully. Review the data below.</p>
+                                {% else %}
+                                    <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                                    <h4>Select Excel File</h4>
+                                    <p class="text-muted mb-3">Upload an Excel file (.xlsx) with your Chart of Accounts data</p>
+                                {% endif %}
+                            </div>
+                            
+                            {% if not show_preview %}
+                            <div class="file-input-wrapper">
+                                {{ form.excel_file }}
+                                <div id="file-info" class="mt-2" style="display: none;">
+                                    <i class="fas fa-file-excel text-success me-2"></i>
+                                    <span id="file-name-display"></span>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="document.getElementById('excel-file-input').value=''; updateFileDisplay();">
+                                        <i class="fas fa-times me-1"></i>Clear
+                                    </button>
+                                </div>
+                                {% if form.excel_file.errors %}
+                                    <div class="text-danger mt-2">
+                                        {% for error in form.excel_file.errors %}
+                                            <small>{{ error }}</small><br>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-flex gap-2 justify-content-center">
+                            <a href="{% url 'coa:chart_of_accounts' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            {% if not show_preview %}
+                                <button type="submit" name="action" value="preview" class="btn btn-primary">
+                                    <i class="fas fa-eye me-2"></i>Preview Data
+                                </button>
+                            {% else %}
+                                <button type="submit" name="action" value="preview" class="btn btn-outline-primary">
+                                    <i class="fas fa-redo me-2"></i>Upload New File
+                                </button>
+                            {% endif %}
+                            {% if show_preview and processed_data.valid_rows %}
+                                <button type="submit" name="action" value="save" class="btn btn-success">
+                                    <i class="fas fa-save me-2"></i>Save {{ processed_data.valid_rows|length }} Valid Accounts
+                                </button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Format Requirements -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Excel Format Requirements</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="format-example">
+                                <strong>Required Columns (in order):</strong>
+                                <table class="table table-sm mt-2">
+                                    <thead>
+                                        <tr>
+                                            <th>Code</th>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Tax Rate</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>1010</td>
+                                            <td>Бэлэн мөнгө</td>
+                                            <td>CURRENT_ASSET</td>
+                                            <td><em>optional</em></td>
+                                        </tr>
+                                        <tr>
+                                            <td>4010</td>
+                                            <td>Борлуулалтын орлого</td>
+                                            <td>REVENUE</td>
+                                            <td>Tax on Sales</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <h6>Field Requirements:</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-check text-success me-2"></i><strong>Code:</strong> Required, unique, max 10 chars</li>
+                                    <li><i class="fas fa-check text-success me-2"></i><strong>Name:</strong> Required, supports Cyrillic, max 150 chars</li>
+                                    <li><i class="fas fa-check text-success me-2"></i><strong>Type:</strong> Required, must be exact match</li>
+                                    <li><i class="fas fa-info text-info me-2"></i><strong>Tax Rate:</strong> Optional, must exist in your company</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <h6 class="text-success">✅ Upload Process:</h6>
+                                <div class="alert alert-info p-2">
+                                    <small><strong>All account types can be created via Excel upload.</strong></small><br>
+                                    <small>• Create <code>CURRENT_ASSET</code> accounts first</small><br>
+                                    <small>• Later convert selected ones to bank accounts manually</small><br>
+                                    <small>• This provides full flexibility for account management</small><br>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Valid Account Types</h5>
+                        </div>
+                        <div class="card-body">
+                            {% for category, types in account_types.items %}
+                                <div class="mb-3">
+                                    <h6 class="text-primary">{{ category }}</h6>
+                                    {% for type_code, type_name in types %}
+                                        <span class="badge bg-light text-dark me-1 mb-1 type-badge">{{ type_code }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                            
+                            <div class="mt-3">
+                                <h6>Available Tax Rates:</h6>
+                                {% if tax_rates %}
+                                    {% for tax_rate in tax_rates %}
+                                        <span class="badge bg-secondary me-1 mb-1">{{ tax_rate.name }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-muted"><em>No tax rates configured for your company</em></p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Section -->
+            {% if show_preview %}
+            <div class="preview-section">
+                <div class="card">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-table me-2"></i>Data Preview</h5>
+                        <div>
+                            <span class="badge bg-success me-1">{{ processed_data.valid_rows|length }} Valid</span>
+                            <span class="badge bg-danger me-1">{{ processed_data.invalid_rows|length }} Invalid</span>
+                            <span class="badge bg-light text-dark">{{ processed_data.total_rows }} Total</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if processed_data.total_rows == 0 %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>No data found in the Excel file. Please check your file format.
+                            </div>
+                        {% else %}
+                            <!-- Summary -->
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="text-center p-3 bg-success bg-opacity-10 rounded">
+                                        <h3 class="text-success mb-0">{{ processed_data.valid_rows|length }}</h3>
+                                        <small class="text-muted">Valid Accounts</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-center p-3 bg-danger bg-opacity-10 rounded">
+                                        <h3 class="text-danger mb-0">{{ processed_data.invalid_rows|length }}</h3>
+                                        <small class="text-muted">Invalid Accounts</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-center p-3 bg-info bg-opacity-10 rounded">
+                                        <h3 class="text-info mb-0">{{ processed_data.total_rows }}</h3>
+                                        <small class="text-muted">Total Rows</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Data Table -->
+                            <div class="table-responsive">
+                                <table class="table table-sm validation-table">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Row</th>
+                                            <th>Code</th>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Tax Rate</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Valid Rows -->
+                                        {% for row in processed_data.valid_rows %}
+                                        <tr class="{% if row.warnings %}warning-row{% else %}valid-row{% endif %}">
+                                            <td>{{ row.row_number }}</td>
+                                            <td><code>{{ row.code }}</code></td>
+                                            <td>{{ row.name }}</td>
+                                            <td>
+                                                <span class="badge bg-primary">{{ row.account_type }}</span>
+                                                <br><small class="text-muted">{{ row.account_type_display }}</small>
+                                            </td>
+                                            <td>
+                                                {% if row.tax_rate_obj %}
+                                                    <span class="badge bg-secondary">{{ row.tax_rate_obj.name }}</span>
+                                                {% else %}
+                                                    <span class="text-muted"><em>None</em></span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if row.warnings %}
+                                                    <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                                                    {% for warning in row.warnings %}
+                                                        <small class="text-warning d-block">{{ warning }}</small>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <i class="fas fa-check-circle text-success me-1"></i>
+                                                    <span class="text-success">Valid</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+
+                                        <!-- Invalid Rows -->
+                                        {% for row in processed_data.invalid_rows %}
+                                        <tr class="invalid-row">
+                                            <td>{{ row.row_number }}</td>
+                                            <td><code>{{ row.code|default:"" }}</code></td>
+                                            <td>{{ row.name|default:"" }}</td>
+                                            <td>
+                                                {% if row.account_type %}
+                                                    <span class="badge bg-danger">{{ row.account_type }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ row.tax_rate_name|default:"" }}</td>
+                                            <td>
+                                                <i class="fas fa-times-circle text-danger me-1"></i>
+                                                {% for error in row.errors %}
+                                                    <small class="text-danger d-block">{{ error }}</small>
+                                                {% endfor %}
+                                                {% for warning in row.warnings %}
+                                                    <small class="text-warning d-block">{{ warning }}</small>
+                                                {% endfor %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            {% if processed_data.valid_rows %}
+                                <div class="text-center mt-3">
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Ready to import {{ processed_data.valid_rows|length }} valid account(s) for <strong>{{ active_company.name }}</strong>.
+                                        {% if processed_data.invalid_rows %}
+                                            {{ processed_data.invalid_rows|length }} invalid row(s) will be skipped.
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-danger text-center">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    No valid accounts found. Please fix the errors and try again.
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('excel-file-input');
+    
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            updateFileDisplay();
+        });
+    }
+});
+
+function updateFileDisplay() {
+    const fileInput = document.getElementById('excel-file-input');
+    const fileInfo = document.getElementById('file-info');
+    const fileNameDisplay = document.getElementById('file-name-display');
+    const uploadDisplay = document.getElementById('upload-display');
+    
+    if (fileInput.files.length > 0) {
+        const fileName = fileInput.files[0].name;
+        fileNameDisplay.textContent = fileName;
+        fileInfo.style.display = 'block';
+        uploadDisplay.innerHTML = `
+            <i class="fas fa-file-excel fa-3x text-success mb-3"></i>
+            <h5>File Selected: ${fileName}</h5>
+            <p class="text-muted">Ready to preview and upload</p>
+        `;
+    } else {
+        fileInfo.style.display = 'none';
+        uploadDisplay.innerHTML = `
+            <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+            <h4>Select Excel File</h4>
+            <p class="text-muted mb-3">Upload an Excel file (.xlsx) with your Chart of Accounts data</p>
+        `;
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,696 @@
+{% extends 'base.html' %}
+
+{% block title %}Create New Account - {{ active_company.name|default:"Chart of Accounts" }}{% endblock %}
+
+{% block content %}
+<!-- Company Context Header -->
+{% if active_company %}
+<div class="company-context-header mb-3">
+    <div class="d-flex align-items-center">
+        <div class="company-logo-small me-3">
+            {% if active_company.logo %}
+                <img src="{{ active_company.logo.url }}" alt="{{ active_company.name }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
+            {% else %}
+                <div class="bg-primary rounded d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; color: white; font-weight: 600;">
+                    {{ active_company.name|first|upper }}
+                </div>
+            {% endif %}
+        </div>
+        <div>
+            <h6 class="text-muted mb-0">
+                <i class="bi bi-building me-1"></i>
+                {{ active_company.name }}
+            </h6>
+            <small class="text-muted">Create New Account</small>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        {% if active_company %}
+            <li class="breadcrumb-item">{{ active_company.name }}</li>
+        {% endif %}
+        <li class="breadcrumb-item">
+            <a href="{% url 'coa:chart_of_accounts' %}" class="text-decoration-none">
+                <i class="bi bi-list-task me-1"></i>Chart of Accounts
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Create Account</li>
+    </ol>
+</nav>
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h1 class="h3 mb-1 fw-bold text-dark">Create New Account</h1>
+        <p class="text-muted mb-0">Add a new account to your chart of accounts</p>
+    </div>
+    <a href="{% url 'coa:chart_of_accounts' %}" class="btn btn-outline-secondary btn-professional">
+        <i class="bi bi-arrow-left me-2"></i>
+        Back to Chart of Accounts
+    </a>
+</div>
+
+<!-- Create Account Form -->
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card card-professional">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    Account Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="createAccountForm">
+                    {% csrf_token %}
+                    
+                    <!-- Display Form Errors -->
+                    {% if form.errors %}
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>Please correct the following errors:</strong>
+                            <ul class="mb-0 mt-2">
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <li>
+                                            {% if field != '__all__' %}<strong>{{ field|title }}:</strong> {% endif %}
+                                            {{ error }}
+                                        </li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Basic Information -->
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <label for="{{ form.code.id_for_label }}" class="form-label fw-medium">
+                                Account Code <span class="text-danger">*</span>
+                            </label>
+                            {{ form.code }}
+                            {% if form.code.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.code.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Unique code up to 10 characters</div>
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <label for="{{ form.name.id_for_label }}" class="form-label fw-medium">
+                                Account Name <span class="text-danger">*</span>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.name.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Descriptive name up to 150 characters</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Account Configuration -->
+                    <div class="row g-4 mt-2">
+                        <div class="col-md-6">
+                            <label for="id_account_type" class="form-label fw-medium">
+                                Account Type <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select form-select-lg" id="id_account_type" name="account_type" required>
+                                <option value="">Select account type...</option>
+                                
+                                <!-- 📊 ASSETS -->
+                                <optgroup label="📊 ASSETS" data-category="assets" data-icon="📊" data-color="#059669">
+                                    <option value="CURRENT_ASSET" data-icon="💳" data-description="Cash, receivables, inventory (converted to cash within 1 year)">
+                                        💳 Current Asset
+                                    </option>
+                                    <option value="FIXED_ASSET" data-icon="🏢" data-description="Property, equipment, buildings (long-term assets)">
+                                        🏢 Fixed Asset
+                                    </option>
+                                    <option value="INVENTORY" data-icon="📦" data-description="Goods held for sale or production">
+                                        📦 Inventory
+                                    </option>
+                                    <option value="NON_CURRENT_ASSET" data-icon="📈" data-description="Long-term investments and assets">
+                                        📈 Non-current Asset
+                                    </option>
+                                    <option value="PREPAYMENT" data-icon="⏰" data-description="Payments made in advance (insurance, rent)">
+                                        ⏰ Prepayment
+                                    </option>
+                                </optgroup>
+                                
+                                <!-- 💰 LIABILITIES -->
+                                <optgroup label="💰 LIABILITIES" data-category="liabilities" data-icon="💰" data-color="#dc2626">
+                                    <option value="CURRENT_LIABILITY" data-icon="💳" data-description="Debts due within 1 year (accounts payable, short-term loans)">
+                                        💳 Current Liability
+                                    </option>
+                                    <option value="LIABILITY" data-icon="💼" data-description="General debts and obligations">
+                                        💼 Liability
+                                    </option>
+                                    <option value="NON_CURRENT_LIABILITY" data-icon="🏦" data-description="Long-term debts (mortgages, long-term loans)">
+                                        🏦 Non-current Liability
+                                    </option>
+                                </optgroup>
+                                
+                                <!-- 🏛️ EQUITY -->
+                                <optgroup label="🏛️ EQUITY" data-category="equity" data-icon="🏛️" data-color="#7c3aed">
+                                    <option value="EQUITY" data-icon="👑" data-description="Owner's stake in the business (capital, retained earnings)">
+                                        👑 Equity
+                                    </option>
+                                </optgroup>
+                                
+                                <!-- 💵 REVENUE -->
+                                <optgroup label="💵 REVENUE" data-category="revenue" data-icon="💵" data-color="#0891b2">
+                                    <option value="SALES" data-icon="🛒" data-description="Income from selling goods or services">
+                                        🛒 Sales
+                                    </option>
+                                    <option value="REVENUE" data-icon="💰" data-description="General business income">
+                                        💰 Revenue
+                                    </option>
+                                    <option value="OTHER_INCOME" data-icon="🎁" data-description="Non-operating income (interest, dividends)">
+                                        🎁 Other Income
+                                    </option>
+                                </optgroup>
+                                
+                                <!-- 💸 EXPENSES -->
+                                <optgroup label="💸 EXPENSES" data-category="expenses" data-icon="💸" data-color="#ea580c">
+                                    <option value="EXPENSE" data-icon="📄" data-description="General business operating costs">
+                                        📄 Expense
+                                    </option>
+                                    <option value="DIRECT_COST" data-icon="🔧" data-description="Direct costs of producing goods (materials, labor)">
+                                        🔧 Direct Cost
+                                    </option>
+                                    <option value="OVERHEAD" data-icon="🏢" data-description="Indirect business costs (rent, utilities, admin)">
+                                        🏢 Overhead
+                                    </option>
+                                    <option value="DEPRECIATION" data-icon="📉" data-description="Decrease in value of assets over time">
+                                        📉 Depreciation
+                                    </option>
+                                </optgroup>
+                            </select>
+                            {% if form.account_type.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.account_type.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text" id="accountTypeHelp">
+                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                    <span class="badge bg-success bg-opacity-10 text-success">📊 Assets</span>
+                                    <span class="badge bg-danger bg-opacity-10 text-danger">💰 Liabilities</span>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary">🏛️ Equity</span>
+                                    <span class="badge bg-info bg-opacity-10 text-info">💵 Revenue</span>
+                                    <span class="badge bg-warning bg-opacity-10 text-warning">💸 Expenses</span>
+                                </div>
+                                <div id="accountTypeDescription" class="small text-muted" style="display: none;">
+                                    Select an account type to see its description
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.tax_rate.id_for_label }}" class="form-label fw-medium">
+                                Tax Rate <span class="text-danger">*</span>
+                            </label>
+                            {{ form.tax_rate }}
+                            {% if form.tax_rate.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.tax_rate.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Note: Parent Account functionality would require extending the form -->
+                    <!-- For now, accounts are created as top-level accounts -->
+                    
+                    <!-- Description -->
+                    <div class="mt-4">
+                        <label for="{{ form.description.id_for_label }}" class="form-label fw-medium">
+                            Description <span class="text-muted">(Optional)</span>
+                        </label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.description.errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Detailed description to help users understand the account's purpose</div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-3 mt-4 pt-3 border-top">
+                        <button type="submit" class="btn btn-primary btn-professional btn-lg">
+                            <i class="bi bi-plus-circle me-2"></i>
+                            Create Account
+                        </button>
+                        <button type="reset" class="btn btn-outline-secondary btn-lg">
+                            <i class="bi bi-arrow-clockwise me-2"></i>
+                            Reset Form
+                        </button>
+                        <a href="{% url 'coa:chart_of_accounts' %}" class="btn btn-outline-danger btn-lg ms-auto">
+                            <i class="bi bi-x-circle me-2"></i>
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Sidebar -->
+    <div class="col-lg-4">
+        <div class="card card-professional border-0 bg-light">
+            <div class="card-header bg-transparent border-0 pb-0">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Account Setup Tips
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2">Account Code Guidelines:</h6>
+                    <ul class="small mb-0">
+                        <li>Use numbers for systematic organization</li>
+                        <li>Assets: 1000-1999</li>
+                        <li>Liabilities: 2000-2999</li>
+                        <li>Equity: 3000-3999</li>
+                        <li>Revenue: 4000-4999</li>
+                        <li>Expenses: 5000-5999</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2">Account Types:</h6>
+                    <div class="small">
+                        <div class="mb-1">
+                            <span class="badge bg-primary bg-opacity-10 text-primary me-1">Assets</span>
+                            Resources owned by the business
+                        </div>
+                        <div class="mb-1">
+                            <span class="badge bg-danger bg-opacity-10 text-danger me-1">Liabilities</span>
+                            Debts and obligations
+                        </div>
+                        <div class="mb-1">
+                            <span class="badge bg-warning bg-opacity-10 text-warning me-1">Equity</span>
+                            Owner's stake in the business
+                        </div>
+                        <div class="mb-1">
+                            <span class="badge bg-success bg-opacity-10 text-success me-1">Revenue</span>
+                            Income from business operations
+                        </div>
+                        <div class="mb-1">
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary me-1">Expenses</span>
+                            Costs of doing business
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h6 class="fw-bold mb-2">Best Practices:</h6>
+                    <ul class="small mb-0">
+                        <li>Use clear, descriptive names</li>
+                        <li>Be consistent with naming conventions</li>
+                        <li>Add descriptions for complex accounts</li>
+                        <li>Choose appropriate tax settings</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Professional Form Enhancement Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('createAccountForm');
+    const accountTypeSelect = document.getElementById('id_account_type');
+    const accountTypeDescription = document.getElementById('accountTypeDescription');
+    const codeInput = document.getElementById('id_code');
+    
+    // Account type selection enhancement
+    if (accountTypeSelect) {
+        accountTypeSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            
+            if (selectedOption.value) {
+                // Show description if available
+                const description = selectedOption.getAttribute('data-description');
+                if (description) {
+                    accountTypeDescription.textContent = description;
+                    accountTypeDescription.style.display = 'block';
+                } else {
+                    accountTypeDescription.style.display = 'none';
+                }
+                
+                // Add visual feedback with category color
+                const optgroup = selectedOption.closest('optgroup');
+                if (optgroup) {
+                    const categoryColor = optgroup.getAttribute('data-color');
+                    if (categoryColor) {
+                        accountTypeSelect.style.borderLeft = `4px solid ${categoryColor}`;
+                        accountTypeSelect.style.backgroundColor = `${categoryColor}08`;
+                    }
+                }
+                
+                // Auto-suggest account code based on type
+                if (!codeInput.value) {
+                    const suggestedCode = getAccountCodeSuggestion(selectedOption.value);
+                    if (suggestedCode) {
+                        codeInput.placeholder = `Suggested: ${suggestedCode}`;
+                        codeInput.setAttribute('data-suggestion', suggestedCode);
+                    }
+                }
+            } else {
+                accountTypeDescription.style.display = 'none';
+                accountTypeSelect.style.borderLeft = '';
+                accountTypeSelect.style.backgroundColor = '';
+                codeInput.placeholder = 'e.g. 1000';
+            }
+        });
+        
+        // Add hover effects for better UX
+        accountTypeSelect.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.02)';
+        });
+        
+        accountTypeSelect.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+        });
+    }
+    
+    // Account code suggestions based on type
+    function getAccountCodeSuggestion(accountType) {
+        const suggestions = {
+            // Assets (1000-1999)
+            'CURRENT_ASSET': '1100',
+            'FIXED_ASSET': '1400', 
+            'INVENTORY': '1300',
+            'NON_CURRENT_ASSET': '1500',
+            'PREPAYMENT': '1200',
+            
+            // Liabilities (2000-2999)
+            'CURRENT_LIABILITY': '2100',
+            'LIABILITY': '2200',
+            'NON_CURRENT_LIABILITY': '2300',
+            
+            // Equity (3000-3999)
+            'EQUITY': '3100',
+            
+            // Revenue (4000-4999)
+            'SALES': '4100',
+            'REVENUE': '4200',
+            'OTHER_INCOME': '4300',
+            
+            // Expenses (5000-5999)
+            'EXPENSE': '5100',
+            'DIRECT_COST': '5200',
+            'OVERHEAD': '5300',
+            'DEPRECIATION': '5400'
+        };
+        
+        return suggestions[accountType] || null;
+    }
+    
+    // Code input enhancement - use suggestion on focus
+    if (codeInput) {
+        codeInput.addEventListener('focus', function() {
+            if (!this.value && this.getAttribute('data-suggestion')) {
+                this.value = this.getAttribute('data-suggestion');
+                this.select(); // Select the text for easy replacement
+            }
+        });
+        
+        // Real-time code validation (if API endpoint exists)
+        let codeCheckTimeout;
+        codeInput.addEventListener('input', function() {
+            clearTimeout(codeCheckTimeout);
+            const code = this.value.trim();
+            
+            if (code.length >= 3) {
+                codeCheckTimeout = setTimeout(() => {
+                    checkCodeAvailability(code);
+                }, 500);
+            }
+        });
+    }
+    
+    // Code availability check function
+    function checkCodeAvailability(code) {
+        fetch(`/coa/api/check-code/?code=${encodeURIComponent(code)}`)
+            .then(response => response.json())
+            .then(data => {
+                const codeInput = document.getElementById('id_code');
+                const existingFeedback = codeInput.parentNode.querySelector('.code-feedback');
+                
+                // Remove existing feedback
+                if (existingFeedback) {
+                    existingFeedback.remove();
+                }
+                
+                // Create new feedback element
+                const feedback = document.createElement('div');
+                feedback.className = 'code-feedback small mt-1';
+                
+                if (data.available) {
+                    feedback.className += ' text-success';
+                    feedback.innerHTML = '<i class="bi bi-check-circle me-1"></i>Code is available';
+                    codeInput.style.borderColor = '#28a745';
+                } else {
+                    feedback.className += ' text-warning';
+                    feedback.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>Code already used by "${data.existing_account}". Try: ${data.suggested_code}`;
+                    codeInput.style.borderColor = '#ffc107';
+                }
+                
+                codeInput.parentNode.appendChild(feedback);
+            })
+            .catch(error => {
+                console.log('Code check failed:', error);
+            });
+    }
+    
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        // Show loading state
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+        submitBtn.disabled = true;
+    });
+});
+</script>
+
+<style>
+/* Professional form styling */
+.form-control, .form-select {
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.15s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.2rem rgba(30, 58, 138, 0.1);
+}
+
+.form-text {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+/* Enhanced Account Type Select Styling */
+#id_account_type {
+    font-size: 1rem;
+    line-height: 1.5;
+    transition: all 0.2s ease-in-out;
+}
+
+#id_account_type:hover {
+    border-color: #9ca3af;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Beautiful optgroup styling */
+#id_account_type optgroup {
+    font-weight: 700;
+    color: #1f2937;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    font-size: 0.95rem;
+    padding: 12px 16px;
+    margin: 6px 0;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-left: 4px solid;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Category-specific optgroup colors */
+#id_account_type optgroup[data-category="assets"] {
+    border-left-color: #059669;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: #065f46;
+}
+
+#id_account_type optgroup[data-category="liabilities"] {
+    border-left-color: #dc2626;
+    background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+    color: #991b1b;
+}
+
+#id_account_type optgroup[data-category="equity"] {
+    border-left-color: #7c3aed;
+    background: linear-gradient(135deg, #f5f3ff 0%, #e9d5ff 100%);
+    color: #5b21b6;
+}
+
+#id_account_type optgroup[data-category="revenue"] {
+    border-left-color: #0891b2;
+    background: linear-gradient(135deg, #f0f9ff 0%, #bae6fd 100%);
+    color: #0c4a6e;
+}
+
+#id_account_type optgroup[data-category="expenses"] {
+    border-left-color: #ea580c;
+    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+    color: #9a3412;
+}
+
+/* Enhanced option styling */
+#id_account_type option {
+    font-weight: 400;
+    padding: 12px 20px;
+    color: #374151;
+    background-color: white;
+    font-size: 0.95rem;
+    text-transform: none;
+    letter-spacing: normal;
+    border-radius: 4px;
+    margin: 2px 0;
+    transition: all 0.15s ease-in-out;
+}
+
+#id_account_type option:hover, 
+#id_account_type option:focus {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #1e293b;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#id_account_type option:checked {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e40af;
+    font-weight: 600;
+}
+
+/* Account Type Description Styling */
+#accountTypeDescription {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 8px;
+    font-style: italic;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    position: relative;
+}
+
+#accountTypeDescription::before {
+    content: "💡";
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    font-size: 1.1em;
+}
+
+#accountTypeDescription {
+    padding-left: 40px;
+}
+
+/* Code feedback styling */
+.code-feedback {
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.code-feedback.text-success {
+    border-color: #28a745;
+    background: linear-gradient(135deg, #f0fff4 0%, #dcfce7 100%);
+}
+
+.code-feedback.text-warning {
+    border-color: #ffc107;
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Professional button spacing */
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+
+/* Error styling */
+.text-danger {
+    font-size: 0.875rem;
+}
+
+.alert {
+    border-radius: 0.5rem;
+}
+
+/* Badge hover effects */
+.badge {
+    transition: all 0.2s ease-in-out;
+    cursor: default;
+}
+
+.badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Form enhancements */
+.form-control:valid {
+    border-color: #28a745;
+}
+
+.form-control:invalid:not(:placeholder-shown) {
+    border-color: #dc3545;
+}
+
+/* Responsive optgroup styling for mobile */
+@media (max-width: 768px) {
+    #id_account_type optgroup {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+    
+    #id_account_type option {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+    }
+}
+</style>
+{% endblock %}

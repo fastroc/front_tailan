@@ -1,0 +1,72 @@
+<!-- Simple Match Form Component -->
+<div class="card mt-3">
+  <div class="card-header">
+    <h6 class="mb-0">Quick Match Form</h6>
+  </div>
+  <div class="card-body">
+    <form id="quickMatchForm">
+      <div class="row">
+        <div class="col-md-3">
+          <label class="form-label">WHO (Payee)</label>
+          <input type="text" class="form-control" id="quickWho" placeholder="Enter contact name">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">WHAT (Account)</label>
+          <select class="form-control" id="quickWhat">
+            <option value="">Select account...</option>
+            {% for group_name, accounts in coa_groups.items %}
+              <optgroup label="{{ group_name }}">
+                {% for account in accounts %}
+                  <option value="{{ account.id }}">{{ account.code }} - {{ account.name }}</option>
+                {% endfor %}
+              </optgroup>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">WHY (Description)</label>
+          <input type="text" class="form-control" id="quickWhy" placeholder="Enter description">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">&nbsp;</label>
+          <button type="button" class="btn btn-primary d-block w-100" onclick="applyToAll()">
+            Apply to All
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function applyToAll() {
+  const who = document.getElementById('quickWho').value.trim();
+  const what = document.getElementById('quickWhat').value;
+  const why = document.getElementById('quickWhy').value.trim();
+  
+  if (!who || !what) {
+    alert('Please enter WHO and WHAT fields');
+    return;
+  }
+  
+  if (confirm('Apply these values to all unmatched transactions?')) {
+    document.querySelectorAll('[data-transaction-id]').forEach(row => {
+      const whoInput = row.querySelector('.who-input');
+      const whatInput = row.querySelector('.what-input');
+      const whyInput = row.querySelector('.why-input');
+      
+      if (whoInput && !whoInput.value.trim()) whoInput.value = who;
+      if (whatInput && !whatInput.value.trim()) {
+        // Find the account name from the select option
+        const selectedOption = document.querySelector(`#quickWhat option[value="${what}"]`);
+        if (selectedOption) {
+          whatInput.value = selectedOption.textContent.split(' - ')[1] || selectedOption.textContent;
+        }
+      }
+      if (whyInput && !whyInput.value.trim()) whyInput.value = why;
+    });
+    
+    alert('✅ Values applied to all empty fields');
+  }
+}
+</script>

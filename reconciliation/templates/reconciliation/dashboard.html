@@ -444,6 +444,9 @@
                                                     <button class="btn btn-reconcile me-2" onclick="openAccountReconciliation('{{ account_data.account.id }}')">
                                                         <i class="bi bi-play-fill me-1"></i>{{ account_data.action_text }}
                                                     </button>
+                                                    <button class="btn btn-outline-primary me-2" onclick="openAccountReconciliationSimple('{{ account_data.account.id }}')">
+                                                        <i class="bi bi-lightning me-1"></i>Simple Mode
+                                                    </button>
                                                     {% if account_data.reconciled_count > 0 %}
                                                     <button class="btn btn-outline-warning btn-sm" 
                                                             onclick="restartReconciliation('{{ account_data.account.id }}', '{{ account_data.account.name }}', {{ account_data.reconciled_count }})"
@@ -556,6 +559,26 @@ function openAccountReconciliation(accountId) {
             // Redirect to the reconciliation process page
             window.location.href = `/reconciliation/account/${accountId}/`;
         }, 1500);
+    }
+}
+
+// Open simple reconciliation interface
+function openAccountReconciliationSimple(accountId) {
+    // Show progress/loading state
+    const button = document.querySelector(`[data-account="${accountId}"] .btn-outline-primary`);
+    if (button) {
+        const originalContent = button.innerHTML;
+        
+        button.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Loading...';
+        button.disabled = true;
+        
+        showToast('Starting Simple Mode', `Opening simple reconciliation for account ${accountId}`, 'info');
+        
+        // Simulate real process delay
+        setTimeout(() => {
+            // Redirect to the simple reconciliation interface
+            window.location.href = `/reconciliation/account/${accountId}/simple/`;
+        }, 1000);
     }
 }
 

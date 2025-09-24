@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Loan Calculations Test - {{ company.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-calculator-fill text-primary me-2"></i>
+                        Loan Payment Calculations
+                    </h1>
+                    <p class="text-muted mb-0">Test and validate loan payment allocations - {{ company.name }}</p>
+                </div>
+                <a href="{% url 'loan_reconciliation_bridge:setup_gl_configuration' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-gear-fill me-2"></i>GL Setup
+                </a>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-calculator me-2"></i>Test Payment Calculation
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="calculationForm">
+                                {% csrf_token %}
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="customerId" class="form-label">
+                                            <i class="bi bi-person-fill me-2"></i>Customer
+                                        </label>
+                                        <select class="form-control" id="customerId" name="customer_id">
+                                            <option value="">Select a customer...</option>
+                                            {% for customer in customers %}
+                                                <option value="{{ customer.id }}">
+                                                    {{ customer.first_name }} {{ customer.last_name }}
+                                                    {% if customer.customer_id %} ({{ customer.customer_id }}){% endif %}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label for="paymentAmount" class="form-label">
+                                            <i class="bi bi-currency-dollar me-2"></i>Payment Amount
+                                        </label>
+                                        <input type="number" class="form-control" id="paymentAmount" name="payment_amount" 
+                                               step="0.01" min="0.01" placeholder="1000.00">
+                                    </div>
+                                </div>
+
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-play-fill me-2"></i>Calculate
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="calculationResults" class="card mt-4" style="display: none;">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>Calculation Results
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="resultsContent">
+                                <!-- Results will be loaded here via JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-info-circle-fill me-2"></i>About Calculations
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p>This tool calculates how loan payments are allocated using real loan data.</p>
+                            
+                            <h6 class="mt-3">Allocation Priority:</h6>
+                            <ol class="small">
+                                <li><strong>Late Fees</strong> - Outstanding late fees first</li>
+                                <li><strong>Interest</strong> - Accrued interest based on loan terms</li>
+                                <li><strong>Principal</strong> - Remaining payment amount</li>
+                            </ol>
+                            
+                            <h6 class="mt-3">Data Sources:</h6>
+                            <ul class="small">
+                                <li>Real loan interest rates</li>
+                                <li>Actual outstanding balances</li>
+                                <li>Current late fee assessments</li>
+                                <li>Company-specific GL accounts</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    {% if customers %}
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-people-fill me-2"></i>Available Customers
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="small">
+                                {% for customer in customers %}
+                                    <div class="mb-2">
+                                        <strong>{{ customer.first_name }} {{ customer.last_name }}</strong>
+                                        {% if customer.customer_id %}
+                                            <br><span class="text-muted">ID: {{ customer.customer_id }}</span>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('calculationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const customerId = document.getElementById('customerId').value;
+    const paymentAmount = document.getElementById('paymentAmount').value;
+    
+    if (!customerId || !paymentAmount) {
+        alert('Please select a customer and enter a payment amount.');
+        return;
+    }
+    
+    // Show loading state
+    const resultsDiv = document.getElementById('calculationResults');
+    const resultsContent = document.getElementById('resultsContent');
+    resultsDiv.style.display = 'block';
+    resultsContent.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Calculating...</span>
+            </div>
+            <p class="mt-2">Calculating payment allocation...</p>
+        </div>
+    `;
+    
+    // Make API call
+    fetch('{% url "loan_reconciliation_bridge:calculate_loan_payment" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            customer_id: parseInt(customerId),
+            payment_amount: parseFloat(paymentAmount)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const breakdown = data.breakdown;
+            resultsContent.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="bi bi-person-check-fill me-2"></i>Customer Information</h6>
+                        <p><strong>Name:</strong> ${data.customer ? data.customer.name : 'N/A'}</p>
+                        ${data.loan_info ? `
+                            <p><strong>Loan:</strong> ${data.loan_info.loan_number}</p>
+                            <p><strong>Balance:</strong> $${data.loan_info.current_balance}</p>
+                            <p><strong>Rate:</strong> ${data.loan_info.interest_rate}%</p>
+                        ` : ''}
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="bi bi-currency-dollar me-2"></i>Payment Breakdown</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr>
+                                        <td><i class="bi bi-exclamation-triangle text-warning me-2"></i>Late Fees:</td>
+                                        <td class="text-end">$${breakdown.late_fee}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="bi bi-percent text-success me-2"></i>Interest:</td>
+                                        <td class="text-end">$${breakdown.interest}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="bi bi-bank2 text-primary me-2"></i>Principal:</td>
+                                        <td class="text-end">$${breakdown.principal}</td>
+                                    </tr>
+                                    <tr class="table-active">
+                                        <td><strong>Total:</strong></td>
+                                        <td class="text-end"><strong>$${breakdown.total}</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <small class="text-muted">Source: ${data.source || 'bridge_service'}</small>
+                    </div>
+                </div>
+            `;
+        } else {
+            resultsContent.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Calculation Failed:</strong> ${data.error}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        resultsContent.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>Error:</strong> Failed to calculate payment allocation.
+            </div>
+        `;
+        console.error('Calculation error:', error);
+    });
+});
+</script>
+{% endblock %}

@@ -9,6 +9,7 @@ urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('account/<str:account_id>/', views.account_reconciliation, name='account_reconciliation'),
     path('account/<int:account_id>/', views.account_reconciliation, name='account_detail'),
+    path('account/<int:account_id>/simple/', views.account_reconciliation_simple, name='account_reconciliation_simple'),
     
     # AJAX endpoints
     path('ajax/match-transaction/', ajax_views.match_transaction, name='match_transaction'),
@@ -19,6 +20,10 @@ urlpatterns = [
     path('ajax/restart-reconciliation/', ajax_views.restart_reconciliation, name='restart_reconciliation'),
     path('ajax/progress/<int:account_id>/', ajax_views.reconciliation_progress, name='reconciliation_progress'),
     path('ajax/unmatched/<int:account_id>/', ajax_views.get_unmatched_transactions, name='get_unmatched_transactions'),
+    
+    # Simple interface AJAX endpoints
+    path('ajax/simple-match-transaction/', ajax_views.simple_match_transaction, name='simple_match_transaction'),
+    path('ajax/simple-save-all/', ajax_views.simple_save_all_transactions, name='simple_save_all_transactions'),
     
     # Split transaction AJAX endpoints
     path('ajax/split-transaction/create/', ajax_split_views.create_split_transaction, name='create_split_transaction'),

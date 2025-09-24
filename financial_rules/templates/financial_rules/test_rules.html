@@ -1,0 +1,488 @@
+{% extends 'base.html' %}
+
+{% block title %}Test Financial Rules{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rule-card {
+        border-left: 4px solid #007bff;
+        transition: all 0.3s ease;
+    }
+    .rule-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .rule-active {
+        border-left-color: #28a745;
+    }
+    .rule-inactive {
+        border-left-color: #dc3545;
+    }
+    .condition-tag {
+        background-color: #e9ecef;
+        border-radius: 12px;
+        padding: 4px 12px;
+        font-size: 0.85em;
+        margin: 2px;
+    }
+    .action-tag {
+        background-color: #d4edda;
+        border-radius: 12px;
+        padding: 4px 12px;
+        font-size: 0.85em;
+        margin: 2px;
+    }
+    .test-results {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb Navigation -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{% url 'dashboard' %}" class="text-decoration-none">
+                <i class="bi bi-house me-1"></i>Dashboard
+            </a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'financial_rules:rule_list' %}" class="text-decoration-none">
+                Financial Rules
+            </a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Test Rules</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-vial me-2"></i>Test Financial Rules</h2>
+    <a href="{% url 'financial_rules:rule_list' %}" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left me-1"></i>Back to Rules
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Test Form -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-flask me-2"></i>Transaction Test</h5>
+            </div>
+            <div class="card-body">
+                <form id="testForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="amount" class="form-label">Transaction Amount *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="amount" name="amount" 
+                                           placeholder="0.00" step="0.01" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="company" class="form-label">Company *</label>
+                                <select class="form-select" id="company" name="company" required>
+                                    <option value="">Select Company</option>
+                                    {% for company in companies %}
+                                        <option value="{{ company.id }}">{{ company.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Transaction Description</label>
+                                <input type="text" class="form-control" id="description" name="description" 
+                                       placeholder="Enter transaction description...">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="contact" class="form-label">Contact/Payee</label>
+                                <input type="text" class="form-control" id="contact" name="contact" 
+                                       placeholder="Contact or payee name...">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="reference" class="form-label">Reference Number</label>
+                                <input type="text" class="form-control" id="reference" name="reference" 
+                                       placeholder="Reference or check number...">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Advanced Options -->
+                    <div class="accordion mb-3" id="advancedOptions">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" 
+                                        data-bs-toggle="collapse" data-bs-target="#advancedCollapse">
+                                    <i class="fas fa-cog me-2"></i>Advanced Options
+                                </button>
+                            </h2>
+                            <div id="advancedCollapse" class="accordion-collapse collapse" 
+                                 data-bs-parent="#advancedOptions">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="rule_type" class="form-label">Test Specific Rule Type</label>
+                                                <select class="form-select" id="rule_type" name="rule_type">
+                                                    <option value="">All Rule Types</option>
+                                                    <option value="loan_payment">Loan Payment Rules</option>
+                                                    <option value="contact_based">Contact-Based Rules</option>
+                                                    <option value="general">General Rules</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="transaction_date" class="form-label">Transaction Date</label>
+                                                <input type="date" class="form-control" id="transaction_date" 
+                                                       name="transaction_date" value="{{ today }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="debug_mode" name="debug_mode">
+                                            <label class="form-check-label" for="debug_mode">
+                                                Enable Debug Mode (Show rule evaluation details)
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="button" class="btn btn-primary btn-lg" onclick="runRuleTest()">
+                            <i class="fas fa-play me-2"></i>Run Rules Test
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Test Results -->
+        <div id="testResults" class="card" style="display: none;">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie me-2"></i>Test Results</h5>
+            </div>
+            <div class="card-body" id="testResultsContent">
+                <!-- Results will be populated here -->
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Active Rules Summary -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6><i class="fas fa-list me-2"></i>Active Rules</h6>
+            </div>
+            <div class="card-body">
+                {% if active_rules %}
+                    {% for rule in active_rules %}
+                        <div class="border-bottom pb-2 mb-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong class="small">{{ rule.name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ rule.company.name }}</small>
+                                </div>
+                                <span class="badge bg-secondary">{{ rule.priority }}</span>
+                            </div>
+                            <div class="mt-1">
+                                <span class="badge bg-primary badge-sm">{{ rule.rule_type|title }}</span>
+                                <small class="text-muted">{{ rule.conditions.count }} conditions</small>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-3">
+                        <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                        <p class="text-muted">No active rules found</p>
+                        <a href="{% url 'financial_rules:rule_create' %}" class="btn btn-sm btn-primary">
+                            Create Rule
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Quick Test Examples -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6><i class="fas fa-lightbulb me-2"></i>Quick Test Examples</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6 class="small">Loan Payment Test</h6>
+                    <button class="btn btn-sm btn-outline-primary w-100" 
+                            onclick="fillTestForm(1200, 'Loan payment to BigBoss LLC', 'BigBoss LLC', 'CHK-001')">
+                        Load Example
+                    </button>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="small">Contact-Based Test</h6>
+                    <button class="btn btn-sm btn-outline-info w-100" 
+                            onclick="fillTestForm(500, 'Payment to Rodriguez Construction', 'Rodriguez Construction', 'TXN-002')">
+                        Load Example
+                    </button>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="small">General Transaction</h6>
+                    <button class="btn btn-sm btn-outline-success w-100" 
+                            onclick="fillTestForm(150, 'Office supplies purchase', 'OfficeMax', 'INV-003')">
+                        Load Example
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test History -->
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-history me-2"></i>Recent Tests</h6>
+            </div>
+            <div class="card-body">
+                <div id="testHistory">
+                    <div class="text-center py-3">
+                        <i class="fas fa-clock fa-2x text-muted mb-2"></i>
+                        <p class="text-muted">No tests run yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let testHistory = [];
+    
+    function fillTestForm(amount, description, contact, reference) {
+        document.getElementById('amount').value = amount;
+        document.getElementById('description').value = description;
+        document.getElementById('contact').value = contact;
+        document.getElementById('reference').value = reference;
+        
+        // Set company to first available if not selected
+        const companySelect = document.getElementById('company');
+        if (!companySelect.value && companySelect.options.length > 1) {
+            companySelect.value = companySelect.options[1].value;
+        }
+    }
+    
+    function runRuleTest() {
+        const form = document.getElementById('testForm');
+        const formData = new FormData(form);
+        
+        const testData = {
+            amount: formData.get('amount'),
+            company: formData.get('company'),
+            description: formData.get('description'),
+            contact: formData.get('contact'),
+            reference: formData.get('reference'),
+            rule_type: formData.get('rule_type'),
+            transaction_date: formData.get('transaction_date'),
+            debug_mode: formData.get('debug_mode') ? true : false
+        };
+        
+        if (!testData.amount || !testData.company) {
+            alert('Please fill in required fields (Amount and Company)');
+            return;
+        }
+        
+        // Show loading state
+        const button = document.querySelector('button[onclick="runRuleTest()"]');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Running Test...';
+        button.disabled = true;
+        
+        fetch('/financial_rules/api/evaluate_rules/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(testData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            displayTestResults(data, testData);
+            addToTestHistory(testData, data);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('testResultsContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error running test. Please try again.
+                </div>
+            `;
+            document.getElementById('testResults').style.display = 'block';
+        })
+        .finally(() => {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        });
+    }
+    
+    function displayTestResults(results, testData) {
+        const resultsDiv = document.getElementById('testResultsContent');
+        
+        if (results.success && results.data.length > 0) {
+            let totalAllocated = 0;
+            const splitRows = results.data.map(split => {
+                totalAllocated += parseFloat(split.amount);
+                return `
+                    <tr>
+                        <td><strong>${split.account}</strong></td>
+                        <td class="text-end">$${parseFloat(split.amount).toFixed(2)}</td>
+                        <td><small class="text-muted">${split.rule || 'Default allocation'}</small></td>
+                        <td>
+                            ${split.rule_type ? `<span class="badge bg-info">${split.rule_type}</span>` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            const isFullyAllocated = Math.abs(totalAllocated - parseFloat(testData.amount)) < 0.01;
+            
+            resultsDiv.innerHTML = `
+                <div class="alert ${isFullyAllocated ? 'alert-success' : 'alert-warning'}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6><i class="fas fa-check-circle me-2"></i>Rules Applied Successfully</h6>
+                            <p class="mb-0">Found ${results.data.length} account splits</p>
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted">Original: $${parseFloat(testData.amount).toFixed(2)}</small><br>
+                            <strong>Allocated: $${totalAllocated.toFixed(2)}</strong>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Account</th>
+                                <th class="text-end">Amount</th>
+                                <th>Matched Rule</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${splitRows}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th>Total Allocated</th>
+                                <th class="text-end">$${totalAllocated.toFixed(2)}</th>
+                                <th colspan="2">
+                                    ${isFullyAllocated ? 
+                                        '<span class="text-success"><i class="fas fa-check me-1"></i>Fully Allocated</span>' : 
+                                        '<span class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Partial Allocation</span>'
+                                    }
+                                </th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                
+                ${testData.debug_mode && results.debug ? `
+                    <div class="mt-3">
+                        <h6>Debug Information</h6>
+                        <pre class="bg-light p-3 rounded"><code>${JSON.stringify(results.debug, null, 2)}</code></pre>
+                    </div>
+                ` : ''}
+            `;
+        } else {
+            resultsDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-2"></i>No Rules Matched</h6>
+                    <p>No financial rules matched this transaction. The transaction would use default allocation.</p>
+                    ${results.error ? `<p class="text-danger"><strong>Error:</strong> ${results.error}</p>` : ''}
+                </div>
+            `;
+        }
+        
+        document.getElementById('testResults').style.display = 'block';
+        document.getElementById('testResults').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    function addToTestHistory(testData, results) {
+        const historyItem = {
+            timestamp: new Date(),
+            amount: testData.amount,
+            description: testData.description,
+            success: results.success,
+            splits: results.data ? results.data.length : 0
+        };
+        
+        testHistory.unshift(historyItem);
+        testHistory = testHistory.slice(0, 5); // Keep only last 5 tests
+        
+        updateTestHistoryDisplay();
+    }
+    
+    function updateTestHistoryDisplay() {
+        const historyDiv = document.getElementById('testHistory');
+        
+        if (testHistory.length === 0) {
+            historyDiv.innerHTML = `
+                <div class="text-center py-3">
+                    <i class="fas fa-clock fa-2x text-muted mb-2"></i>
+                    <p class="text-muted">No tests run yet</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const historyItems = testHistory.map(item => `
+            <div class="border-bottom pb-2 mb-2">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <small class="text-muted">${item.timestamp.toLocaleTimeString()}</small>
+                        ${item.success ? 
+                            '<i class="fas fa-check text-success ms-1"></i>' : 
+                            '<i class="fas fa-times text-danger ms-1"></i>'
+                        }
+                    </div>
+                    <small class="text-muted">$${parseFloat(item.amount).toFixed(2)}</small>
+                </div>
+                <div class="small">
+                    ${item.description || 'No description'}
+                    ${item.success ? `<br><span class="text-success">${item.splits} splits</span>` : ''}
+                </div>
+            </div>
+        `).join('');
+        
+        historyDiv.innerHTML = historyItems;
+    }
+</script>
+{% endblock %}

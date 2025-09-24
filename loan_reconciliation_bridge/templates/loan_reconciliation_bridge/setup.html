@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Loan Payments Setup - {{ company.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-bank2 text-primary me-2"></i>
+                        Loan Payments Received Setup
+                    </h1>
+                    <p class="text-muted mb-0">Configure GL account for receiving loan payments - {{ company.name }}</p>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-gear-fill me-2"></i>Loan Payments Received Account
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if config and config.principal_account %}
+                                <div class="alert alert-success">
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+                                    Loan Payments Received account is configured: 
+                                    <strong>{{ config.principal_account.code }} - {{ config.principal_account.name }}</strong>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    No Loan Payments Received account configured. Please select an account below.
+                                </div>
+                            {% endif %}
+
+                            <form method="post" class="mt-4">
+                                {% csrf_token %}
+                                
+                                <div class="row">
+                                    <div class="col-md-8 mb-3">
+                                        <label for="{{ form.principal_account.id_for_label }}" class="form-label">
+                                            <i class="bi bi-bank2 text-primary me-2"></i>
+                                            <strong>Loan Payments Received Account</strong>
+                                        </label>
+                                        {{ form.principal_account }}
+                                        <div class="form-text">
+                                            This account will receive all loan payments during reconciliation. 
+                                            Recommended: <strong>1250 - Loan Payments Received</strong>
+                                        </div>
+                                        {% if form.principal_account.errors %}
+                                            <div class="text-danger">{{ form.principal_account.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-check-lg me-2"></i>Save Configuration
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-info-circle-fill me-2"></i>How It Works
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p>Configure the staging account that receives loan payments during bank reconciliation.</p>
+                            
+                            <h6 class="mt-3">Workflow:</h6>
+                            <ol class="small">
+                                <li><strong>Bank Transaction</strong> - Customer payment received</li>
+                                <li><strong>Reconciliation</strong> - Assign to Loan Payments Received</li>
+                                <li><strong>Loan Info</strong> - System shows customer loan details</li>
+                                <li><strong>Approval</strong> - Process loan payment allocation</li>
+                            </ol>
+                            
+                            <h6 class="mt-3">Benefits:</h6>
+                            <ul class="small">
+                                <li>Clean separation of received vs allocated</li>
+                                <li>Loan customer information display</li>
+                                <li>Approval workflow before allocation</li>
+                                <li>Complete audit trail</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    {% if config and config.principal_account %}
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-gear me-2"></i>Current Configuration
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="small">
+                                <div class="mb-2">
+                                    <strong>Loan Payments Received:</strong><br>
+                                    {{ config.principal_account.code }} - {{ config.principal_account.name }}
+                                </div>
+                                <div class="text-muted mt-3">
+                                    <small>Last updated: {{ config.updated_at|date:"M d, Y" }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

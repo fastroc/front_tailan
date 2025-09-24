@@ -68,10 +68,11 @@ def dashboard(request):
             return render(request, 'reconciliation/dashboard.html', context)
     
     # Get all bank accounts for this company from database
-    # Show all current asset accounts as potential bank accounts
+    # Show only accounts marked as bank accounts
     bank_accounts = Account.objects.filter(
         company=company,
-        account_type='CURRENT_ASSET'
+        is_bank_account=True,
+        is_active=True
     ).order_by('name')
     
     # Prepare real data for each account
@@ -260,19 +261,19 @@ def account_reconciliation(request, account_id):
     try:
         if isinstance(account_id, (int, str)) and str(account_id).isdigit():
             account_id = int(account_id)
-            # Show all current asset accounts
+            # Show only accounts marked as bank accounts
             account = get_object_or_404(
                 Account.objects.filter(
                     company=company,
-                    account_type='CURRENT_ASSET'
+                    is_bank_account=True
                 ), 
                 id=account_id
             )
         else:
-            # Handle string account identifiers by finding the account
+            # Map existing bank accounts only  
             bank_accounts = Account.objects.filter(
                 company=company,
-                account_type='CURRENT_ASSET'
+                is_bank_account=True
             )
             
             # Map common identifiers
@@ -671,3 +672,119 @@ def account_reconciliation(request, account_id):
     }
     
     return render(request, 'reconciliation/reconciliation_process.html', context)
+
+
+# @login_required  # Temporarily disabled for testing
+def account_reconciliation_simple(request, account_id):
+    """Simple, minimal reconciliation interface with core functionality only"""
+    
+    # Get company (reuse existing logic)
+    company_id = request.session.get('active_company_id')
+    if not company_id:
+        first_company = Company.objects.first()
+        if first_company:
+            company_id = first_company.id
+            request.session['active_company_id'] = company_id
+            company = first_company
+        else:
+            messages.error(request, "Please select a company first.")
+            return redirect('reconciliation:dashboard')
+    else:
+        try:
+            company = Company.objects.get(id=company_id)
+        except Company.DoesNotExist:
+            messages.error(request, "Company not found.")
+            return redirect('reconciliation:dashboard')
+    
+    # Get the account
+    try:
+        account = get_object_or_404(
+            Account.objects.filter(
+                company=company,
+                is_bank_account=True
+            ), 
+            id=account_id
+        )
+    except Account.DoesNotExist:
+        messages.error(request, "Bank account not found.")
+        return redirect('reconciliation:dashboard')
+    
+    # Import reconciliation service
+    from .reconciliation_service import ReconciliationService
+    
+    # Get unmatched transactions for this account  
+    unmatched_transactions = ReconciliationService.get_unmatched_transactions(account)
+    
+    # Convert to list to ensure template can iterate
+    transactions_list = list(unmatched_transactions)
+    
+    # Get reconciliation progress
+    progress = ReconciliationService.get_reconciliation_progress(account)
+    
+    # Get Chart of Accounts for dropdown - exclude only cash/bank accounts, include loans receivable
+    coa_accounts = Account.objects.filter(company=company).exclude(
+        account_type='Bank'  # Only exclude Bank accounts
+    ).exclude(
+        # Exclude specific cash accounts but keep loans receivable
+        code__in=['1001']  # Exclude Cash account specifically
+    ).order_by('code', 'name')
+    
+    # Group COA by account type for better UX
+    coa_groups = {}
+    for acc in coa_accounts:
+        account_type = acc.get_account_type_display() if hasattr(acc, 'get_account_type_display') else acc.account_type
+        if account_type not in coa_groups:
+            coa_groups[account_type] = []
+        coa_groups[account_type].append(acc)
+    
+    # Get loan customers for WHO dropdown
+    try:
+        from loans_core.models import LoanApplication
+        # Get customers from approved loan applications (status is lowercase!)
+        # First try current company, if no customers found, try all companies
+        loan_applications = LoanApplication.objects.filter(
+            status='approved'  # Fixed: lowercase status
+        ).select_related('customer', 'company').order_by('customer__first_name', 'customer__last_name')
+        
+        # Filter by current company first
+        company_applications = loan_applications.filter(company=company)
+        
+        # If no customers in current company, show all approved customers but mark their company
+        if not company_applications.exists():
+            loan_applications = loan_applications
+        else:
+            loan_applications = company_applications
+        
+        # Extract unique customers with their company info
+        loan_customers = []
+        seen_customers = set()
+        for app in loan_applications:
+            customer_key = f"{app.customer.first_name}_{app.customer.last_name}_{app.customer.email}"
+            if customer_key not in seen_customers:
+                # Add company info to customer for cross-company display
+                customer_with_company = {
+                    'customer': app.customer,
+                    'company': app.company,
+                    'is_same_company': app.company.id == company.id
+                }
+                loan_customers.append(customer_with_company)
+                seen_customers.add(customer_key)
+                
+    except ImportError:
+        # Fallback if loans module not available
+        loan_customers = []
+    
+    # Simple context - only essential data
+    context = {
+        'company': company,
+        'account': account,
+        'account_id': account_id,
+        'account_name': account.name,
+        'transactions': transactions_list,
+        'progress': progress,
+        'coa_groups': coa_groups,
+        'loan_customers': loan_customers,
+        'title': f'Bank Reconciliation - {account.name} (Simple)'
+    }
+    
+    return render(request, 'reconciliation/reconciliation_simple.html', context)

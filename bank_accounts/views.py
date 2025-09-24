@@ -38,11 +38,12 @@ def dashboard(request):
             'no_company': True
         })
     
-    # Show all current asset accounts as potential bank accounts
-    # This includes both accounts created through COA and bank_accounts interfaces
+    # Show only CURRENT_ASSET accounts that are specifically designated as bank accounts
+    # Not ALL current asset accounts - only the ones manually marked as bank accounts
     accounts = Account.objects.filter(
         company=company,
-        account_type='CURRENT_ASSET'
+        account_type='CURRENT_ASSET',
+        is_bank_account=True  # Only show accounts specifically marked as bank accounts
     ).order_by('code')
     
     # Add upload information for each account
@@ -141,6 +142,7 @@ def add_account(request):
                 name=name,
                 account_type='CURRENT_ASSET',  # Use proper account type instead of 'Bank'
                 code=code if code else _generate_auto_bank_code(company),
+                is_bank_account=True,  # Mark this as a bank account
                 created_by=request.user,
                 updated_by=request.user,
                 ytd_balance=0.00,
@@ -198,6 +200,59 @@ def _generate_auto_bank_code(company):
 
 
 @login_required
+def convert_account(request):
+    """Convert existing CURRENT_ASSET account to bank account"""
+    company_id = request.session.get('active_company_id')
+    if not company_id:
+        messages.error(request, "Please select a company first to convert accounts.")
+        return redirect('bank_accounts:dashboard')
+    
+    try:
+        company = Company.objects.get(id=company_id)
+    except Company.DoesNotExist:
+        messages.error(request, "Please select a company first to convert accounts.")
+        return redirect('bank_accounts:dashboard')
+    
+    if request.method == 'POST':
+        account_id = request.POST.get('account_id')
+        try:
+            account = Account.objects.get(
+                id=account_id,
+                company=company,
+                account_type='CURRENT_ASSET',
+                is_bank_account=False  # Must not already be a bank account
+            )
+            
+            # Convert to bank account
+            account.is_bank_account = True
+            account.updated_by = request.user
+            account.save()
+            
+            messages.success(request, f"Successfully converted '{account.name}' to a bank account!")
+            return redirect('bank_accounts:dashboard')
+            
+        except Account.DoesNotExist:
+            messages.error(request, "Account not found or cannot be converted.")
+        except Exception as e:
+            messages.error(request, f"Error converting account: {str(e)}")
+    
+    # Get CURRENT_ASSET accounts that are not already bank accounts
+    available_accounts = Account.objects.filter(
+        company=company,
+        account_type='CURRENT_ASSET',
+        is_bank_account=False,  # Not already a bank account
+        is_active=True
+    ).order_by('code')
+    
+    context = {
+        'company': company,
+        'available_accounts': available_accounts
+    }
+    
+    return render(request, 'bank_accounts/convert_account.html', context)
+
+
+@login_required
 def bank_statement(request, account_id):
     """Display bank statement lines similar to Xero format"""
     company_id = request.session.get('active_company_id')
@@ -216,7 +271,8 @@ def bank_statement(request, account_id):
         Account, 
         id=account_id, 
         company=company, 
-        account_type='CURRENT_ASSET'
+        account_type='CURRENT_ASSET',
+        is_bank_account=True  # Only allow bank accounts
     )
     
     # Get all transactions for this account, ordered by date (newest first)
@@ -311,12 +367,13 @@ def upload_transactions(request, account_id):
         messages.error(request, "Please select a company first.")
         return redirect('dashboard')
     
-    # Get account - remove restrictive name filter to allow all bank accounts
+    # Get account - only allow accounts specifically marked as bank accounts
     account = get_object_or_404(
         Account, 
         id=account_id, 
         company=company, 
-        account_type='CURRENT_ASSET'
+        account_type='CURRENT_ASSET',
+        is_bank_account=True  # Only allow bank accounts
     )
     
     if request.method == 'POST' and request.FILES.get('statement_file'):
@@ -524,12 +581,13 @@ def delete_upload(request, account_id, upload_id):
         return redirect('dashboard')
     
     try:
-        # Get account - remove restrictive name filter to allow all bank accounts
+        # Get account - only allow accounts specifically marked as bank accounts
         account = get_object_or_404(
             Account, 
             id=account_id, 
             company=company, 
-            account_type='CURRENT_ASSET'
+            account_type='CURRENT_ASSET',
+            is_bank_account=True  # Only allow bank accounts
         )
         uploaded_file = get_object_or_404(UploadedFile, id=upload_id, account=account)
         

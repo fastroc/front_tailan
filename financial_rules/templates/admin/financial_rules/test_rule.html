@@ -1,0 +1,228 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}Test Rule: {{ rule.name }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .test-container {
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+    }
+    .test-section {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .test-input {
+        width: 100%;
+        min-height: 200px;
+        font-family: monospace;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 10px;
+    }
+    .test-result {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    }
+    .result-success {
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+        color: #155724;
+    }
+    .result-error {
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+        color: #721c24;
+    }
+    .split-line {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px;
+        margin: 5px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .split-description {
+        font-weight: bold;
+        color: #333;
+    }
+    .split-account {
+        color: #666;
+        font-family: monospace;
+    }
+    .split-amount {
+        color: #28a745;
+        font-weight: bold;
+    }
+    .btn-test {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    .btn-test:hover {
+        background-color: #0056b3;
+    }
+    .rule-info {
+        background: #e9ecef;
+        border-radius: 4px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="test-container">
+    <h1>🧪 Test Rule: {{ rule.name }}</h1>
+    
+    <div class="rule-info">
+        <h3>Rule Information</h3>
+        <p><strong>Type:</strong> {{ rule.get_rule_type_display }}</p>
+        <p><strong>Company:</strong> {{ rule.company.name }}</p>
+        <p><strong>Priority:</strong> {{ rule.priority }}</p>
+        <p><strong>Active:</strong> {% if rule.is_active %}✅ Yes{% else %}❌ No{% endif %}</p>
+        {% if rule.description %}
+        <p><strong>Description:</strong> {{ rule.description }}</p>
+        {% endif %}
+        
+        <h4>Conditions ({{ rule.conditions.count }})</h4>
+        {% for condition in rule.conditions.all %}
+        <div class="split-line">
+            <span class="split-description">{{ condition.get_field_name_display }}</span>
+            <span class="split-account">{{ condition.get_operator_display }}</span>
+            <span class="split-amount">{{ condition.value }}</span>
+        </div>
+        {% empty %}
+        <p><em>No conditions defined (rule always matches)</em></p>
+        {% endfor %}
+        
+        <h4>Actions ({{ rule.actions.count }})</h4>
+        {% for action in rule.actions.all %}
+        <div class="split-line">
+            <span class="split-description">{{ action.description_template }}</span>
+            <span class="split-account">{{ action.account_code }}</span>
+            <span class="split-amount">{{ action.get_allocation_type_display }}: {{ action.value }}</span>
+        </div>
+        {% empty %}
+        <p><em>No actions defined</em></p>
+        {% endfor %}
+    </div>
+    
+    <div class="test-section">
+        <h3>🔧 Test Transaction Data</h3>
+        <p>Enter transaction data as JSON to test this rule:</p>
+        
+        <form id="testForm">
+            {% csrf_token %}
+            <textarea id="testData" class="test-input" placeholder="Enter test data as JSON...">{{ test_data_json }}</textarea>
+            <br><br>
+            <button type="submit" class="btn-test">🚀 Test Rule</button>
+        </form>
+        
+        <div id="testResult" class="test-result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>📖 Test Data Examples</h3>
+        <p>Here are some example test data formats you can use:</p>
+        
+        <h4>Loan Payment Test:</h4>
+        <pre>{
+  "customer_name": "Rodriguez Rodriguez",
+  "transaction_amount": 247.78,
+  "transaction_description": "Loan payment"
+}</pre>
+        
+        <h4>Contact-Based Test:</h4>
+        <pre>{
+  "customer_name": "ABC Corp",
+  "transaction_amount": 500.00,
+  "transaction_description": "Office supplies purchase"
+}</pre>
+        
+        <h4>Amount-Based Test:</h4>
+        <pre>{
+  "customer_name": "Any Customer",
+  "transaction_amount": 1500.00,
+  "transaction_description": "Large expense"
+}</pre>
+    </div>
+</div>
+
+<script>
+document.getElementById('testForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const testData = document.getElementById('testData').value;
+    const resultDiv = document.getElementById('testResult');
+    
+    // Show loading
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'test-result';
+    resultDiv.innerHTML = '⏳ Testing rule...';
+    
+    // Make AJAX request
+    fetch('', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: 'test_data=' + encodeURIComponent(testData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            resultDiv.className = 'test-result result-success';
+            let html = '<h4>✅ Rule Test Successful!</h4>';
+            
+            if (data.split_data && data.split_data.length > 0) {
+                html += '<h5>Generated Split Lines:</h5>';
+                data.split_data.forEach(line => {
+                    html += `
+                        <div class="split-line">
+                            <span class="split-description">${line.description}</span>
+                            <span class="split-account">${line.account_code}</span>
+                            <span class="split-amount">$${line.amount}</span>
+                        </div>
+                    `;
+                });
+                html += `<p><strong>Total Allocated:</strong> $${data.total_allocated}</p>`;
+            } else {
+                html += '<p>No split lines generated.</p>';
+            }
+            
+            resultDiv.innerHTML = html;
+        } else {
+            resultDiv.className = 'test-result result-error';
+            resultDiv.innerHTML = `
+                <h4>❌ Rule Test Failed</h4>
+                <p><strong>Error:</strong> ${data.error_message}</p>
+            `;
+        }
+    })
+    .catch(error => {
+        resultDiv.className = 'test-result result-error';
+        resultDiv.innerHTML = `
+            <h4>❌ Test Error</h4>
+            <p><strong>Error:</strong> ${error.message}</p>
+        `;
+    });
+});
+</script>
+{% endblock %}

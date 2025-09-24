@@ -1,0 +1,26 @@
+<!-- Progress Bar Component - Same style as original -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0">Reconciliation Progress</h6>
+          <span class="badge bg-primary">{{ progress.matched_transactions }}/{{ progress.total_transactions }} matched</span>
+        </div>
+        <div class="progress mb-2" style="height: 10px;">
+          <div class="progress-bar bg-success" 
+               role="progressbar" 
+               style="width: {{ progress.percentage }}%"
+               aria-valuenow="{{ progress.percentage }}" 
+               aria-valuemin="0" 
+               aria-valuemax="100">
+          </div>
+        </div>
+        <div class="d-flex justify-content-between">
+          <small class="text-muted">{{ progress.unmatched_transactions }} transactions remaining</small>
+          <small class="text-success fw-semibold">{{ progress.percentage|floatformat:1 }}% complete</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

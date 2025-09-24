@@ -45,10 +45,23 @@
             <p class="text-muted mb-0">Found {{ accounts.count }} accounts</p>
         </div>
         <div>
-            <a href="{% url 'coa:create_account' %}" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-2"></i>
-                Add Account
-            </a>
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-plus-circle me-2"></i>Add Accounts
+                </button>
+                <ul class="dropdown-menu">
+                    <li>
+                        <a class="dropdown-item" href="{% url 'coa:create_account' %}">
+                            <i class="bi bi-plus-circle me-2"></i>Single Account
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'coa:account_excel_upload' %}">
+                            <i class="fas fa-file-excel me-2 text-success"></i>Upload Excel File
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 

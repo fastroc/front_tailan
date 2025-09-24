@@ -325,6 +325,13 @@ class Account(BaseModel, UserTrackingModel):
         default=True, verbose_name="Is Active", help_text="Inactive accounts are hidden"
     )
 
+    # Bank account designation
+    is_bank_account = models.BooleanField(
+        default=False,
+        verbose_name="Is Bank Account",
+        help_text="Mark this CURRENT_ASSET account as a bank account for bank management features"
+    )
+
     # Hierarchy
     parent_account = models.ForeignKey(
         "self",

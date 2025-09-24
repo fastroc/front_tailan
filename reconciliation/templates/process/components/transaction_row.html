@@ -1,0 +1,154 @@
+<!-- Individual Transaction Row Component - Same style as original -->
+<tr class="transaction-row" data-transaction-id="{{ transaction.id }}">
+  <!-- Date Column -->
+  <td class="align-middle">
+    <div class="text-nowrap">
+      <small class="text-muted d-block">{{ transaction.date|date:"j M Y" }}</small>
+    </div>
+  </td>
+  
+  <!-- Description Column -->
+  <td class="align-middle">
+    <div>
+      <div class="fw-semibold">{{ transaction.description|truncatechars:50 }}</div>
+      {% if transaction.reference %}
+        <small class="text-muted">Ref: {{ transaction.reference }}</small>
+      {% endif %}
+    </div>
+  </td>
+  
+  <!-- Amount Column -->
+  <td class="align-middle text-end">
+    <span class="{% if transaction.amount >= 0 %}amount-pos{% else %}amount-neg{% endif %}">
+      {% if transaction.amount >= 0 %}+{% endif %}${{ transaction.amount|floatformat:2|intcomma }}
+    </span>
+  </td>
+  
+  <!-- WHO Column (Payee) -->
+  <td class="align-middle">
+    <div class="input-group input-group-sm">
+      <input type="text" 
+             class="form-control who-input hybrid-input" 
+             placeholder="Who?"
+             data-transaction-id="{{ transaction.id }}"
+             oninput="checkAutoSave({{ transaction.id }})"
+             style="border-right: none;">
+      <button class="btn btn-outline-secondary hybrid-dropdown-btn" 
+              type="button" 
+              onclick="showWhoDropdown(this, {{ transaction.id }})"
+              title="Browse contacts">
+        <i class="bi bi-chevron-down"></i>
+      </button>
+    </div>
+  </td>
+  
+  <!-- WHAT Column (Account) -->
+  <td class="align-middle">
+    <div class="input-group input-group-sm">
+      <input type="text" 
+             class="form-control what-input hybrid-input" 
+             placeholder="What account?"
+             list="accountSuggestions_{{ transaction.id }}"
+             data-transaction-id="{{ transaction.id }}"
+             oninput="checkAutoSave({{ transaction.id }})"
+             style="border-right: none;">
+      <datalist id="accountSuggestions_{{ transaction.id }}">
+        {% for group_name, accounts in coa_groups.items %}
+          {% for account in accounts %}
+            <option value="{{ account.name }}" data-id="{{ account.id }}">{{ account.code }} - {{ account.name }}</option>
+          {% endfor %}
+        {% endfor %}
+      </datalist>
+      <button class="btn btn-outline-secondary hybrid-dropdown-btn" 
+              type="button" 
+              title="Browse accounts">
+        <i class="bi bi-chevron-down"></i>
+      </button>
+    </div>
+  </td>
+  
+  <!-- WHY Column (Description) -->
+  <td class="align-middle">
+    <input type="text" 
+           class="form-control form-control-sm why-input" 
+           placeholder="Why?"
+           data-transaction-id="{{ transaction.id }}"
+           oninput="checkAutoSave({{ transaction.id }})">
+  </td>
+  
+  <!-- Action Column -->
+  <td class="align-middle text-center">
+    <button class="btn btn-success btn-sm" 
+            onclick="saveIndividualMatch({{ transaction.id }})"
+            title="Save this match">
+      <i class="bi bi-check"></i>
+    </button>
+  </td>
+</tr>
+
+<script>
+// Save individual transaction match
+function saveIndividualMatch(transactionId) {
+  const row = document.querySelector(`[data-transaction-id="${transactionId}"]`);
+  const whoInput = row.querySelector('.who-input');
+  const whatInput = row.querySelector('.what-input');
+  const whyInput = row.querySelector('.why-input');
+  
+  if (!whoInput.value.trim()) {
+    alert('Please enter WHO (payee)');
+    whoInput.focus();
+    return;
+  }
+  
+  if (!whatInput.value.trim()) {
+    alert('Please enter WHAT (account)');
+    whatInput.focus();
+    return;
+  }
+  
+  const button = event.target.closest('button');
+  button.disabled = true;
+  button.innerHTML = '<i class="spinner-border spinner-border-sm"></i>';
+  
+  // Submit individual match
+  fetch('{% url "reconciliation:save_individual_match" %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({
+      transaction_id: transactionId,
+      who: whoInput.value.trim(),
+      what: whatInput.value.trim(),
+      why: whyInput.value.trim()
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Mark row as matched
+      row.classList.add('matched');
+      button.innerHTML = '<i class="bi bi-check-circle text-success"></i>';
+      button.disabled = true;
+      
+      // Show success message
+      const successBadge = document.createElement('span');
+      successBadge.className = 'badge bg-success ms-2';
+      successBadge.textContent = 'Matched';
+      row.querySelector('td:first-child').appendChild(successBadge);
+      
+    } else {
+      alert('❌ Error: ' + data.error);
+      button.disabled = false;
+      button.innerHTML = '<i class="bi bi-check"></i>';
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('❌ Network error occurred');
+    button.disabled = false;
+    button.innerHTML = '<i class="bi bi-check"></i>';
+  });
+}
+</script>

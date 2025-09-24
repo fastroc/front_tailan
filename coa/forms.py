@@ -239,4 +239,44 @@ class AccountForm(forms.ModelForm):
                 if not query.exists():
                     return suggested_code
         return f"{base_code}_NEW"
-        return f"{base_code}_NEW"
+
+
+class AccountExcelUploadForm(forms.Form):
+    """Form for uploading Excel files with Chart of Accounts data."""
+    
+    excel_file = forms.FileField(
+        label="Excel File",
+        help_text="Upload an Excel file (.xlsx) with columns: Code, Name, Type, Tax Rate",
+        widget=forms.FileInput(
+            attrs={
+                "class": "form-control",
+                "accept": ".xlsx,.xls",
+                "id": "excel-file-input"
+            }
+        )
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.company = kwargs.pop('company', None)
+        super().__init__(*args, **kwargs)
+    
+    def clean_excel_file(self):
+        """Validate the uploaded Excel file."""
+        excel_file = self.cleaned_data.get('excel_file')
+        
+        if not excel_file:
+            raise forms.ValidationError("Please select an Excel file to upload.")
+        
+        # Check file extension
+        if not excel_file.name.lower().endswith(('.xlsx', '.xls')):
+            raise forms.ValidationError(
+                "Please upload a valid Excel file (.xlsx or .xls format only)."
+            )
+        
+        # Check file size (max 5MB)
+        if excel_file.size > 5 * 1024 * 1024:
+            raise forms.ValidationError(
+                "File size is too large. Please upload a file smaller than 5MB."
+            )
+        
+        return excel_file

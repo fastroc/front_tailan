@@ -1,6 +1,59 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_head %}
+<!-- Critical: Load global functions immediately -->
+<script>
+// Define WHO dropdown function globally and immediately  
+window.showMainWhoDropdown = function(button, transactionId) {
+    console.log('🎯 WHO dropdown clicked for transaction:', transactionId);
+    
+    // Remove existing dropdowns
+    document.querySelectorAll('.temp-who-dropdown, .temp-dropdown').forEach(d => d.remove());
+    
+    // Create dropdown
+    const dropdown = document.createElement('div');
+    dropdown.className = 'temp-who-dropdown position-absolute bg-white border rounded shadow';
+    dropdown.style.cssText = 'z-index: 9999; top: 100%; left: 0; min-width: 250px; max-height: 300px; overflow-y: auto; margin-top: 2px;';
+    
+    const customers = ['Richard Rodriguez', 'Joseph Johnson', 'David Anderson', 'David Johnson', 'Mary Jackson'];
+    
+    dropdown.innerHTML = `
+        <div class="p-2 border-bottom bg-light fw-bold">Loan Customers</div>
+        ${customers.map(name => `
+            <div class="p-2" style="cursor: pointer;" 
+                 onmouseover="this.style.background='#f8f9fa'" 
+                 onmouseout="this.style.background='white'"
+                 onclick="selectWhoCustomer_main('${name}', ${transactionId})">${name}</div>
+        `).join('')}
+    `;
+    
+    // Position dropdown
+    const container = button.parentElement;
+    container.style.position = 'relative';
+    container.appendChild(dropdown);
+    
+    return false;
+};
+
+window.selectWhoCustomer_main = function(customerName, transactionId) {
+    console.log('✅ Selected customer:', customerName, 'for transaction:', transactionId);
+    
+    // Find and populate WHO input
+    const whoInput = document.querySelector(`[data-transaction-id="${transactionId}"] .hybrid-input`);
+    if (whoInput) {
+        whoInput.value = customerName;
+        console.log('✅ Set WHO input to:', customerName);
+    }
+    
+    // Remove dropdown
+    document.querySelectorAll('.temp-who-dropdown, .temp-dropdown').forEach(d => d.remove());
+};
+
+console.log('✅ WHO dropdown functions defined at page load');
+</script>
+{% endblock %}
+
 {% block title %}{{ title|default:"Bank Reconciliation" }}{% endblock %}
 
 {% block extra_css %}
@@ -528,7 +581,6 @@
   ];
 </script>
 
-<script>
   // ——— Balances diff badge ———
   function updateDiffBadge() {
     const s = parseFloat((document.getElementById('statementBalance')?.textContent||'0').replace(/[,\s$]/g,'')) || 0;
@@ -734,7 +786,7 @@
       description: '',
       amount: '0.00',
       payee: '',
-      date: '',
+      date: new Date().toISOString().split('T')[0], // Default to today
       reference: ''
     };
     
@@ -749,7 +801,10 @@
       const whyInput = transactionElement.querySelector(`input[name="why_${transactionId}"]`);
       
       if (descElement) transactionData.description = descElement.textContent.trim() || 'Split Transaction';
-      if (amountElement) transactionData.amount = amountElement.textContent.replace(/[+\-$,]/g, '').trim();
+      if (amountElement) {
+        const amountText = amountElement.textContent.replace(/[+\-$,]/g, '').trim();
+        transactionData.amount = amountText || '0.00';
+      }
       if (dateElement) {
         // Extract date from "8 Sep 2024" format
         const dateText = dateElement.textContent.trim();
@@ -771,12 +826,30 @@
       if (whyInput) transactionData.description = whyInput.value || transactionData.description;
     }
     
+    // Ensure all fields have valid values
+    transactionData.description = transactionData.description || 'Split Transaction';
+    transactionData.amount = transactionData.amount || '0.00';
+    transactionData.payee = transactionData.payee || '';
+    transactionData.reference = transactionData.reference || '';
+    
+    console.log('Transaction data prepared:', transactionData);
+    
     // Show the split transaction modal
     showSplitTransactionModal(transactionData);
   }
 
   // Show Split Transaction Modal (Prototype Only - No Functionality)
   function showSplitTransactionModal(transactionData) {
+    // Sanitize and format data for display
+    const sanitizedData = {
+      id: transactionData.id || 0,
+      description: (transactionData.description || 'Split Transaction').replace(/"/g, '&quot;'),
+      amount: parseFloat(transactionData.amount || 0).toFixed(2),
+      payee: (transactionData.payee || '').replace(/"/g, '&quot;'),
+      date: transactionData.date || new Date().toISOString().split('T')[0],
+      reference: (transactionData.reference || '').replace(/"/g, '&quot;')
+    };
+    
     // Create modal backdrop
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop fade show';
@@ -809,30 +882,30 @@
               <div class="alert alert-info mb-4">
                 <div class="row">
                   <div class="col-md-8">
-                    <strong>Transaction:</strong> ${transactionData.description}<br>
+                    <strong>Transaction:</strong> ${sanitizedData.description}<br>
                     <small class="text-muted">Split this transaction into multiple GL codes with proper accounting allocation</small>
                   </div>
                   <div class="col-md-4 text-end">
-                    <div class="fs-5 fw-bold text-primary" id="originalAmount">$${transactionData.amount}</div>
+                    <div class="fs-5 fw-bold text-primary" id="originalAmount">$${sanitizedData.amount}</div>
                   </div>
                 </div>
                 <!-- Hidden transaction ID for form submission -->
-                <input type="hidden" id="transactionId" value="${transactionData.id}">
+                <input type="hidden" id="transactionId" value="${sanitizedData.id}">
               </div>
 
               <!-- Header fields -->
               <div class="row mb-4">
                 <div class="col-md-4">
                   <label class="form-label">Date:</label>
-                  <input type="date" class="form-control" value="${transactionData.date || new Date().toISOString().split('T')[0]}" readonly>
+                  <input type="date" class="form-control" value="${sanitizedData.date}" readonly>
                 </div>
                 <div class="col-md-4">
                   <label class="form-label"><i class="bi bi-person me-1"></i>Who (Payee):</label>
-                  <input type="text" class="form-control who-input" value="${transactionData.payee || ''}" placeholder="e.g., XYZ Corp">
+                  <input type="text" class="form-control who-input" value="${sanitizedData.payee}" placeholder="e.g., XYZ Corp">
                 </div>
                 <div class="col-md-4">
                   <label class="form-label"><i class="bi bi-chat-text me-1"></i>Why (Description):</label>
-                  <input type="text" class="form-control" id="splitDescription" value="${transactionData.description || ''}" placeholder="Enter description for this split transaction">
+                  <input type="text" class="form-control" id="splitDescription" value="${sanitizedData.description}" placeholder="Enter description for this split transaction">
                 </div>
               </div>
 
@@ -1584,7 +1657,8 @@
   }
 
   // Close all open dropdowns
-  function closeAllDropdowns() {
+  // Close all dropdowns - make globally available
+  window.closeAllDropdowns = function() {
     document.querySelectorAll('.hybrid-dropdown').forEach(dropdown => {
       dropdown.remove();
     });
@@ -1818,11 +1892,8 @@
             detectLoanPayment(parseInt(transactionId));
           }
           
-          // NEW: Auto-trigger split transaction modal for loan payments when typing
-          setTimeout(() => {
-            console.log('🏦 Auto-triggering loan payment split for typed customer:', value);
-            triggerLoanPaymentSplitTransaction(transactionId, value);
-          }, 500); // Slightly longer delay for typed input
+          // NEW: Auto-trigger split transaction modal for loan payments when typing - REMOVED
+          // Auto-split functionality removed per user request
           
         } else {
           hideLoanPaymentIndicator(transactionId);
@@ -1834,12 +1905,8 @@
       hiddenInput.value = '';
       hideLoanPaymentIndicator(transactionId);
       
-      // NEW: Check if typed value might be a loan customer (fuzzy matching)
-      if (value.trim().length > 2) {
-        setTimeout(() => {
-          checkIfPotentialLoanCustomer(transactionId, value.trim());
-        }, 800); // Longer delay for fuzzy matching
-      }
+      // Auto-trigger functionality removed per user request
+      // Fuzzy matching for potential loan customers disabled
     }
     
     // Simple suggestion logic for fuzzy matching
@@ -1851,15 +1918,8 @@
     }
   }
 
-  // Show main who dropdown
-  function showMainWhoDropdown(button, transactionId) {
-    closeAllDropdowns();
-    
-    const inputGroup = button.parentElement;
-    const input = inputGroup.querySelector('.hybrid-input');
-
-    const dropdown = document.createElement('div');
-    dropdown.className = 'hybrid-dropdown main-who-dropdown';
+  // Select main who (contact/customer)
+  // Select main WHO contact - make globally available
 
     let dropdownHTML = '';
     
@@ -1877,6 +1937,32 @@
               <div class="text-end">
                 <span class="badge bg-info">Loan Customer</span>
                 ${customer.loan_info ? `<small class="text-muted d-block">${customer.loan_info}</small>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    } else {
+      // Show sample loan customers for testing
+      dropdownHTML += `<div class="category-header">Loan Customers (Sample)</div>`;
+      const sampleCustomers = [
+        'Richard Rodriguez',
+        'Joseph Johnson', 
+        'David Anderson',
+        'David Johnson',
+        'Mary Jackson'
+      ];
+      
+      sampleCustomers.forEach(customerName => {
+        dropdownHTML += `
+          <div class="dropdown-item" onclick="selectMainWho('${customerName}', '', ${transactionId}, 'loan_customer', '')">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="d-flex flex-column">
+                <span class="fw-semibold text-primary">${customerName}</span>
+                <small class="text-muted">Sample loan customer</small>
+              </div>
+              <div class="text-end">
+                <span class="badge bg-info">Loan Customer</span>
               </div>
             </div>
           </div>
@@ -1919,7 +2005,8 @@
   }
 
   // Select main who (contact/customer)
-  function selectMainWho(contactText, contactId, transactionId, contactType, loanInfo) {
+  // Select main WHO contact - make globally available
+  window.selectMainWho = function(contactText, contactId, transactionId, contactType, loanInfo) {
     const input = document.querySelector(`input[name="who_text_${transactionId}"]`);
     const hiddenInput = document.getElementById(`who_hidden_${transactionId}`);
     
@@ -1936,10 +2023,8 @@
         detectLoanPayment(parseInt(transactionId));
       }
       
-      // NEW: Auto-trigger split transaction modal for loan payments
-      setTimeout(() => {
-        triggerLoanPaymentSplitTransaction(transactionId, contactText);
-      }, 300); // Small delay to ensure UI updates complete
+      // NEW: Auto-trigger split transaction modal for loan payments - REMOVED
+      // Auto-split functionality removed per user request
       
     } else {
       hideLoanPaymentIndicator(transactionId);
@@ -3151,14 +3236,13 @@
 
   // Auto-detect loan payments on page load - DISABLED for now
   document.addEventListener('DOMContentLoaded', function() {
-    console.log('Loan detection auto-run disabled. Detection will run when users type in WHO field.');
-    // Auto-detection disabled to prevent 500 errors on non-existent transaction IDs
-    // Detection will be triggered when users type in the WHO field instead
+    console.log('Auto-split functionality removed per user request.');
+    // All auto-detection and auto-split functionality has been removed
   });
 
   // Show split transaction modal with pre-populated loan payment data
   function showLoanSplitTransactionModal(transactionData, breakdown) {
-    console.log('🎯 showLoanSplitTransactionModal called with:', transactionData, breakdown);
+    console.log('🎯 showLoanInfoApprovalModal called with:', transactionData, breakdown);
     
     // Close any existing modals
     closeSplitModal();
@@ -3167,201 +3251,132 @@
     const backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop fade show';
     backdrop.style.zIndex = '1040';
-    backdrop.id = 'loanSplitBackdrop';
+    backdrop.id = 'loanApprovalBackdrop';
     
     // Create modal
     const modal = document.createElement('div');
     modal.className = 'modal fade show';
     modal.style.display = 'block';
     modal.style.zIndex = '1050';
-    modal.id = 'loanSplitModal';
+    modal.id = 'loanApprovalModal';
     
-    // Prepare split lines from breakdown
-    let splitLinesHTML = '';
-    if (breakdown.payment_breakdown && breakdown.payment_breakdown.length > 0) {
-      console.log('💰 Building split lines from payment_breakdown:', breakdown.payment_breakdown);
-      
-      breakdown.payment_breakdown.forEach((line, index) => {
-        const accountName = `${line.account_code} — ${line.account_name}`;
-        const amount = parseFloat(line.amount || 0);
-        
-        splitLinesHTML += `
-          <tr>
-            <td>
-              <input type="text" class="form-control" value="${line.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}" placeholder="Description">
-            </td>
-            <td>
-              <select class="form-control account-select" data-account-code="${line.account_code}">
-                <option value="${line.account_code}" selected>${accountName}</option>
-              </select>
-            </td>
-            <td>
-              <select class="form-control">
-                <option value="no_gst" selected>No GST</option>
-                <option value="gst_10">GST 10%</option>
-                <option value="gst_free">GST Free</option>
-              </select>
-            </td>
-            <td>
-              <input type="number" class="form-control amount-input text-end" 
-                     value="${amount.toFixed(2)}" 
-                     step="0.01" 
-                     placeholder="0.00"
-                     onchange="updateSplitTotal()">
-            </td>
-            <td>
-              <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSplitLine(this)">
-                <i class="bi bi-trash"></i>
-              </button>
-            </td>
-          </tr>
-        `;
-      });
-    } else {
-      console.warn('⚠️ No payment_breakdown found in breakdown object');
-      // Add default empty line
-      splitLinesHTML = `
-        <tr>
-          <td>
-            <input type="text" class="form-control" placeholder="Description">
-          </td>
-          <td>
-            <select class="form-control account-select">
-              <option value="">Select Account...</option>
-            </select>
-          </td>
-          <td>
-            <select class="form-control">
-              <option value="no_gst">No GST</option>
-              <option value="gst_10">GST 10%</option>
-              <option value="gst_free">GST Free</option>
-            </select>
-          </td>
-          <td>
-            <input type="number" class="form-control amount-input text-end" 
-                   value="0.00" 
-                   step="0.01" 
-                   placeholder="0.00"
-                   onchange="updateSplitTotal()">
-          </td>
-          <td>
-            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSplitLine(this)">
-              <i class="bi bi-trash"></i>
-            </button>
-          </td>
-        </tr>
-      `;
-    }
+    // Extract loan information from breakdown
+    const customer = breakdown.customer || {};
+    const paymentBreakdown = breakdown.payment_breakdown || [];
     
-    // Build modal HTML
+    // Calculate payment totals
+    let principalAmount = 0, interestAmount = 0, lateFeeAmount = 0;
+    paymentBreakdown.forEach(line => {
+      const amount = parseFloat(line.amount || 0);
+      if (line.type === 'principal_payment') principalAmount += amount;
+      if (line.type === 'interest_payment') interestAmount += amount;
+      if (line.type === 'late_fee_payment') lateFeeAmount += amount;
+    });
+    
+    // Build modal HTML - Loan Information + Approval Workflow
     modal.innerHTML = `
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <!-- Modal Header -->
-          <div class="modal-header bg-primary text-white">
-            <div>
-              <h5 class="modal-title mb-0">🏦 Loan Payment Split Transaction</h5>
+          <div class="modal-header bg-info text-white">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-info-circle me-2" style="font-size: 1.2rem;"></i>
+              <h5 class="modal-title mb-0">🏦 Loan Payment Information</h5>
             </div>
-            <button type="button" class="btn-close btn-close-white" onclick="closeLoanSplitModal()"></button>
+            <button type="button" class="btn-close btn-close-white" onclick="closeLoanApprovalModal()"></button>
           </div>
 
           <!-- Modal Body -->
           <div class="modal-body">
             <div class="container-fluid">
-              <!-- Loan Payment Info Header -->
-              <div class="alert alert-success mb-4">
-                <div class="row">
-                  <div class="col-md-8">
-                    <strong>🏦 Loan Payment for ${breakdown.customer.name}</strong><br>
-                    <small class="text-muted">Automatically allocated according to loan payment rules (Late Fees → Interest → Principal)</small>
+              
+              <!-- Payment Summary Card -->
+              <div class="card border-primary mb-4">
+                <div class="card-header bg-primary text-white">
+                  <h6 class="mb-0"><i class="bi bi-cash-coin me-2"></i>Payment Summary</h6>
+                </div>
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-md-6">
+                      <p><strong>Customer:</strong> ${customer.name || 'Unknown'}</p>
+                      <p><strong>Payment Date:</strong> ${transactionData.date || new Date().toISOString().split('T')[0]}</p>
+                      <p><strong>Payment Amount:</strong> <span class="text-success fw-bold fs-5">$${transactionData.amount.toFixed(2)}</span></p>
+                    </div>
+                    <div class="col-md-6">
+                      <p><strong>Description:</strong> Loan Payment</p>
+                      <p><strong>Transaction Reference:</strong> ${transactionData.reference || 'N/A'}</p>
+                    </div>
                   </div>
-                  <div class="col-md-4 text-end">
-                    <div class="fs-5 fw-bold text-success">$${transactionData.amount.toFixed(2)}</div>
-                    <small class="text-muted">Total Payment Amount</small>
+                </div>
+              </div>
+
+              <!-- Loan Allocation Breakdown -->
+              <div class="card border-success mb-4">
+                <div class="card-header bg-success text-white">
+                  <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Payment Allocation Breakdown</h6>
+                </div>
+                <div class="card-body">
+                  <div class="row text-center">
+                    <div class="col-md-4">
+                      <div class="border rounded p-3 h-100">
+                        <div class="text-primary fs-4 fw-bold">$${lateFeeAmount.toFixed(2)}</div>
+                        <div class="text-muted">Late Fees</div>
+                        <small class="text-muted">Priority 1</small>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="border rounded p-3 h-100">
+                        <div class="text-warning fs-4 fw-bold">$${interestAmount.toFixed(2)}</div>
+                        <div class="text-muted">Interest</div>
+                        <small class="text-muted">Priority 2</small>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="border rounded p-3 h-100">
+                        <div class="text-success fs-4 fw-bold">$${principalAmount.toFixed(2)}</div>
+                        <div class="text-muted">Principal</div>
+                        <small class="text-muted">Priority 3</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-3 text-center">
+                    <small class="text-muted">
+                      <i class="bi bi-info-circle me-1"></i>
+                      Payment automatically allocated according to loan payment rules (Late Fees → Interest → Principal)
+                    </small>
                   </div>
                 </div>
-                <input type="hidden" id="loanTransactionId" value="${transactionData.id}">
               </div>
 
-              <!-- Header fields -->
-              <div class="row mb-4">
-                <div class="col-md-4">
-                  <label class="form-label">Date:</label>
-                  <input type="date" class="form-control" value="${transactionData.date || new Date().toISOString().split('T')[0]}" readonly>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label"><i class="bi bi-person me-1"></i>Customer:</label>
-                  <input type="text" class="form-control" value="${breakdown.customer.name}" readonly>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label"><i class="bi bi-chat-text me-1"></i>Description:</label>
-                  <input type="text" class="form-control" value="Loan Payment" readonly>
-                </div>
+              <!-- Verification Section -->
+              <div class="alert alert-warning">
+                <h6><i class="bi bi-exclamation-triangle me-2"></i>Please Verify</h6>
+                <p class="mb-2">Please verify this is the correct loan payment before processing:</p>
+                <ul class="mb-0">
+                  <li>Customer name matches the loan account</li>
+                  <li>Payment amount is correct</li>
+                  <li>Payment allocation looks reasonable</li>
+                </ul>
               </div>
 
-              <!-- Split Lines Table -->
-              <div class="table-responsive">
-                <table class="table table-bordered align-middle" id="loanSplitLinesTable">
-                  <thead class="table-light">
-                    <tr>
-                      <th style="min-width:200px">Description</th>
-                      <th style="min-width:250px">Account</th>
-                      <th style="min-width:120px">Tax Rate</th>
-                      <th style="min-width:120px" class="text-end">Amount</th>
-                      <th style="width:50px"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="loanSplitLineBody">
-                    ${splitLinesHTML}
-                  </tbody>
-                  <tfoot>
-                    <tr class="table-secondary">
-                      <td colspan="3" class="text-end fw-semibold">Split Total:</td>
-                      <td class="text-end fw-semibold" id="loanSplitTotalAmount">$${transactionData.amount.toFixed(2)}</td>
-                      <td></td>
-                    </tr>
-                    <tr id="loanBalanceValidationRow" class="border-top-0">
-                      <td colspan="3" class="text-end">
-                        <div class="d-flex justify-content-end align-items-center gap-3">
-                          <div>
-                            <small class="text-muted">Original Amount:</small>
-                            <span class="fw-semibold">$${transactionData.amount.toFixed(2)}</span>
-                          </div>
-                          <div>
-                            <small class="text-muted">Difference:</small>
-                            <span class="fw-semibold" id="loanBalanceDifference">$0.00</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td class="text-end">
-                        <span class="badge bg-success" id="loanBalanceStatus">
-                          <i class="bi bi-check-circle"></i> Balanced
-                        </span>
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-
-              <div class="text-center mt-3">
-                <div class="alert alert-info">
-                  <i class="bi bi-info-circle"></i> <strong>Payment Allocation:</strong> This transaction has been automatically split according to loan payment rules.
-                </div>
-              </div>
+              <!-- Hidden transaction data -->
+              <input type="hidden" id="loanTransactionId" value="${transactionData.id}">
+              <input type="hidden" id="loanBreakdownData" value='${JSON.stringify(breakdown)}'>
             </div>
           </div>
 
           <!-- Modal Footer -->
           <div class="modal-footer">
             <div class="me-auto">
-              <span class="badge bg-success">Loan Payment Ready</span>
-              <small class="text-muted ms-2">Split allocation completed</small>
+              <span class="badge bg-info">Ready for Processing</span>
+              <small class="text-muted ms-2">Payment breakdown calculated</small>
             </div>
-            <button type="button" class="btn btn-success" onclick="saveLoanSplitTransaction()">
-              <i class="bi bi-check me-1"></i>Process Loan Payment
+            <button type="button" class="btn btn-success btn-lg" onclick="processLoanPayment()">
+              <i class="bi bi-check-circle me-2"></i>Process Loan Payment
             </button>
-            <button type="button" class="btn btn-secondary" onclick="closeLoanSplitModal()">Cancel</button>
+            <button type="button" class="btn btn-secondary" onclick="closeLoanApprovalModal()">
+              <i class="bi bi-x-circle me-2"></i>Cancel
+            </button>
           </div>
         </div>
       </div>
@@ -3371,43 +3386,76 @@
     document.body.appendChild(backdrop);
     document.body.appendChild(modal);
     
-    console.log('✅ Loan split modal created and displayed');
-    
-    // Update split total after modal is displayed
-    setTimeout(() => {
-      updateLoanSplitTotal();
-    }, 100);
+    console.log('✅ Loan approval modal created and displayed');
   }
 
-  // Close loan split modal
-  function closeLoanSplitModal() {
-    const modal = document.getElementById('loanSplitModal');
-    const backdrop = document.getElementById('loanSplitBackdrop');
+  // Close loan approval modal
+  function closeLoanApprovalModal() {
+    const modal = document.getElementById('loanApprovalModal');
+    const backdrop = document.getElementById('loanApprovalBackdrop');
     if (modal) modal.remove();
     if (backdrop) backdrop.remove();
   }
 
-  // Update loan split total
-  function updateLoanSplitTotal() {
-    const amountInputs = document.querySelectorAll('#loanSplitLineBody .amount-input');
-    let total = 0;
+  // Process loan payment - this triggers the Phase 3 automatic Payment creation
+  function processLoanPayment() {
+    const transactionId = document.getElementById('loanTransactionId').value;
+    const breakdownData = JSON.parse(document.getElementById('loanBreakdownData').value);
     
-    amountInputs.forEach(input => {
-      const value = parseFloat(input.value) || 0;
-      total += value;
+    console.log('🎯 Processing loan payment for transaction:', transactionId);
+    console.log('💰 Using breakdown data:', breakdownData);
+    
+    // Show processing indicator
+    const processButton = document.querySelector('button[onclick="processLoanPayment()"]');
+    const originalText = processButton.innerHTML;
+    processButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processing...';
+    processButton.disabled = true;
+    
+    // Call the existing reconciliation endpoint which will trigger Phase 3 Payment creation
+    fetch('/reconciliation/reconcile/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({
+        transaction_id: transactionId,
+        reconcile_action: 'loan_payment',
+        breakdown_data: breakdownData
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('✅ Loan payment processing response:', data);
+      
+      if (data.success) {
+        // Close modal
+        closeLoanApprovalModal();
+        
+        // Show success message
+        showAlert('🎉 Loan Payment Processed Successfully!\n\nPayment record has been created and the transaction has been reconciled.', 'success');
+        
+        // Refresh the reconciliation view
+        location.reload();
+      } else {
+        // Restore button
+        processButton.innerHTML = originalText;
+        processButton.disabled = false;
+        
+        // Show error
+        showAlert('❌ Error Processing Loan Payment\n\n' + (data.error || 'An unknown error occurred'), 'error');
+      }
+    })
+    .catch(error => {
+      console.error('❌ Error processing loan payment:', error);
+      
+      // Restore button
+      processButton.innerHTML = originalText;
+      processButton.disabled = false;
+      
+      showAlert('❌ Network Error\n\nFailed to process loan payment. Please try again.', 'error');
     });
-    
-    const totalElement = document.getElementById('loanSplitTotalAmount');
-    const differenceElement = document.getElementById('loanBalanceDifference');
-    const statusElement = document.getElementById('loanBalanceStatus');
-    
-    if (totalElement) {
-      totalElement.textContent = `$${total.toFixed(2)}`;
-    }
-    
-    // Calculate difference
-    const originalAmount = parseFloat(document.getElementById('loanTransactionId').value) || 0;
-    const transactionRow = document.querySelector(`[data-transaction-id="${originalAmount}"]`);
+  }
     let targetAmount = 0;
     
     if (transactionRow) {
@@ -3435,46 +3483,10 @@
   }
 
   // Save loan split transaction
-  function saveLoanSplitTransaction() {
-    showAlert('💰 Loan Payment Split Transaction would be saved here (Demo Mode)', 'info');
-    closeLoanSplitModal();
-  }
-
   // ====== DEBUG FUNCTIONS FOR TESTING ======
   
-  // Add test button to page for easy testing
-  document.addEventListener('DOMContentLoaded', function() {
-    const testButton = document.createElement('button');
-    testButton.innerHTML = '🧪 Test Loan Split';
-    testButton.className = 'btn btn-warning position-fixed';
-    testButton.style.top = '10px';
-    testButton.style.right = '10px';
-    testButton.style.zIndex = '9999';
-    testButton.onclick = function() {
-      console.log('🧪 MANUAL TEST BUTTON CLICKED');
-      window.testLoanPaymentSplit('John Smith');
-    };
-    document.body.appendChild(testButton);
-  });
-  
-  // Test function to manually trigger loan payment split (call from browser console)
-  window.testLoanPaymentSplit = function(customerName = 'John Smith') {
-    console.log('🧪 MANUAL TEST: Testing loan payment split functionality');
-    
-    // Find the first transaction on the page
-    const firstTransaction = document.querySelector('[data-transaction-id]');
-    if (!firstTransaction) {
-      console.error('❌ No transactions found on page');
-      alert('❌ No transactions found on page');
-      return;
-    }
-    
-    const transactionId = firstTransaction.getAttribute('data-transaction-id');
-    console.log('🧪 Using transaction ID:', transactionId);
-    
-    // Trigger the function
-    triggerLoanPaymentSplitTransaction(transactionId, customerName);
-  };
+  // Test functionality removed per user request
+  // All auto-split and test functions have been disabled
   
   // Test function to check if API endpoint works
   window.testLoanAPI = async function(customerName = 'John Smith', amount = 500) {

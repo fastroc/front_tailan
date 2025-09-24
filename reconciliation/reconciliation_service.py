@@ -96,7 +96,7 @@ class ReconciliationService:
             is_reconciled=True
         )
         
-        # Auto-create journal entry
+        # Auto-create journal entry (Phase 3: This will also create loan payments if applicable)
         journal_entry = cls.create_journal_from_match(transaction_match, user)
         transaction_match.journal_entry = journal_entry
         transaction_match.save()
@@ -159,6 +159,11 @@ class ReconciliationService:
         journal_entry = cls.create_journal_from_split_match(transaction_match, user)
         transaction_match.journal_entry = journal_entry
         transaction_match.save()
+        
+        # UNIFIED LOAN PAYMENT CREATION - If this is a loan payment split, create Payment record
+        loan_payment_created = cls._create_loan_payment_if_applicable(transaction_match, user)
+        if loan_payment_created:
+            print(f"✅ UNIFIED PAYMENT: Created Payment record {loan_payment_created['payment_id']} for split transaction")
         
         # Update session statistics
         cls.update_session_statistics(reconciliation_session)
@@ -293,6 +298,13 @@ class ReconciliationService:
                 credit=amount,
                 debit=0
             )
+        
+        # PHASE 3: Check if this transaction involves loan GL accounts and create Payment record
+        loan_payment_created = cls._create_loan_payment_if_applicable(transaction_match, user)
+        if loan_payment_created:
+            print(f"✅ Loan payment record created: {loan_payment_created}")
+            # Store loan payment info in the journal object for later retrieval
+            journal._loan_payment_info = loan_payment_created
         
         return journal
     
@@ -558,3 +570,180 @@ class ReconciliationService:
             debit=abs(bank_tx.amount) if bank_tx.amount < 0 else 0,
             credit=bank_tx.amount if bank_tx.amount > 0 else 0
         )
+    
+    @classmethod
+    def _create_loan_payment_if_applicable(cls, transaction_match, user):
+        """
+        Check if this transaction involves loan GL accounts and create Payment record if so.
+        Updated for Phase 3: Works with single loan GL accounts (1250, 1251) as well as split transactions.
+        Uses the same PaymentProcessor as manual loan payments for consistency
+        """
+        # Check both split and non-split transactions
+        gl_accounts_to_check = []
+        
+        if transaction_match.is_split_transaction:
+            # Split transaction: check all splits
+            splits = transaction_match.splits.all()
+            gl_accounts_to_check = [split.gl_account for split in splits]
+        else:
+            # Single GL account transaction
+            gl_accounts_to_check = [transaction_match.gl_account] if transaction_match.gl_account else []
+        
+        if not gl_accounts_to_check:
+            return None
+            
+        # PHASE 3: Check for loan staging accounts (1250) as primary indicators
+        has_loan_staging = any(
+            gl_account.code in ['1250'] or  # Primary staging account
+            (gl_account.code in ['1252'] and 'loan' in gl_account.name.lower())  # Alternative staging
+            for gl_account in gl_accounts_to_check
+        )
+        
+        # LEGACY: Also check traditional loan receivable accounts for backward compatibility
+        has_loan_receivable = any(
+            gl_account.code in ['1200', '1201', '1202'] or 
+            'loan' in gl_account.name.lower() or
+            'receivable' in gl_account.name.lower()
+            for gl_account in gl_accounts_to_check
+        )
+        
+        # Check for interest income accounts (supporting evidence)
+        has_interest_income = any(
+            gl_account.code in ['4200', '4201'] or
+            'interest' in gl_account.name.lower()
+            for gl_account in gl_accounts_to_check
+        )
+        
+        # Determine if this is a loan payment
+        is_loan_payment = has_loan_staging or has_loan_receivable or has_interest_income
+        
+        if not is_loan_payment:
+            return None
+            
+        transaction_type = "STAGING" if has_loan_staging else "SPLIT" if transaction_match.is_split_transaction else "RECEIVABLE"
+        print(f"🏦 DETECTED LOAN PAYMENT ({transaction_type}): Transaction involves loan-related GL accounts")
+        
+        # Log which accounts triggered the detection
+        for gl_account in gl_accounts_to_check:
+            if (gl_account.code in ['1250', '1251', '1252'] or 
+                'loan' in gl_account.name.lower() or 
+                'receivable' in gl_account.name.lower() or 
+                'interest' in gl_account.name.lower()):
+                print(f"  - Loan GL Account: {gl_account.code} - {gl_account.name}")
+        
+        try:
+            # Try to find the loan customer from the contact name
+            from loans_customers.models import Customer
+            from loans_core.models import Loan
+            from loans_payments.models import PaymentProcessor
+            from django.db.models import Q
+            
+            # Extract contact name from transaction match or bank transaction
+            contact_name = transaction_match.contact.strip() if transaction_match.contact else ""
+            
+            # If no contact in transaction match, try to extract from bank transaction description
+            if not contact_name:
+                bank_desc = transaction_match.bank_transaction.description or ""
+                # Try to extract name from common bank transaction formats
+                # Example: "ACH CREDIT RODRIGUEZ RODRIGUEZ" or "WIRE TRANSFER JOHN DOE"
+                desc_words = bank_desc.upper().split()
+                # Remove common banking terms
+                banking_terms = ['ACH', 'CREDIT', 'DEBIT', 'WIRE', 'TRANSFER', 'PAYMENT', 'DEPOSIT', 'CHECK']
+                name_words = [word for word in desc_words if word not in banking_terms and len(word) > 2]
+                if len(name_words) >= 2:
+                    contact_name = ' '.join(name_words[:2])  # Take first two meaningful words
+                    print(f"📝 Extracted contact name from description: '{contact_name}'")
+            
+            if not contact_name:
+                print("⚠️ No contact name in transaction match or bank description")
+                return None
+                
+            # Find customer by name
+            name_parts = contact_name.split()
+            if len(name_parts) >= 2:
+                first_name = name_parts[0]
+                last_name = ' '.join(name_parts[1:])
+                
+                potential_customers = Customer.objects.filter(
+                    company=transaction_match.bank_transaction.coa_account.company,
+                    first_name__icontains=first_name,
+                    last_name__icontains=last_name
+                )
+            else:
+                # Single name - try both first and last
+                potential_customers = Customer.objects.filter(
+                    company=transaction_match.bank_transaction.coa_account.company
+                ).filter(
+                    Q(first_name__icontains=contact_name) | 
+                    Q(last_name__icontains=contact_name)
+                )
+            
+            if not potential_customers.exists():
+                print(f"⚠️ No customer found matching '{contact_name}'")
+                return None
+                
+            customer = potential_customers.first()
+            print(f"✅ Found customer: {customer.first_name} {customer.last_name}")
+            
+            # Find active loan for this customer
+            active_loans = Loan.objects.filter(
+                company=transaction_match.bank_transaction.coa_account.company,
+                customer=customer,
+                status='active'
+            )
+            
+            if not active_loans.exists():
+                print(f"⚠️ No active loans found for customer {customer.first_name} {customer.last_name}")
+                return None
+                
+            loan = active_loans.first()
+            print(f"✅ Found active loan: {loan.loan_number}")
+            
+            # Use PaymentProcessor to create proper Payment record
+            processor = PaymentProcessor(company=transaction_match.bank_transaction.coa_account.company)
+            
+            # Determine payment method from bank transaction
+            bank_description = transaction_match.bank_transaction.description.lower()
+            if 'ach' in bank_description or 'transfer' in bank_description:
+                payment_method = 'ach'
+            elif 'wire' in bank_description:
+                payment_method = 'wire_transfer'
+            elif 'check' in bank_description:
+                payment_method = 'check'
+            else:
+                payment_method = 'bank_transfer'
+            
+            # Process payment using unified PaymentProcessor
+            payment, allocation = processor.process_payment(
+                loan=loan,
+                payment_amount=abs(transaction_match.bank_transaction.amount),
+                payment_date=transaction_match.bank_transaction.date,
+                payment_method=payment_method,
+                processed_by=user,
+                notes=f"Created from bank reconciliation ({transaction_type}). GL Accounts: {', '.join([f'{gl.code}-{gl.name}' for gl in gl_accounts_to_check[:3]])}. Reference: {transaction_match.bank_transaction.reference or 'N/A'}"
+            )
+            
+            # Link the payment to the transaction match with enhanced details
+            payment_notes = f"""🏦 LOAN PAYMENT CREATED (Phase 3):
+Payment ID: {payment.payment_id}
+Loan: {loan.loan_number}
+Customer: {customer.first_name} {customer.last_name}
+Amount: ${payment.payment_amount:,.2f}
+Type: {transaction_type}
+GL Accounts: {', '.join([f'{gl.code}-{gl.name}' for gl in gl_accounts_to_check])}
+Allocation: {', '.join(allocation['allocation_order']) if allocation.get('allocation_order') else 'Standard allocation'}"""
+            
+            transaction_match.notes = f"{transaction_match.notes or ''}\n\n{payment_notes}".strip()
+            transaction_match.save()
+            
+            return {
+                'payment_id': payment.payment_id,
+                'loan_number': loan.loan_number,
+                'customer_name': f"{customer.first_name} {customer.last_name}",
+                'amount': payment.payment_amount,
+                'allocation_summary': allocation['allocation_order']
+            }
+            
+        except Exception as e:
+            print(f"⚠️ Error creating loan payment: {str(e)}")
+            return None

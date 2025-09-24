@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Rule - {{ object.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'financial_rules:rule_list' %}">Rules</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'financial_rules:rule_detail' object.id %}">{{ object.name }}</a></li>
+                <li class="breadcrumb-item active">Delete</li>
+            </ol>
+        </nav>
+        <h2><i class="fas fa-trash me-2 text-danger"></i>Delete Rule</h2>
+    </div>
+    <a href="{% url 'financial_rules:rule_detail' object.id %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i>Back to Rule
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-warning me-2"></i>Warning: This action cannot be undone!</h6>
+                    <p class="mb-0">
+                        Deleting this rule will permanently remove it from the system. 
+                        Any future transactions will no longer be processed by this rule.
+                    </p>
+                </div>
+                
+                <!-- Rule Summary -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <h6>You are about to delete:</h6>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="card-title">
+                                            {% if object.is_active %}
+                                                <i class="fas fa-check-circle text-success me-2"></i>
+                                            {% else %}
+                                                <i class="fas fa-times-circle text-danger me-2"></i>
+                                            {% endif %}
+                                            {{ object.name }}
+                                        </h6>
+                                        <p class="card-text text-muted">{{ object.description|default:"No description" }}</p>
+                                    </div>
+                                    <span class="badge bg-secondary">Priority: {{ object.priority }}</span>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <small class="text-muted">Company:</small><br>
+                                        <span class="badge bg-info">{{ object.company.name }}</span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted">Rule Type:</small><br>
+                                        <span class="badge bg-primary">{{ object.rule_type|title }}</span>
+                                    </div>
+                                </div>
+                                
+                                <hr>
+                                
+                                <div class="row text-center">
+                                    <div class="col-md-4">
+                                        <strong class="text-info">{{ object.conditions.count }}</strong><br>
+                                        <small class="text-muted">Conditions</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong class="text-success">{{ object.actions.count }}</strong><br>
+                                        <small class="text-muted">Actions</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong class="text-warning">{{ object.usage_count }}</strong><br>
+                                        <small class="text-muted">Times Used</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Impact Information -->
+                {% if object.usage_count > 0 %}
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-2"></i>Rule Usage History</h6>
+                    <p>
+                        This rule has been used <strong>{{ object.usage_count }} times</strong> to process transactions.
+                        Deleting it will not affect previously processed transactions, but future transactions 
+                        will no longer be automatically split using this rule.
+                    </p>
+                </div>
+                {% endif %}
+                
+                <!-- Alternative Actions -->
+                <div class="card bg-light mb-4">
+                    <div class="card-body">
+                        <h6><i class="fas fa-lightbulb me-2"></i>Alternative Actions</h6>
+                        <p class="small text-muted mb-3">
+                            Instead of deleting this rule, you might consider:
+                        </p>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="d-grid">
+                                    <button class="btn btn-outline-warning btn-sm" onclick="toggleRuleStatus({{ object.id }})">
+                                        {% if object.is_active %}
+                                            <i class="fas fa-pause me-1"></i>Deactivate Rule
+                                        {% else %}
+                                            <i class="fas fa-play me-1"></i>Activate Rule
+                                        {% endif %}
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-1 text-center">
+                                    Keep rule but stop using it
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-grid">
+                                    <a href="{% url 'financial_rules:rule_edit' object.id %}" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-edit me-1"></i>Edit Rule
+                                    </a>
+                                </div>
+                                <small class="text-muted d-block mt-1 text-center">
+                                    Modify rule conditions/actions
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Confirmation Form -->
+                <form method="post" id="deleteForm">
+                    {% csrf_token %}
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="confirmDelete" required>
+                        <label class="form-check-label" for="confirmDelete">
+                            I understand that this action cannot be undone and want to permanently delete this rule.
+                        </label>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'financial_rules:rule_detail' object.id %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-danger" id="deleteButton" disabled>
+                            <i class="fas fa-trash me-1"></i>Delete Rule Permanently
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Enable/disable delete button based on confirmation checkbox
+    document.getElementById('confirmDelete').addEventListener('change', function() {
+        document.getElementById('deleteButton').disabled = !this.checked;
+    });
+    
+    // Add extra confirmation for delete
+    document.getElementById('deleteForm').addEventListener('submit', function(e) {
+        if (!confirm('Are you absolutely sure you want to delete this rule? This action cannot be undone.')) {
+            e.preventDefault();
+        }
+    });
+    
+    function toggleRuleStatus(ruleId) {
+        if (confirm('Do you want to change this rule\'s status instead of deleting it?')) {
+            fetch(`/financial_rules/api/toggle_rule/${ruleId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = `{% url 'financial_rules:rule_detail' object.id %}`;
+                } else {
+                    alert('Error changing rule status');
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}

@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     "loans_customers",  # Customer management and KYC
     "loans_schedule",  # Payment scheduling and interest calculations
     "loans_payments",  # Payment processing and accounting integration
+    "loan_reconciliation_bridge",  # Bridge between loan system and reconciliation
 ]
 
 # Add debug toolbar only in development

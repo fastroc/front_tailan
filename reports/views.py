@@ -65,8 +65,8 @@ def dashboard_view(request):
     all_accounts = Account.objects.filter(company=company)
     active_accounts_count = all_accounts.filter(is_active=True).count()
     
-    # Bank Accounts specifically (use string value, not enum)
-    bank_accounts = all_accounts.filter(account_type='Bank')
+    # Bank Accounts specifically - only accounts marked as bank accounts
+    bank_accounts = all_accounts.filter(is_bank_account=True)
 
     # Journal Entries Data (no company field, so get all)
     journals = Journal.objects.all()
@@ -252,7 +252,7 @@ def pending_reconciliation_view(request):
     # Get bank accounts for this company
     bank_accounts = Account.objects.filter(
         company=company,
-        account_type='Bank'
+        is_bank_account=True
     )
     
     # Get unmatched bank transactions

@@ -48,6 +48,7 @@ urlpatterns = [
     path('loans/customers/', include('loans_customers.urls')),  # Customer management
     path('loans/schedule/', include('loans_schedule.urls')),  # Payment scheduling
     path('loans/payments/', include('loans_payments.urls')),  # Payment processing
+    path('loan-bridge/', include('loan_reconciliation_bridge.urls')),  # Loan reconciliation bridge
     # Fallback redirect for Django's default login URL
     path('accounts/login/', accounts_login_redirect),
     # Loan Schedule Prototype - Independent showcase

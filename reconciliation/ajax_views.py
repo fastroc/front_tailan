@@ -86,12 +86,17 @@ def match_transaction(request):
             user=request.user
         )
         
-        # NEW: Auto-create loan payment if WHO field contains a loan customer
-        loan_payment_created = False
-        loan_payment_info = None
+        # PHASE 3: Check if loan payment was created during reconciliation
+        phase3_loan_payment_info = None
+        if match and match.journal_entry and hasattr(match.journal_entry, '_loan_payment_info'):
+            phase3_loan_payment_info = match.journal_entry._loan_payment_info
         
-        if match and contact:
-            loan_payment_created, loan_payment_info = auto_create_loan_payment(
+        # LEGACY: Auto-create loan payment if WHO field contains a loan customer (for backward compatibility)
+        legacy_loan_payment_created = False
+        legacy_loan_payment_info = None
+        
+        if match and contact and not phase3_loan_payment_info:  # Only if Phase 3 didn't create one
+            legacy_loan_payment_created, legacy_loan_payment_info = auto_create_loan_payment(
                 bank_transaction=bank_transaction,
                 contact_name=contact,
                 amount=bank_transaction.amount,
@@ -115,17 +120,22 @@ def match_transaction(request):
                 }
             }
             
-            # Add loan payment information if created
-            if loan_payment_created and loan_payment_info:
+            # Add loan payment information if created (Phase 3 or Legacy)
+            final_loan_payment_info = phase3_loan_payment_info or legacy_loan_payment_info
+            loan_payment_was_created = bool(phase3_loan_payment_info or legacy_loan_payment_created)
+            
+            if loan_payment_was_created and final_loan_payment_info:
+                payment_source = "Phase 3 (GL Account)" if phase3_loan_payment_info else "Legacy (WHO field)"
                 response_data['loan_payment'] = {
                     'created': True,
-                    'payment_id': loan_payment_info.get('payment_id'),
-                    'customer': loan_payment_info.get('customer_name'),
-                    'loan_number': loan_payment_info.get('loan_number'),
-                    'amount': float(loan_payment_info.get('amount', 0)),
-                    'allocation_summary': loan_payment_info.get('allocation_summary', [])
+                    'payment_id': final_loan_payment_info.get('payment_id'),
+                    'customer': final_loan_payment_info.get('customer_name'),
+                    'loan_number': final_loan_payment_info.get('loan_number'),
+                    'amount': float(final_loan_payment_info.get('amount', 0)),
+                    'allocation_summary': final_loan_payment_info.get('allocation_summary', []),
+                    'source': payment_source
                 }
-                response_data['message'] += f" & Loan payment recorded for {loan_payment_info.get('customer_name')}"
+                response_data['message'] += f" & Loan payment recorded for {final_loan_payment_info.get('customer_name')} ({payment_source})"
             
             return JsonResponse(response_data)
         else:
@@ -1276,23 +1286,63 @@ def get_loan_payment_breakdown(request):
         
         from loans_customers.models import Customer
         from loans_core.models import Loan
-        from loans_schedule.models import ScheduledPayment
         from company.models import Company
         from coa.models import Account
-        from django.utils import timezone
         from django.db.models import Q
         
         # Get company from session
         company_id = request.session.get('active_company_id')
-        if not company_id:
-            # For testing, default to BigBoss company (ID 1)
-            company_id = 1
-            print(f"🔍 DEBUG: No company in session, defaulting to company ID: {company_id}")
-        else:
-            print(f"🔍 DEBUG: Using company from session: {company_id}")
+        company = None
         
-        company = get_object_or_404(Company, id=company_id)
-        print(f"🔍 DEBUG: Company object: {company.name} (ID: {company.id})")
+        if company_id:
+            print(f"🔍 DEBUG: Using company from session: {company_id}")
+            company = get_object_or_404(Company, id=company_id)
+        else:
+            # Try to get company from the referring bank account if available
+            referer = request.META.get('HTTP_REFERER', '')
+            if '/reconciliation/account/' in referer or '/reconciliation/process/' in referer:
+                # Extract account ID from URL like /reconciliation/account/203/ or /reconciliation/process/203/
+                import re
+                account_match = re.search(r'/(?:account|process)/(\d+)/', referer)
+                if account_match:
+                    try:
+                        from bank_accounts.models import BankAccount
+                        account_id = int(account_match.group(1))
+                        bank_account = BankAccount.objects.get(id=account_id)
+                        company = bank_account.company
+                        print(f"🔍 DEBUG: Using company from bank account {account_id}: {company.name} (ID: {company.id})")
+                    except (BankAccount.DoesNotExist, ValueError):
+                        print("🔍 DEBUG: Could not find bank account with ID from referer")
+            
+            # If still no company, search across all companies for the customer
+            if not company:
+                print("🔍 DEBUG: No company context found, searching across all companies for customer")
+                # Find customer across all companies
+                all_customers = Customer.objects.filter(
+                    Q(first_name__iexact=customer_name.split()[0]) & 
+                    Q(last_name__iexact=customer_name.split()[-1]) if len(customer_name.split()) >= 2
+                    else Q(first_name__icontains=customer_name) | Q(last_name__icontains=customer_name)
+                )
+                
+                if all_customers.exists():
+                    customer_with_loan = None
+                    for cust in all_customers:
+                        if Loan.objects.filter(customer=cust, status='active').exists():
+                            customer_with_loan = cust
+                            break
+                    
+                    if customer_with_loan:
+                        company = customer_with_loan.company
+                        print(f"🔍 DEBUG: Found customer {customer_with_loan.first_name} {customer_with_loan.last_name} in company {company.name}")
+                    else:
+                        company = all_customers.first().company
+                        print(f"🔍 DEBUG: Using first customer's company: {company.name}")
+                else:
+                    # Last resort: use first company in system
+                    company = Company.objects.first()
+                    print(f"🔍 DEBUG: No customer found, defaulting to first company: {company.name}")
+        
+        print(f"🔍 DEBUG: Final company: {company.name} (ID: {company.id})")
         
         # Find customer by name (same logic as auto_create_loan_payment)
         name_parts = customer_name.split()
@@ -1412,94 +1462,73 @@ def get_loan_payment_breakdown(request):
             print(f"  - Loan {loan.loan_number}: Status={loan.status}, Amount=${loan.principal_amount}")
         
         if not active_loans.exists():
-            # Enhanced debugging for why no active loans found
-            all_loans_for_customer = Loan.objects.filter(company=company, customer=customer)
-            print(f"🔍 DEBUG: Customer {customer.id} loan details:")
-            print(f"  - Total loans: {all_loans_for_customer.count()}")
-            print(f"  - Active loans: {active_loans.count()}")
+            # Customer found but no active loans - still suggest loan payment GL account
+            print(f"⚠️ Customer {customer.first_name} {customer.last_name} has no active loans, but suggesting loan payment GL account")
             
-            for loan in all_loans_for_customer:
-                print(f"  - Loan {loan.loan_number}: status='{loan.status}' balance=${loan.current_balance}")
-            
-            # Also check all loans in the system for debugging
-            all_system_loans = Loan.objects.filter(company=company)
-            print(f"🔍 DEBUG: Total loans in system: {all_system_loans.count()}")
-            
-            # SIMPLIFIED LOAN PAYMENT CALCULATION: Direct calculation without financial rules
-            print(f"💡 DIRECT CALCULATION: Processing loan payment for {customer.first_name} {customer.last_name}")
-            
-            # Calculate loan payment allocation using simplified logic
-            # Interest: 14.3% of payment amount, Principal: remainder (no late fees for simplicity)
-            interest_percentage = Decimal('0.143')
-            late_fee_amount = Decimal('0.00')  # No late fees for simplified system
-            interest_amount = (payment_amount * interest_percentage).quantize(Decimal('0.01'))
-            principal_amount = payment_amount - late_fee_amount - interest_amount
-            
-            # Build payment breakdown
-            payment_breakdown = [
-                {
-                    'type': 'late_fees',
-                    'amount': str(late_fee_amount),
-                    'account_code': '4250',
-                    'account_name': 'Late Fee Income'
-                },
-                {
-                    'type': 'interest',
-                    'amount': str(interest_amount),
-                    'account_code': '4200',
-                    'account_name': 'Interest Income'
-                },
-                {
-                    'type': 'principal',
-                    'amount': str(principal_amount),
-                    'account_code': '1200',
-                    'account_name': 'Loans Receivable'
-                }
-            ]
-            
-            # Build breakdown summary
-            breakdown = {
-                'late_fee': str(late_fee_amount),
-                'interest': str(interest_amount),
-                'principal': str(principal_amount),
-                'total': str(payment_amount)
-            }
-            
-            # Build GL accounts dictionary
-            gl_accounts = {
-                '1200': {'id': 1200, 'code': '1200', 'name': 'Loans Receivable'},
-                '4200': {'id': 4200, 'code': '4200', 'name': 'Interest Income'},
-                '4250': {'id': 4250, 'code': '4250', 'name': 'Late Fee Income'}
-            }
-            
-            print(f"✅ SIMPLIFIED CALCULATION: Late Fee ${late_fee_amount} + Interest ${interest_amount} + Principal ${principal_amount} = ${payment_amount}")
-            
-            return JsonResponse({
-                'success': True,
-                'customer': {
-                    'id': customer.id,
-                    'name': f"{customer.first_name} {customer.last_name}"
-                },
-                'breakdown': breakdown,
-                'payment_breakdown': payment_breakdown,
-                'gl_accounts': gl_accounts,
-                'total_payment': str(payment_amount),
-                'message': f'Simplified Loan Payment: Late Fee ${late_fee_amount} + Interest ${interest_amount} + Principal ${principal_amount} = ${payment_amount}',
-                'source': 'simplified_calculation'
-            })
-            
-            return JsonResponse({
-                'success': False,
-                'error': f'No active loans found for customer {customer.first_name} {customer.last_name}',
-                'debug_info': {
-                    'customer_id': customer.id,
-                    'customer_email': customer.email,
-                    'total_loans': all_loans_for_customer.count(),
-                    'active_loans': active_loans.count(),
-                    'total_system_loans': all_system_loans.count(),
-                    'customer_company': company.name
-                }
-            })
+            # Find or suggest appropriate GL account for loan payments
+            try:
+                # PRIORITY 1: Look for the new "1250 - Loan Payments Received" account
+                loan_payment_account = Account.objects.filter(
+                    company=company,
+                    code='1250',
+                    name__icontains='loan'
+                ).first()
+                
+                if not loan_payment_account:
+                    # PRIORITY 2: Look for any loan payment staging accounts
+                    loan_payment_account = Account.objects.filter(
+                        company=company,
+                        code__in=['1251', '1252'],  # Other staging accounts
+                        name__icontains='loan'
+                    ).first()
+                
+                if not loan_payment_account:
+                    # PRIORITY 3: Look for broader loan receivable accounts
+                    loan_payment_account = Account.objects.filter(
+                        company=company,
+                        code__in=['1200', '1201', '1202'],  # Traditional loan receivable accounts
+                        name__icontains='loan'
+                    ).first()
+                
+                if not loan_payment_account:
+                    # RECOMMENDED: Suggest creating the proper staging account
+                    loan_payment_account = {
+                        'id': None,
+                        'code': '1250',
+                        'name': 'Loan Payments Received',
+                        'needs_creation': True,
+                        'description': 'Staging account for loan payments received from customers before allocation'
+                    }
+                else:
+                    loan_payment_account = {
+                        'id': loan_payment_account.id,
+                        'code': loan_payment_account.code,
+                        'name': loan_payment_account.name,
+                        'needs_creation': False,
+                        'description': getattr(loan_payment_account, 'description', '')
+                    }
+                
+                return JsonResponse({
+                    'success': True,
+                    'is_loan_customer': True,
+                    'customer': {
+                        'id': customer.id,
+                        'name': f"{customer.first_name} {customer.last_name}",
+                        'customer_id': customer.customer_id
+                    },
+                    'recommended_gl_account': loan_payment_account,
+                    'total_amount': float(payment_amount),
+                    'message': f'Loan Customer: {customer.first_name} {customer.last_name} (No active loans found)',
+                    'source': 'loan_customer_no_active_loans'
+                })
+                
+            except Exception as e:
+                print(f"⚠️ Error getting GL account recommendation: {str(e)}")
+                
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Found loan customer {customer.first_name} {customer.last_name} but error getting GL recommendation: {str(e)}'
+                })
         
         # If multiple loans, return loan selection options
         if active_loans.count() > 1:
@@ -1522,106 +1551,444 @@ def get_loan_payment_breakdown(request):
                 'loan_options': loan_options
             })
         
-        # Single loan - calculate payment breakdown
+        # Single loan - suggest appropriate GL account for loan payment
         loan = active_loans.first()
         
-        # Get next scheduled payment for this loan
-        today = timezone.now().date()
-        next_payment = ScheduledPayment.objects.filter(
-            company=company,
-            loan=loan,
-            due_date__lte=today,
-            status__in=['scheduled', 'overdue', 'partial']
-        ).order_by('due_date').first()
+        # SIMPLIFIED APPROACH: Return single GL account recommendation
+        print(f"🏦 SIMPLIFIED LOAN PAYMENT: Suggesting single GL account for loan {loan.loan_number}")
         
-        # Calculate payment allocation using PaymentProcessor logic
-        # payment_processor = PaymentProcessor(company=company)
-        
-        # Get late fees
-        overdue_payments = ScheduledPayment.objects.filter(
-            company=company,
-            loan=loan,
-            status='overdue'
-        ).filter(late_fees_assessed__gt=0)
-        total_late_fees = sum(payment.late_fees_assessed for payment in overdue_payments)
-        
-        # Calculate allocation breakdown
-        remaining_amount = payment_amount
-        allocation_breakdown = []
-        
-        # 1. Late Fees first
-        late_fee_payment = min(remaining_amount, total_late_fees)
-        if late_fee_payment > 0:
-            allocation_breakdown.append({
-                'account_code': '4250',
-                'account_name': 'Late Fee Income',
-                'amount': float(late_fee_payment),
-                'type': 'late_fees'
+        # Find or suggest appropriate GL account for loan payments
+        try:
+                # PRIORITY 1: Look for the new "1250 - Loan Payments Received" account
+                loan_payment_account = Account.objects.filter(
+                    company=company,
+                    code='1250',
+                    name__icontains='loan'
+                ).first()
+                
+                if not loan_payment_account:
+                    # PRIORITY 2: Look for any loan payment staging accounts
+                    loan_payment_account = Account.objects.filter(
+                        company=company,
+                        code__in=['1251', '1252'],  # Other staging accounts
+                        name__icontains='loan'
+                    ).first()
+                
+                if not loan_payment_account:
+                    # PRIORITY 3: Look for broader loan receivable accounts
+                    loan_payment_account = Account.objects.filter(
+                        company=company,
+                        code__in=['1200', '1201', '1202'],  # Traditional loan receivable accounts
+                        name__icontains='loan'
+                    ).first()
+                
+                if not loan_payment_account:
+                    # RECOMMENDED: Suggest creating the proper staging account
+                    loan_payment_account = {
+                        'id': None,
+                        'code': '1250',
+                        'name': 'Loan Payments Received',
+                        'needs_creation': True,
+                        'description': 'Staging account for loan payments received from customers before allocation'
+                    }
+                else:
+                    loan_payment_account = {
+                        'id': loan_payment_account.id,
+                        'code': loan_payment_account.code,
+                        'name': loan_payment_account.name,
+                        'needs_creation': False,
+                        'description': getattr(loan_payment_account, 'description', '')
+                    }
+                
+                return JsonResponse({
+                'success': True,
+                'is_loan_customer': True,
+                'customer': {
+                    'id': customer.id,
+                    'name': f"{customer.first_name} {customer.last_name}",
+                    'customer_id': customer.customer_id
+                },
+                'loan': {
+                    'loan_number': loan.loan_number,
+                    'current_balance': float(loan.current_balance),
+                    'formatted_balance': f"${loan.current_balance:,.2f}"
+                },
+                'recommended_gl_account': loan_payment_account,
+                'total_amount': float(payment_amount),
+                'message': f'Loan Payment for {customer.first_name} {customer.last_name} - Loan {loan.loan_number}',
+                'source': 'simplified_loan_detection'
             })
-            remaining_amount -= late_fee_payment
-        
-        # 2. Interest payment
-        if next_payment and remaining_amount > 0:
-            # Use scheduled interest amount or calculate proportionally
-            scheduled_interest = next_payment.interest_amount
-            interest_payment = min(remaining_amount, scheduled_interest)
             
-            if interest_payment > 0:
-                allocation_breakdown.append({
-                    'account_code': '4200',
-                    'account_name': 'Interest Income',
-                    'amount': float(interest_payment),
-                    'type': 'interest'
-                })
-                remaining_amount -= interest_payment
-        
-        # 3. Principal payment (remainder)
-        if remaining_amount > 0:
-            allocation_breakdown.append({
-                'account_code': '1200',
-                'account_name': 'Loans Receivable',
-                'amount': float(remaining_amount),
-                'type': 'principal'
+        except Exception as e:
+            print(f"⚠️ Error getting GL account recommendation: {str(e)}")
+            
+            # Fallback to basic recommendation
+            return JsonResponse({
+                'success': True,
+                'is_loan_customer': True,
+                'customer': {
+                    'id': customer.id,
+                    'name': f"{customer.first_name} {customer.last_name}",
+                    'customer_id': customer.customer_id
+                },
+                'loan': {
+                    'loan_number': loan.loan_number,
+                    'current_balance': float(loan.current_balance),
+                    'formatted_balance': f"${loan.current_balance:,.2f}"
+                },
+                'recommended_gl_account': {
+                    'id': None,
+                    'code': '1250',
+                    'name': 'Loan Payments Received',
+                    'needs_creation': True
+                },
+                'total_amount': float(payment_amount),
+                'message': f'Loan Payment for {customer.first_name} {customer.last_name} - Loan {loan.loan_number}',
+                'source': 'simplified_loan_detection_fallback'
             })
-        
-        # Get GL account details from database
-        gl_accounts = {}
-        for item in allocation_breakdown:
-            account = Account.objects.filter(
-                company=company,
-                code=item['account_code']
-            ).first()
-            if account:
-                gl_accounts[item['account_code']] = {
-                    'id': account.id,
-                    'name': account.name,
-                    'code': account.code
+            
+            try:
+                # Use bridge service for calculation with real loan data
+                from loan_reconciliation_bridge.services import LoanPaymentCalculatorService
+                
+                calculator = LoanPaymentCalculatorService(company)
+                calculation_result = calculator.calculate_payment_allocation(
+                    customer_id=customer.id,
+                    payment_amount=payment_amount
+                )
+                
+                if calculation_result['success']:
+                    breakdown = calculation_result['breakdown']
+                    payment_breakdown = calculation_result['payment_breakdown']
+                    gl_accounts = calculation_result['gl_accounts']
+                    
+                    print(f"✅ BRIDGE CALCULATION: Late Fee ${breakdown['late_fee']} + Interest ${breakdown['interest']} + Principal ${breakdown['principal']} = ${breakdown['total']}")
+                    
+                    return JsonResponse({
+                        'success': True,
+                        'is_loan_customer': True,
+                        'customer': {
+                            'name': f"{customer.first_name} {customer.last_name}",
+                            'customer_id': customer.customer_id
+                        },
+                        'loan': {
+                            'loan_number': loan.loan_number,
+                            'current_balance': float(loan.current_balance),
+                            'formatted_balance': f"${loan.current_balance:,.2f}"
+                        },
+                        'breakdown': breakdown,
+                        'payment_breakdown': payment_breakdown,
+                        'gl_accounts': gl_accounts,
+                        'total_payment': str(payment_amount),
+                        'message': f'Loan Payment: Late Fee ${breakdown["late_fee"]} + Interest ${breakdown["interest"]} + Principal ${breakdown["principal"]} = ${breakdown["total"]}',
+                        'source': 'bridge_calculation_with_active_loan'
+                    })
+                else:
+                    # Bridge calculation failed, use fallback
+                    print(f"⚠️ Bridge calculation failed: {calculation_result.get('error', 'Unknown error')}")
+                    raise Exception(f"Bridge calculation failed: {calculation_result.get('error', 'Unknown error')}")
+                    
+            except Exception as e:
+                print(f"⚠️ Bridge service error: {str(e)}, falling back to simplified calculation")
+                
+                # FALLBACK: Simplified calculation when bridge service fails
+                interest_percentage = Decimal('0.143')
+                late_fee_amount = Decimal('0.00')
+                interest_amount = (payment_amount * interest_percentage).quantize(Decimal('0.01'))
+                principal_amount = payment_amount - late_fee_amount - interest_amount
+                
+                # Build payment breakdown
+                payment_breakdown = [
+                    {
+                        'type': 'late_fees',
+                        'amount': str(late_fee_amount),
+                        'account_code': '4250',
+                        'account_name': 'Late Fee Income'
+                    },
+                    {
+                        'type': 'interest',
+                        'amount': str(interest_amount),
+                        'account_code': '4200',
+                        'account_name': 'Interest Income'
+                    },
+                    {
+                        'type': 'principal',
+                        'amount': str(principal_amount),
+                        'account_code': '1200',
+                        'account_name': 'Loans Receivable'
+                    }
+                ]
+                
+                # Build breakdown summary
+                breakdown = {
+                    'late_fee': str(late_fee_amount),
+                    'interest': str(interest_amount),
+                    'principal': str(principal_amount),
+                    'total': str(payment_amount)
                 }
-        
-        return JsonResponse({
-            'success': True,
-            'is_loan_customer': True,
-            'customer': {
-                'name': f"{customer.first_name} {customer.last_name}",
-                'customer_id': customer.customer_id
-            },
-            'loan': {
-                'loan_number': loan.loan_number,
-                'current_balance': float(loan.current_balance),
-                'formatted_balance': f"${loan.current_balance:,.2f}"
-            },
-            'payment_breakdown': allocation_breakdown,
-            'gl_accounts': gl_accounts,
-            'total_amount': float(payment_amount),
-            'next_payment': {
-                'due_date': next_payment.due_date.isoformat() if next_payment else None,
-                'total_amount': float(next_payment.total_amount) if next_payment else None,
-                'payment_number': next_payment.payment_number if next_payment else None
-            } if next_payment else None
-        })
+                
+                # Build GL accounts dictionary
+                gl_accounts = {
+                    '1200': {'id': 1200, 'code': '1200', 'name': 'Loans Receivable'},
+                    '4200': {'id': 4200, 'code': '4200', 'name': 'Interest Income'},
+                    '4250': {'id': 4250, 'code': '4250', 'name': 'Late Fee Income'}
+                }
+                
+                print(f"✅ FALLBACK CALCULATION: Late Fee ${late_fee_amount} + Interest ${interest_amount} + Principal ${principal_amount} = ${payment_amount}")
+                
+                return JsonResponse({
+                    'success': True,
+                    'is_loan_customer': True,
+                    'customer': {
+                        'name': f"{customer.first_name} {customer.last_name}",
+                        'customer_id': customer.customer_id
+                    },
+                    'loan': {
+                        'loan_number': loan.loan_number,
+                        'current_balance': float(loan.current_balance),
+                        'formatted_balance': f"${loan.current_balance:,.2f}"
+                    },
+                    'breakdown': breakdown,
+                    'payment_breakdown': payment_breakdown,
+                    'gl_accounts': gl_accounts,
+                    'total_payment': str(payment_amount),
+                    'message': f'Fallback Loan Payment: Late Fee ${late_fee_amount} + Interest ${interest_amount} + Principal ${principal_amount} = ${payment_amount}',
+                    'source': 'fallback_calculation_with_active_loan'
+                })
         
     except Exception as e:
         return JsonResponse({
             'success': False,
             'error': f'Unexpected error: {str(e)}'
         }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def simple_match_transaction(request):
+    """Simple AJAX endpoint for basic transaction matching in simple interface"""
+    try:
+        data = json.loads(request.body)
+        
+        # Extract data from request
+        transaction_id = data.get('transaction_id')
+        who = data.get('who', '').strip()
+        what = data.get('what', '').strip()
+        why = data.get('why', '').strip()
+        
+        # Validate required fields
+        if not transaction_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Missing transaction_id'
+            }, status=400)
+        
+        if not who or not what:
+            return JsonResponse({
+                'success': False,
+                'error': 'WHO (contact) and WHAT (account) are required'
+            }, status=400)
+        
+        # Get the bank transaction
+        try:
+            bank_transaction = get_object_or_404(BankTransaction, id=transaction_id)
+        except BankTransaction.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Bank transaction not found'
+            }, status=404)
+        
+        # Find or create GL account by name (simple matching)
+        company_id = request.session.get('active_company_id')
+        if not company_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'No active company selected'
+            }, status=400)
+        
+        try:
+            company = Company.objects.get(id=company_id)
+        except Company.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Company not found'
+            }, status=404)
+        
+        # Try to find account by name (case-insensitive)
+        gl_account = Account.objects.filter(
+            company=company,
+            name__icontains=what
+        ).exclude(account_type='CURRENT_ASSET').first()
+        
+        if not gl_account:
+            # Create a simple expense account if not found
+            gl_account = Account.objects.create(
+                company=company,
+                code=f'6{len(Account.objects.filter(company=company, account_type="EXPENSE")) + 100:03d}',
+                name=what,
+                account_type='EXPENSE',
+                description=f'Auto-created account for: {what}'
+            )
+        
+        # Get or create reconciliation session
+        from .models import ReconciliationSession
+        session = ReconciliationSession.objects.filter(company=company).first()
+        if not session:
+            # Create a default session if none exists
+            from datetime import date
+            bank_account = Account.objects.filter(company=company, account_type='Bank').first()
+            session = ReconciliationSession.objects.create(
+                company=company,
+                account=bank_account or gl_account,
+                start_date=date.today(),
+                end_date=date.today(),
+                statement_balance=0
+            )
+
+        # Create or update transaction match
+        transaction_match, created = TransactionMatch.objects.get_or_create(
+            bank_transaction=bank_transaction,
+            defaults={
+                'gl_account': gl_account,
+                'contact': who,
+                'description': why or bank_transaction.description,
+                'tax_rate': 'no_gst',  # Default tax treatment
+                'is_reconciled': True,
+                'company': company,
+                'reconciliation_session': session
+            }
+        )
+        
+        if not created:
+            # Update existing match
+            transaction_match.gl_account = gl_account
+            transaction_match.contact = who
+            transaction_match.description = why or bank_transaction.description
+            transaction_match.tax_rate = 'no_gst'
+            transaction_match.is_reconciled = True
+            transaction_match.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Transaction matched successfully to {gl_account.name}',
+            'transaction_id': transaction_id,
+            'account_name': gl_account.name,
+            'created_account': created
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Unexpected error: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt 
+@require_http_methods(["POST"])
+def simple_save_all_transactions(request):
+    """Save all transaction matches from simple interface"""
+    try:
+        data = json.loads(request.body)
+        transactions = data.get('transactions', [])
+        
+        if not transactions:
+            return JsonResponse({
+                'success': False,
+                'error': 'No transactions provided'
+            }, status=400)
+        
+        saved_count = 0
+        errors = []
+        
+        for transaction_data in transactions:
+            try:
+                # Use the simple match endpoint logic for each transaction
+                result = simple_match_transaction_internal(transaction_data, request)
+                if result['success']:
+                    saved_count += 1
+                else:
+                    errors.append(f"Transaction {transaction_data.get('id')}: {result['error']}")
+            except Exception as e:
+                errors.append(f"Transaction {transaction_data.get('id')}: {str(e)}")
+        
+        return JsonResponse({
+            'success': True,
+            'saved_count': saved_count,
+            'total_count': len(transactions),
+            'errors': errors
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Unexpected error: {str(e)}'
+        }, status=500)
+
+
+def simple_match_transaction_internal(transaction_data, request):
+    """Internal function for matching single transaction (used by bulk save)"""
+    try:
+        transaction_id = transaction_data.get('id')
+        who = transaction_data.get('who', '').strip()
+        what = transaction_data.get('what', '').strip()
+        why = transaction_data.get('why', '').strip()
+        
+        if not transaction_id or not who or not what:
+            return {'success': False, 'error': 'Missing required fields'}
+        
+        # Get bank transaction
+        bank_transaction = BankTransaction.objects.get(id=transaction_id)
+        
+        # Get company
+        company_id = request.session.get('active_company_id')
+        company = Company.objects.get(id=company_id)
+        
+        # Find or create account
+        gl_account = Account.objects.filter(
+            company=company,
+            name__icontains=what
+        ).exclude(account_type='CURRENT_ASSET').first()
+        
+        if not gl_account:
+            gl_account = Account.objects.create(
+                company=company,
+                code=f'6{len(Account.objects.filter(company=company, account_type="EXPENSE")) + 100:03d}',
+                name=what,
+                account_type='EXPENSE',
+                description=f'Auto-created account for: {what}'
+            )
+        
+        # Create/update match
+        transaction_match, created = TransactionMatch.objects.get_or_create(
+            bank_transaction=bank_transaction,
+            defaults={
+                'gl_account': gl_account,
+                'amount': bank_transaction.amount,
+                'contact': who,
+                'description': why or bank_transaction.description,
+                'tax_treatment': 'no_gst',
+                'is_reconciled': True
+            }
+        )
+        
+        if not created:
+            transaction_match.gl_account = gl_account
+            transaction_match.contact = who
+            transaction_match.description = why or bank_transaction.description
+            transaction_match.is_reconciled = True
+            transaction_match.save()
+        
+        return {'success': True}
+        
+    except Exception as e:
+        return {'success': False, 'error': str(e)}

@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block extra_head %}
+<!-- CSRF Token for AJAX requests -->
+{% csrf_token %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+
+<!-- Minimal JavaScript for basic functionality -->
+<script>
+// Get CSRF token for AJAX requests
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+}
+
+// Global function for WHO dropdown - simplified version
+window.showWhoDropdown = function(button, transactionId) {
+    console.log('WHO dropdown clicked for transaction:', transactionId);
+    
+    // Remove existing dropdowns
+    document.querySelectorAll('.temp-dropdown').forEach(d => d.remove());
+    
+    // Create dropdown
+    const dropdown = document.createElement('div');
+    dropdown.className = 'temp-dropdown position-absolute bg-white border rounded shadow';
+    dropdown.style.cssText = 'z-index: 9999; top: 100%; left: 0; min-width: 250px; max-height: 300px; overflow-y: auto; margin-top: 2px;';
+    
+    const customers = ['Richard Rodriguez', 'Joseph Johnson', 'David Anderson', 'David Johnson', 'Mary Jackson'];
+    
+    dropdown.innerHTML = `
+        <div class="p-2 border-bottom bg-light fw-bold">Contacts</div>
+        ${customers.map(name => `
+            <div class="p-2" style="cursor: pointer;" 
+                 onmouseover="this.style.background='#f8f9fa'" 
+                 onmouseout="this.style.background='white'"
+                 onclick="selectContact('${name}', ${transactionId})">${name}</div>
+        `).join('')}
+    `;
+    
+    // Position dropdown
+    const container = button.parentElement;
+    container.style.position = 'relative';
+    container.appendChild(dropdown);
+    
+    return false;
+};
+
+window.selectContact = function(contactName, transactionId) {
+    console.log('Selected contact:', contactName, 'for transaction:', transactionId);
+    
+    // Find and populate WHO input
+    const whoInput = document.querySelector(`[data-transaction-id="${transactionId}"] .who-input`);
+    if (whoInput) {
+        whoInput.value = contactName;
+    }
+    
+    // Remove dropdown
+    document.querySelectorAll('.temp-dropdown').forEach(d => d.remove());
+};
+
+console.log('Simple reconciliation functions loaded');
+</script>
+{% endblock %}
+
+{% block title %}{{ title|default:"Bank Reconciliation" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Keep the same styling as original */
+  .balance-banner { background:#f6f7f8; border:1px solid #e5e7eb; border-radius:.5rem; }
+  .balance-metric .label { font-size:.8rem; color:#6b7280; }
+  .balance-metric .value { font-weight:700; font-size:1rem; }
+  .diff-badge { font-size:.75rem; }
+  .transaction-row { border-left: 4px solid transparent; }
+  .transaction-row.matched { border-left-color: #10b981; background-color: #f0fdf4; }
+  .transaction-row:hover { background-color: #f9fafb; }
+  .amount-pos { color: #10b981; font-weight: 600; }
+  .amount-neg { color: #ef4444; font-weight: 600; }
+  .hybrid-input { border: 1px solid #d1d5db; border-radius: 0.375rem; }
+  .hybrid-dropdown-btn { border-left: 1px solid #d1d5db; }
+  .temp-dropdown { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <!-- Header Section - Same style as original -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h2 class="mb-1">
+            <i class="fas fa-balance-scale text-primary"></i>
+            Bank Reconciliation - {{ account.name }}
+          </h2>
+          <p class="text-muted mb-0">{{ company.name }}</p>
+        </div>
+        <div>
+          <a href="{% url 'reconciliation:dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress Section - Same style as original -->
+  {% include 'process/components/progress_bar.html' %}
+
+  <!-- Balance Summary - Same style as original -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="balance-banner p-4">
+        <div class="row text-center">
+          <div class="col-md-3">
+            <div class="balance-metric">
+              <div class="label">Statement Balance</div>
+              <div class="value text-primary">${{ progress.statement_balance|floatformat:2|intcomma }}</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="balance-metric">
+              <div class="label">System Balance</div>
+              <div class="value text-info">${{ progress.system_balance|floatformat:2|intcomma }}</div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="balance-metric">
+              <div class="label">Difference</div>
+              <div class="value {% if progress.difference == 0 %}text-success{% else %}text-warning{% endif %}">
+                ${{ progress.difference|floatformat:2|intcomma }}
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="balance-metric">
+              <div class="label">Reconciled</div>
+              <div class="value text-success">{{ progress.percentage|floatformat:0 }}%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Buttons - Simplified -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex gap-2">
+        <button class="btn btn-success" onclick="saveAllMatches()" id="saveAllBtn">
+          <i class="bi bi-check2-all me-1"></i>Save All Matches
+        </button>
+        <button class="btn btn-outline-primary" onclick="clearAllMatches()">
+          <i class="bi bi-arrow-clockwise me-1"></i>Clear All
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transactions Table - Same style as original but simplified -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="fas fa-list"></i>
+            Unmatched Transactions ({{ transactions|length }})
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          {% if transactions %}
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 100px;">Date</th>
+                    <th>Description</th>
+                    <th style="width: 120px;" class="text-end">Amount</th>
+                    <th style="width: 200px;">WHO (Payee)</th>
+                    <th style="width: 250px;">WHAT (Account)</th>
+                    <th style="width: 200px;">WHY (Description)</th>
+                    <th style="width: 80px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for transaction in transactions %}
+                    {% include 'process/components/transaction_row.html' %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-center py-5">
+              <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
+              <h4>All Transactions Reconciled!</h4>
+              <p class="text-muted">Great job! All transactions have been matched.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Simple JavaScript for basic functionality -->
+<script>
+// Save all matches function
+function saveAllMatches() {
+  const button = document.getElementById('saveAllBtn');
+  button.disabled = true;
+  button.innerHTML = '<i class="spinner-border spinner-border-sm me-1"></i>Saving...';
+  
+  // Collect all transaction data
+  const matches = [];
+  document.querySelectorAll('[data-transaction-id]').forEach(row => {
+    const transactionId = row.dataset.transactionId;
+    const whoInput = row.querySelector('.who-input');
+    const whatInput = row.querySelector('.what-input');
+    const whyInput = row.querySelector('.why-input');
+    
+    if (whoInput && whatInput && whyInput && 
+        whoInput.value.trim() && whatInput.value.trim()) {
+      matches.push({
+        transaction_id: transactionId,
+        who: whoInput.value.trim(),
+        what: whatInput.value.trim(),
+        why: whyInput.value.trim()
+      });
+    }
+  });
+  
+  if (matches.length === 0) {
+    alert('Please fill in WHO and WHAT fields for at least one transaction.');
+    button.disabled = false;
+    button.innerHTML = '<i class="bi bi-check2-all me-1"></i>Save All Matches';
+    return;
+  }
+  
+  // Submit via AJAX
+  fetch('{% url "reconciliation:save_simple_matches" %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({ matches: matches })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('✅ ' + data.message);
+      window.location.reload();
+    } else {
+      alert('❌ Error: ' + data.error);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('❌ Network error occurred');
+  })
+  .finally(() => {
+    button.disabled = false;
+    button.innerHTML = '<i class="bi bi-check2-all me-1"></i>Save All Matches';
+  });
+}
+
+// Clear all matches
+function clearAllMatches() {
+  if (confirm('Clear all WHO/WHAT/WHY fields?')) {
+    document.querySelectorAll('.who-input, .what-input, .why-input').forEach(input => {
+      input.value = '';
+    });
+  }
+}
+
+// Auto-save individual transaction when all fields are filled
+function checkAutoSave(transactionId) {
+  const row = document.querySelector(`[data-transaction-id="${transactionId}"]`);
+  const whoInput = row.querySelector('.who-input');
+  const whatInput = row.querySelector('.what-input');
+  const whyInput = row.querySelector('.why-input');
+  
+  if (whoInput.value.trim() && whatInput.value.trim() && whyInput.value.trim()) {
+    // Optional: Auto-save individual transaction
+    console.log('Transaction ready for auto-save:', transactionId);
+  }
+}
+</script>
+{% endblock %}

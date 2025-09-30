@@ -16,8 +16,10 @@ from company.models import Company
 from loans_core.models import LoanApplication, Loan
 from .forms import (
     CustomerForm, QuickCustomerForm, CustomerDocumentForm,
-    CustomerDocumentReviewForm
+    CustomerDocumentReviewForm, CustomerBulkUploadForm
 )
+from django.db import connection
+from django.conf import settings
 
 
 def get_user_company(user):
@@ -65,6 +67,48 @@ def customer_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    # Get database backend information
+    db_engine = settings.DATABASES['default']['ENGINE']
+    db_name = settings.DATABASES['default']['NAME']
+    
+    # Simplify database engine name for display
+    if 'postgresql' in db_engine:
+        db_backend = 'PostgreSQL'
+    elif 'sqlite' in db_engine:
+        db_backend = 'SQLite'
+    elif 'mysql' in db_engine:
+        db_backend = 'MySQL'
+    else:
+        db_backend = db_engine.split('.')[-1].upper()
+    
+    # Get recent loan applications with their loan numbers
+    recent_applications = LoanApplication.objects.filter(
+        company=user_company
+    ).select_related('customer').order_by('-created_at')[:10]
+    
+    # Create a list with application and corresponding loan info
+    applications_with_loans = []
+    for app in recent_applications:
+        loan_info = None
+        try:
+            # Try to find the loan created from this application
+            loan = Loan.objects.get(
+                customer=app.customer,
+                company=app.company,
+                principal_amount=app.approved_amount or app.requested_amount
+            )
+            loan_info = {
+                'loan_number': loan.loan_number,
+                'status': loan.status
+            }
+        except (Loan.DoesNotExist, Loan.MultipleObjectsReturned):
+            loan_info = None
+        
+        applications_with_loans.append({
+            'application': app,
+            'loan': loan_info
+        })
+    
     return render(request, 'loans_customers/customer_list.html', {
         'page_obj': page_obj,
         'search_query': search_query,
@@ -76,6 +120,11 @@ def customer_list(request):
         'individual_customers': individual_customers,
         'business_customers': business_customers,
         'active_customers': active_customers,
+        # Database info
+        'db_backend': db_backend,
+        'db_name': db_name,
+        # Loan applications with loan numbers
+        'applications_with_loans': applications_with_loans,
     })
 
 
@@ -430,4 +479,138 @@ def customer_delete(request, pk):
                 return redirect('loans_customers:customer_detail', pk=pk)
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+@login_required
+def customer_bulk_upload(request):
+    """Bulk upload customers from Excel/CSV file"""
+    if request.method == 'POST':
+        form = CustomerBulkUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            file = request.FILES['file']
+            user_company = get_user_company(request.user)
+            
+            try:
+                # Import pandas for file processing
+                import pandas as pd
+                from decimal import Decimal, InvalidOperation
+                
+                # Read the file
+                if file.name.lower().endswith('.xlsx'):
+                    df = pd.read_excel(file)
+                else:  # CSV
+                    df = pd.read_csv(file)
+                
+                success_count = 0
+                errors = []
+                
+                for index, row in df.iterrows():
+                    try:
+                        # Validate required fields
+                        required_fields = ['customer_type', 'first_name', 'last_name', 'email', 'phone', 'national_id']
+                        missing_fields = []
+                        
+                        for field in required_fields:
+                            value = row.get(field)
+                            if pd.isna(value) or str(value).strip() == '':
+                                missing_fields.append(field)
+                        
+                        if missing_fields:
+                            errors.append(f"Row {index + 2}: Missing required fields: {', '.join(missing_fields)}")
+                            continue
+                        
+                        # Handle optional fields
+                        date_of_birth = None
+                        if not pd.isna(row.get('date_of_birth')) and str(row.get('date_of_birth')).strip():
+                            try:
+                                date_of_birth = pd.to_datetime(row['date_of_birth']).date()
+                            except (ValueError, TypeError, pd.errors.ParserError):
+                                errors.append(f"Row {index + 2}: Invalid date format for date_of_birth (use YYYY-MM-DD)")
+                                continue
+                        
+                        monthly_income = None
+                        if not pd.isna(row.get('monthly_income')) and str(row.get('monthly_income')).strip():
+                            try:
+                                monthly_income = Decimal(str(row['monthly_income']))
+                            except (ValueError, InvalidOperation):
+                                errors.append(f"Row {index + 2}: Invalid monthly_income format (use numbers only)")
+                                continue
+                        
+                        employment_type = None
+                        if not pd.isna(row.get('employment_type')) and str(row.get('employment_type')).strip():
+                            employment_type = str(row['employment_type']).strip().lower()
+                            valid_employment_types = [choice[0] for choice in Customer.EMPLOYMENT_TYPE]
+                            if employment_type not in valid_employment_types:
+                                employment_type = None  # Set to null if invalid
+                        
+                        # Validate customer_type
+                        customer_type = str(row['customer_type']).strip().lower()
+                        if customer_type not in ['individual', 'business']:
+                            errors.append(f"Row {index + 2}: Invalid customer_type. Use 'Individual' or 'Business'")
+                            continue
+                        
+                        # Check for duplicate email in this company
+                        email = str(row['email']).strip().lower()
+                        if Customer.objects.filter(company=user_company, email=email).exists():
+                            errors.append(f"Row {index + 2}: Customer with email '{email}' already exists")
+                            continue
+                        
+                        # Check for duplicate national_id in this company
+                        national_id = str(row['national_id']).strip()
+                        if Customer.objects.filter(company=user_company, national_id=national_id).exists():
+                            errors.append(f"Row {index + 2}: Customer with National ID '{national_id}' already exists")
+                            continue
+                        
+                        # Create customer
+                        customer = Customer.objects.create(
+                            company=user_company,
+                            created_by=request.user,
+                            customer_type=customer_type,
+                            first_name=str(row['first_name']).strip(),
+                            last_name=str(row['last_name']).strip(),
+                            email=email,
+                            phone_primary=str(row['phone']).strip(),
+                            national_id=national_id,
+                            date_of_birth=date_of_birth,
+                            monthly_income=monthly_income,
+                            employment_type=employment_type,
+                            # Set default address fields
+                            street_address=str(row.get('address', '')).strip() or 'Not Provided',
+                            city=str(row.get('city', '')).strip() or 'Not Provided',
+                            state_province=str(row.get('state', '')).strip() or 'Not Provided',
+                            postal_code=str(row.get('postal_code', '')).strip() or 'Not Provided',
+                            country=str(row.get('country', 'United States')).strip(),
+                            is_active=True
+                        )
+                        
+                        success_count += 1
+                        
+                    except Exception as e:
+                        errors.append(f"Row {index + 2}: {str(e)}")
+                        continue
+                
+                # Show results
+                if success_count > 0:
+                    messages.success(request, f'✅ Successfully created {success_count} customers!')
+                
+                if errors:
+                    error_msg = f'⚠️ {len(errors)} errors occurred:\n' + '\n'.join(errors[:10])
+                    if len(errors) > 10:
+                        error_msg += f'\n... and {len(errors) - 10} more errors'
+                    messages.error(request, error_msg)
+                
+            except ImportError:
+                messages.error(request, '❌ Pandas library not installed. Cannot process Excel/CSV files.')
+            except Exception as e:
+                messages.error(request, f'❌ File processing error: {str(e)}')
+        
+        return redirect('loans_customers:customer_bulk_upload')
+    
+    else:
+        form = CustomerBulkUploadForm()
+    
+    return render(request, 'loans_customers/customer_bulk_upload.html', {
+        'form': form,
+        'title': 'Bulk Upload Customers',
+    })
 

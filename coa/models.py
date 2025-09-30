@@ -345,6 +345,82 @@ class Account(BaseModel, UserTrackingModel):
     # Add company-aware manager
     objects = CompanyAwareManager()
 
+    def is_loan_account(self):
+        """
+        Determine if this account should create Payment records in the loan system.
+        The main General Loans Receivable (122000) should always create Payment records.
+        This is the primary account that receives payments through reconciliation.
+        """
+        # Primary loan account that creates Payment records
+        # 122000 General Loans Receivable is the main accessor to payment history
+        if self.code == '122000':
+            return True
+            
+        # Check if this account is configured in LoanGLConfiguration as the main receivable account
+        try:
+            from loan_reconciliation_bridge.models import LoanGLConfiguration
+            gl_config = LoanGLConfiguration.objects.filter(company=self.company).first()
+            
+            if gl_config and gl_config.general_loans_receivable_account:
+                # The main General Loans Receivable account creates Payment records
+                if self == gl_config.general_loans_receivable_account:
+                    return True
+                    
+        except ImportError:
+            # loan_reconciliation_bridge not available
+            pass
+        
+        # Additional check: Account name must explicitly indicate it's the main loan receivable
+        name_lower = self.name.lower()
+        if (self.code.startswith('122') and 
+            ('general loans receivable' in name_lower or 
+             'loans receivable' in name_lower or 
+             'loan receivable' in name_lower)):
+            return True
+            
+        return False
+        
+    def is_loan_related_account(self):
+        """
+        Determine if this account is related to loans (for reporting and analysis).
+        This includes the main receivable account plus the three split allocation accounts.
+        """
+        if self.is_loan_account():
+            return True
+            
+        # Check if this account is configured in LoanGLConfiguration for three-tier split
+        try:
+            from loan_reconciliation_bridge.models import LoanGLConfiguration
+            gl_config = LoanGLConfiguration.objects.filter(company=self.company).first()
+            
+            if gl_config:
+                # These are the three accounts used for manager-approved payment splits
+                if (self == gl_config.interest_income_account or 
+                    self == gl_config.late_fee_income_account or
+                    self == gl_config.principal_account):
+                    return True
+                    
+        except ImportError:
+            # loan_reconciliation_bridge not available
+            pass
+            
+        # Interest income accounts (Revenue accounts)
+        if (self.account_type in [AccountType.REVENUE, AccountType.OTHER_INCOME] and
+            'interest' in self.name.lower()):
+            return True
+            
+        # Late fee income accounts (Revenue accounts)
+        if (self.account_type in [AccountType.REVENUE, AccountType.OTHER_INCOME] and
+            ('late' in self.name.lower() and 'fee' in self.name.lower())):
+            return True
+            
+        # Principal accounts (Asset accounts for principal allocation)
+        if (self.account_type in [AccountType.CURRENT_ASSET, AccountType.NON_CURRENT_ASSET] and
+            ('principal' in self.name.lower() or 'loan principal' in self.name.lower())):
+            return True
+            
+        return False
+
     class Meta:
         verbose_name = "Chart of Account"
         verbose_name_plural = "Chart of Accounts"
@@ -366,6 +442,61 @@ class Account(BaseModel, UserTrackingModel):
     def formatted_ytd_balance(self):
         """Return formatted YTD balance"""
         return f"${self.ytd_balance:,.2f}"
+    
+    def update_balance_from_journals(self):
+        """Update current_balance and ytd_balance from posted journal entries"""
+        from journal.models import JournalLine
+        from datetime import date
+        
+        # Calculate balance from all posted journal lines for this account
+        journal_lines = JournalLine.objects.filter(
+            account_code=self.code,
+            company=self.company,
+            journal__status='posted'
+        )
+        
+        total_debits = sum(line.debit for line in journal_lines)
+        total_credits = sum(line.credit for line in journal_lines)
+        
+        # Calculate net balance based on account type
+        # Assets and Expenses: Debit increases, Credit decreases
+        # Liabilities, Equity, Income: Credit increases, Debit decreases
+        if self.account_type in ['CURRENT_ASSET', 'FIXED_ASSET', 'INVENTORY', 
+                                'NON_CURRENT_ASSET', 'PREPAYMENT', 'DIRECT_COST', 
+                                'OVERHEAD', 'DEPRECIATION', 'EXPENSE']:
+            # Asset/Expense accounts: Debit balance
+            net_balance = total_debits - total_credits
+        else:
+            # Liability/Equity/Income accounts: Credit balance  
+            net_balance = total_credits - total_debits
+        
+        # Add opening balance
+        calculated_balance = self.opening_balance + net_balance
+        
+        # Update balances
+        self.current_balance = calculated_balance
+        self.ytd_balance = calculated_balance
+        
+        # Save without triggering signals
+        self.save(update_fields=['current_balance', 'ytd_balance'])
+        
+        return calculated_balance
+
+    @classmethod
+    def update_all_balances_from_journals(cls, company=None):
+        """Update all account balances from journal entries"""
+        accounts = cls.objects.filter(is_active=True)
+        if company:
+            accounts = accounts.filter(company=company)
+            
+        updated_count = 0
+        for account in accounts:
+            old_balance = account.current_balance
+            new_balance = account.update_balance_from_journals()
+            if abs(old_balance - new_balance) > 0.01:  # Changed by more than 1 cent
+                updated_count += 1
+                
+        return updated_count
 
     @property
     def tax_rate_display(self):

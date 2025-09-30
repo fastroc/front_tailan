@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+
+{% block title %}Bulk Upload Customers{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Bulk Upload Customers</h3>
+                <div class="card-tools">
+                    <a href="{% url 'loans_customers:customer_list' %}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-arrow-left"></i> Back to Customer List
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show" role="alert">
+                            {{ message|safe }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="row">
+                    <!-- Upload Form -->
+                    <div class="col-md-6">
+                        <h4>Upload File</h4>
+                        <form method="post" enctype="multipart/form-data" id="uploadForm">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                {{ form.file.label_tag }}
+                                {{ form.file }}
+                                {% if form.file.errors %}
+                                    <div class="text-danger">{{ form.file.errors }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Upload an Excel (.xlsx) or CSV file. Maximum file size: 10MB.
+                                </small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Upload and Process
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Instructions -->
+                    <div class="col-md-6">
+                        <h4>Instructions</h4>
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> File Format Requirements:</h6>
+                            <ul class="mb-0">
+                                <li>File must be in Excel (.xlsx) or CSV format</li>
+                                <li>First row must contain column headers</li>
+                                <li>Maximum file size: 10MB</li>
+                                <li>Duplicate customers (by ID number or name) will be skipped</li>
+                            </ul>
+                        </div>
+
+                        <h6>Required Columns:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>name:</strong> Full name of the customer</li>
+                            <li><strong>id_number:</strong> National ID or passport number</li>
+                            <li><strong>phone:</strong> Primary phone number</li>
+                            <li><strong>customer_type:</strong> "individual" or "business"</li>
+                        </ul>
+
+                        <h6>Optional Columns:</h6>
+                        <div class="row">
+                            <div class="col-12">
+                                <ul class="small">
+                                    <li>email</li>
+                                    <li>address</li>
+                                    <li>date_of_birth (YYYY-MM-DD)</li>
+                                    <li>gender (M/F)</li>
+                                    <li>employment_status</li>
+                                    <li>employer_name</li>
+                                    <li>monthly_income</li>
+                                    <li>business_name</li>
+                                    <li>business_type</li>
+                                    <li>business_registration_number</li>
+                                    <li>annual_revenue</li>
+                                    <li>credit_score</li>
+                                    <li>notes</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sample Data Section -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h4>Sample Data Format</h4>
+                        <div class="alert alert-secondary">
+                            <h6>Excel/CSV Sample:</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>name</th>
+                                            <th>id_number</th>
+                                            <th>phone</th>
+                                            <th>customer_type</th>
+                                            <th>email</th>
+                                            <th>address</th>
+                                            <th>monthly_income</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>John Smith</td>
+                                            <td>ID123456789</td>
+                                            <td>+976-12345678</td>
+                                            <td>individual</td>
+                                            <td>john@email.com</td>
+                                            <td>123 Main St, UB</td>
+                                            <td>1500000</td>
+                                        </tr>
+                                        <tr>
+                                            <td>ABC Corporation</td>
+                                            <td>REG987654321</td>
+                                            <td>+976-87654321</td>
+                                            <td>business</td>
+                                            <td>info@abc.mn</td>
+                                            <td>456 Business Ave</td>
+                                            <td></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Download Template Button -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <button type="button" class="btn btn-outline-success" id="downloadTemplate">
+                            <i class="fas fa-download"></i> Download Excel Template
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Download template functionality
+    document.getElementById('downloadTemplate').addEventListener('click', function() {
+        // Create a simple CSV template
+        const csvContent = `name,id_number,phone,customer_type,email,address,date_of_birth,gender,employment_status,employer_name,monthly_income,business_name,business_type,business_registration_number,annual_revenue,credit_score,notes
+John Smith,ID123456789,+976-12345678,individual,john@email.com,"123 Main St, Ulaanbaatar",1990-01-15,M,employed,Tech Company,1500000,,,,,750,Good customer
+ABC Corporation,REG987654321,+976-87654321,business,info@abc.mn,"456 Business Ave, UB",,,,,,ABC Corp,Trading,REG987654321,50000000,800,Established business`;
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'customer_upload_template.csv';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    });
+
+    // Form validation
+    const form = document.getElementById('uploadForm');
+    form.addEventListener('submit', function(e) {
+        const fileInput = document.getElementById('id_file');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            e.preventDefault();
+            alert('Please select a file to upload.');
+            return;
+        }
+        
+        const allowedTypes = [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'text/csv',
+            'application/csv'
+        ];
+        
+        if (!allowedTypes.includes(file.type)) {
+            e.preventDefault();
+            alert('Please upload an Excel (.xlsx) or CSV file.');
+            return;
+        }
+        
+        if (file.size > 10 * 1024 * 1024) { // 10MB
+            e.preventDefault();
+            alert('File size must be less than 10MB.');
+            return;
+        }
+        
+        // Show loading state
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Add New Collateral - Debug Version{% endblock %}
+
+{% block extra_css %}
+<style>
+    .debug-form {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    .duplicate-alert {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 5px;
+        padding: 1rem;
+        margin: 1rem 0;
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="debug-form">
+        <h2>Add New Collateral - Simple Version</h2>
+        <p class="text-muted">Simplified form for debugging purposes</p>
+        
+        <!-- Duplicate Alert -->
+        <div id="duplicateAlert" class="duplicate-alert">
+            <h5>⚠️ Potential Duplicates Found</h5>
+            <div id="duplicateResults"></div>
+            <button type="button" class="btn btn-sm btn-warning" onclick="dismissDuplicates()">Continue Anyway</button>
+        </div>
+        
+        <form method="post" id="collateralForm">
+            {% csrf_token %}
+            
+            <!-- Basic Fields Only -->
+            <div class="form-group">
+                <label for="{{ form.loan_application.id_for_label }}">{{ form.loan_application.label }} *</label>
+                {{ form.loan_application }}
+                {% for error in form.loan_application.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.collateral_type.id_for_label }}">{{ form.collateral_type.label }} *</label>
+                {{ form.collateral_type }}
+                {% for error in form.collateral_type.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.title.id_for_label }}">{{ form.title.label }} *</label>
+                {{ form.title }}
+                {% for error in form.title.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+                {{ form.description }}
+                {% for error in form.description.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.condition.id_for_label }}">{{ form.condition.label }} *</label>
+                {{ form.condition }}
+                {% for error in form.condition.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.owner_name.id_for_label }}">{{ form.owner_name.label }}</label>
+                {{ form.owner_name }}
+                {% for error in form.owner_name.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.declared_value.id_for_label }}">{{ form.declared_value.label }} *</label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    {{ form.declared_value }}
+                </div>
+                {% for error in form.declared_value.errors %}
+                    <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            
+            <!-- Vehicle Fields (Simple Version) -->
+            <div id="vehicleFields" style="display: none;">
+                <h5>Vehicle Information</h5>
+                
+                <div class="form-group">
+                    <label for="{{ form.vehicle_make.id_for_label }}">{{ form.vehicle_make.label }}</label>
+                    {{ form.vehicle_make }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.vehicle_model.id_for_label }}">{{ form.vehicle_model.label }}</label>
+                    {{ form.vehicle_model }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.vehicle_year.id_for_label }}">{{ form.vehicle_year.label }}</label>
+                    {{ form.vehicle_year }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.vehicle_license_plate.id_for_label }}">{{ form.vehicle_license_plate.label }}</label>
+                    {{ form.vehicle_license_plate }}
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">Create Collateral</button>
+                <a href="{% url 'loans_collateral:collateral_list' %}" class="btn btn-secondary">Cancel</a>
+                <button type="button" class="btn btn-info" onclick="testDuplicates()">Test Duplicates</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Simple JavaScript for debugging
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Debug form loaded');
+    
+    const collateralTypeSelect = document.getElementById('{{ form.collateral_type.id_for_label }}');
+    const vehicleFields = document.getElementById('vehicleFields');
+    const titleField = document.getElementById('{{ form.title.id_for_label }}');
+    
+    // Show/hide vehicle fields
+    function toggleVehicleFields() {
+        const selectedText = collateralTypeSelect.options[collateralTypeSelect.selectedIndex].text.toLowerCase();
+        console.log('Selected type:', selectedText);
+        
+        if (selectedText.includes('vehicle') || selectedText.includes('car') || selectedText.includes('auto')) {
+            vehicleFields.style.display = 'block';
+            console.log('Showing vehicle fields');
+        } else {
+            vehicleFields.style.display = 'none';
+            console.log('Hiding vehicle fields');
+        }
+    }
+    
+    collateralTypeSelect.addEventListener('change', toggleVehicleFields);
+    
+    // Simple duplicate detection
+    let duplicateTimeout;
+    
+    function checkDuplicates() {
+        const title = titleField.value.trim();
+        console.log('Checking duplicates for:', title);
+        
+        if (!title) {
+            return;
+        }
+        
+        const formData = new FormData(document.getElementById('collateralForm'));
+        const data = {};
+        
+        for (let [key, value] of formData.entries()) {
+            data[key] = value;
+        }
+        
+        fetch('{% url "loans_collateral:api_check_duplicates" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            console.log('API response status:', response.status);
+            return response.json();
+        })
+        .then(results => {
+            console.log('Duplicate results:', results);
+            displayDuplicates(results);
+        })
+        .catch(error => {
+            console.error('Duplicate check error:', error);
+            document.getElementById('duplicateAlert').innerHTML = 
+                '<p class="text-danger">Error checking duplicates: ' + error.message + '</p>';
+            document.getElementById('duplicateAlert').style.display = 'block';
+        });
+    }
+    
+    function displayDuplicates(results) {
+        const alertEl = document.getElementById('duplicateAlert');
+        const resultsEl = document.getElementById('duplicateResults');
+        
+        const totalMatches = (results.exact_matches || []).length + 
+                           (results.high_probability || []).length + 
+                           (results.medium_probability || []).length;
+        
+        if (totalMatches > 0) {
+            let html = '<p><strong>Found ' + totalMatches + ' potential duplicates:</strong></p><ul>';
+            
+            (results.exact_matches || []).forEach(match => {
+                html += '<li><strong>EXACT:</strong> ' + match.collateral_id + ' - ' + match.title + '</li>';
+            });
+            
+            (results.high_probability || []).forEach(match => {
+                html += '<li><strong>SIMILAR:</strong> ' + match.collateral_id + ' - ' + match.title + ' (' + match.confidence + '% match)</li>';
+            });
+            
+            resultsEl.innerHTML = html + '</ul>';
+            alertEl.style.display = 'block';
+        } else {
+            alertEl.style.display = 'none';
+        }
+    }
+    
+    // Debounced duplicate checking
+    titleField.addEventListener('input', function() {
+        clearTimeout(duplicateTimeout);
+        duplicateTimeout = setTimeout(checkDuplicates, 1000);
+    });
+    
+    // Global functions
+    window.testDuplicates = function() {
+        console.log('Manual duplicate test');
+        checkDuplicates();
+    };
+    
+    window.dismissDuplicates = function() {
+        document.getElementById('duplicateAlert').style.display = 'none';
+    };
+    
+    console.log('Debug form ready');
+});
+</script>
+{% endblock %}

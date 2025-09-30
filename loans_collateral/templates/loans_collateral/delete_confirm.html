@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Delete {{ collateral.title }} - Collateral Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .delete-confirmation-card {
+        max-width: 600px;
+        margin: 0 auto;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
+    .danger-zone {
+        background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+        border: 2px solid #e53e3e;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+    }
+    
+    .warning-zone {
+        background: linear-gradient(135deg, #fffbeb 0%, #fbd38d 100%);
+        border: 2px solid #ed8936;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+    }
+    
+    .collateral-info {
+        background: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        border-left: 4px solid #6c757d;
+    }
+    
+    .status-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+    
+    .status-pending { background-color: #fff3cd; color: #856404; }
+    .status-verified { background-color: #d1ecf1; color: #0c5460; }
+    .status-valued { background-color: #d4edda; color: #155724; }
+    .status-approved { background-color: #d1ecf1; color: #0c5460; }
+    .status-rejected { background-color: #f8d7da; color: #721c24; }
+    .status-released { background-color: #e2e3e5; color: #383d41; }
+    
+    .btn-delete-confirm {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        border: none;
+        box-shadow: 0 0.125rem 0.25rem rgba(220, 53, 69, 0.3);
+        transition: all 0.2s;
+    }
+    
+    .btn-delete-confirm:hover {
+        background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 0.25rem 0.5rem rgba(220, 53, 69, 0.4);
+    }
+    
+    .warning-icon {
+        font-size: 3rem;
+        color: #dc3545;
+        margin-bottom: 1rem;
+    }
+    
+    .info-icon {
+        font-size: 3rem;
+        color: #ffc107;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'loans_collateral:dashboard' %}" class="text-decoration-none">Collateral</a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'loans_collateral:collateral_list' %}" class="text-decoration-none">All Items</a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'loans_collateral:collateral_detail' collateral.pk %}" class="text-decoration-none">{{ collateral.collateral_id }}</a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Delete</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            {% if status_warning %}
+                <!-- Warning for protected collateral -->
+                <div class="warning-zone text-center mb-4">
+                    <div class="info-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h4 class="text-warning mb-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Protected Collateral Item
+                    </h4>
+                    <p class="mb-3">
+                        This collateral item cannot be deleted because it has been 
+                        <strong>{{ collateral.get_status_display|lower }}</strong> and may be actively securing a loan.
+                    </p>
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Status Protection:</strong> Items with "Approved", "Verified", or "Valued" status 
+                        are protected from deletion to maintain data integrity and loan security.
+                    </div>
+                    
+                    {% if can_force_delete %}
+                        <div class="alert alert-warning mt-3" role="alert">
+                            <i class="fas fa-user-cog me-2"></i>
+                            <strong>Force Delete Available:</strong> You can force delete this protected item.
+                            <strong>Use with caution!</strong>
+                        </div>
+                    {% endif %}
+                </div>
+            {% else %}
+                <!-- Deletion confirmation -->
+                <div class="danger-zone text-center mb-4">
+                    <div class="warning-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h4 class="text-danger mb-3">
+                        <i class="fas fa-trash-alt me-2"></i>
+                        Confirm Collateral Deletion
+                    </h4>
+                    <p class="mb-0">
+                        You are about to permanently delete this collateral item. 
+                        <strong>This action cannot be undone.</strong>
+                    </p>
+                </div>
+            {% endif %}
+
+            <!-- Collateral Information Card -->
+            <div class="card delete-confirmation-card">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cube me-2 text-primary"></i>
+                            Collateral Details
+                        </h5>
+                        <span class="status-badge status-{{ collateral.status }}">
+                            {{ collateral.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="collateral-info mb-3">
+                                <h6 class="mb-2">
+                                    <i class="fas fa-id-badge me-2"></i>
+                                    Basic Information
+                                </h6>
+                                <p class="mb-1"><strong>ID:</strong> {{ collateral.collateral_id }}</p>
+                                <p class="mb-1"><strong>Title:</strong> {{ collateral.title }}</p>
+                                <p class="mb-1"><strong>Type:</strong> {{ collateral.collateral_type }}</p>
+                                <p class="mb-0"><strong>Owner:</strong> {{ collateral.owner_name }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="collateral-info mb-3">
+                                <h6 class="mb-2">
+                                    <i class="fas fa-user me-2"></i>
+                                    Loan Information
+                                </h6>
+                                <p class="mb-1"><strong>Customer:</strong> {{ customer_name }}</p>
+                                <p class="mb-1"><strong>Loan:</strong> {{ loan_number }}</p>
+                                <p class="mb-1"><strong>Amount:</strong> ${{ collateral.loan_application.requested_amount|floatformat:0|intcomma }}</p>
+                                <p class="mb-0"><strong>Applied:</strong> {{ collateral.loan_application.created_at|date:"M d, Y" }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="collateral-info mb-3">
+                                <h6 class="mb-2">
+                                    <i class="fas fa-dollar-sign me-2"></i>
+                                    Valuation
+                                </h6>
+                                <p class="mb-1"><strong>Declared Value:</strong> ${{ collateral.declared_value|floatformat:0|intcomma }}</p>
+                                {% if collateral.market_value %}
+                                    <p class="mb-1"><strong>Market Value:</strong> ${{ collateral.market_value|floatformat:0|intcomma }}</p>
+                                {% endif %}
+                                {% if collateral.loan_value %}
+                                    <p class="mb-0"><strong>Loan Value:</strong> ${{ collateral.loan_value|floatformat:0|intcomma }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="collateral-info mb-3">
+                                <h6 class="mb-2">
+                                    <i class="fas fa-calendar-alt me-2"></i>
+                                    Timeline
+                                </h6>
+                                <p class="mb-1"><strong>Created:</strong> {{ collateral.created_at|date:"M d, Y g:i A" }}</p>
+                                <p class="mb-1"><strong>Updated:</strong> {{ collateral.updated_at|date:"M d, Y g:i A" }}</p>
+                                {% if collateral.verification_date %}
+                                    <p class="mb-0"><strong>Verified:</strong> {{ collateral.verification_date|date:"M d, Y" }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if collateral.description %}
+                        <div class="collateral-info">
+                            <h6 class="mb-2">
+                                <i class="fas fa-align-left me-2"></i>
+                                Description
+                            </h6>
+                            <p class="mb-0">{{ collateral.description }}</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="text-center mt-4">
+                {% if can_delete %}
+                    {% if is_protected and can_force_delete %}
+                        <!-- Force delete for protected items -->
+                        <div class="d-flex justify-content-center gap-3 mb-3">
+                            <a href="{% url 'loans_collateral:collateral_detail' collateral.pk %}" 
+                               class="btn btn-outline-secondary btn-lg px-4">
+                                <i class="fas fa-arrow-left me-2"></i>
+                                Cancel
+                            </a>
+                            
+                            <form method="post" class="d-inline" onsubmit="return confirmForceDeletion();">
+                                {% csrf_token %}
+                                <input type="hidden" name="force_delete" value="true">
+                                <button type="submit" class="btn btn-danger btn-delete-confirm btn-lg px-4">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Force Delete
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div class="alert alert-danger">
+                            <i class="fas fa-skull-crossbones me-2"></i>
+                            <strong>DANGER ZONE:</strong> Force deletion bypasses all safety checks and will 
+                            permanently remove this collateral item regardless of its status. This action may 
+                            affect active loans and cannot be undone.
+                        </div>
+                    {% else %}
+                        <!-- Normal delete for non-protected items -->
+                        <div class="d-flex justify-content-center gap-3">
+                            <a href="{% url 'loans_collateral:collateral_detail' collateral.pk %}" 
+                               class="btn btn-outline-secondary btn-lg px-4">
+                                <i class="fas fa-arrow-left me-2"></i>
+                                Cancel
+                            </a>
+                            
+                            <form method="post" class="d-inline" onsubmit="return confirmDeletion();">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-delete-confirm btn-lg px-4">
+                                    <i class="fas fa-trash-alt me-2"></i>
+                                    Yes, Delete Permanently
+                                </button>
+                            </form>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            All related valuations, documents, and history will also be deleted.
+                        </small>
+                    </div>
+                {% else %}
+                    <div class="d-flex justify-content-center">
+                        <a href="{% url 'loans_collateral:collateral_detail' collateral.pk %}" 
+                           class="btn btn-primary btn-lg px-4">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Return to Collateral
+                        </a>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-shield-alt me-1"></i>
+                            This item has protected status. Use force delete if deletion is necessary.
+                        </small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDeletion() {
+    const collateralTitle = "{{ collateral.title|escapejs }}";
+    const collateralId = "{{ collateral.collateral_id|escapejs }}";
+    const customerName = "{{ customer_name|escapejs }}";
+    
+    return confirm(
+        `FINAL CONFIRMATION:\n\n` +
+        `Are you absolutely sure you want to DELETE this collateral?\n\n` +
+        `Collateral: ${collateralTitle}\n` +
+        `ID: ${collateralId}\n` +
+        `Customer: ${customerName}\n\n` +
+        `This action CANNOT be undone!`
+    );
+}
+
+function confirmForceDeletion() {
+    const collateralTitle = "{{ collateral.title|escapejs }}";
+    const collateralId = "{{ collateral.collateral_id|escapejs }}";
+    const customerName = "{{ customer_name|escapejs }}";
+    const status = "{{ collateral.get_status_display|escapejs }}";
+    
+    const firstConfirm = confirm(
+        `⚠️ FORCE DELETE ⚠️\n\n` +
+        `You are about to FORCE DELETE a protected collateral item:\n\n` +
+        `Collateral: ${collateralTitle}\n` +
+        `ID: ${collateralId}\n` +
+        `Customer: ${customerName}\n` +
+        `Status: ${status}\n\n` +
+        `This will bypass all safety checks and may affect active loans!\n\n` +
+        `Continue with force deletion?`
+    );
+    
+    if (!firstConfirm) {
+        return false;
+    }
+    
+    const secondConfirm = confirm(
+        `FINAL WARNING - FORCE DELETE\n\n` +
+        `This is your LAST CHANCE to cancel!\n\n` +
+        `Proceeding will PERMANENTLY DELETE:\n` +
+        `• ${collateralTitle} (${collateralId})\n` +
+        `• All related valuations and documents\n` +
+        `• All associated history\n\n` +
+        `This protected item (${status}) will be completely removed!\n\n` +
+        `Type "DELETE" in the next prompt to confirm.`
+    );
+    
+    if (!secondConfirm) {
+        return false;
+    }
+    
+    const finalConfirm = prompt(
+        `To complete the force deletion, type exactly: DELETE\n\n` +
+        `Item: ${collateralTitle} (${collateralId})`
+    );
+    
+    if (finalConfirm !== "DELETE") {
+        alert("Force deletion cancelled. You must type exactly 'DELETE' to proceed.");
+        return false;
+    }
+    
+    return true;
+}
+
+// Auto-focus on the cancel button for keyboard navigation
+document.addEventListener('DOMContentLoaded', function() {
+    const cancelButton = document.querySelector('.btn-outline-secondary');
+    if (cancelButton) {
+        cancelButton.focus();
+    }
+});
+</script>
+{% endblock %}

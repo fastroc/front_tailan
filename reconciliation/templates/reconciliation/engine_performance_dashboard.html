@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .engine-card {
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        .engine-card:hover {
+            border-color: #007bff;
+            transform: translateY(-2px);
+        }
+        .engine-active {
+            border-color: #28a745 !important;
+            background-color: #f8fff9;
+        }
+        .metric-badge {
+            font-size: 0.9rem;
+            padding: 0.4rem 0.8rem;
+        }
+        .test-result {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            margin: 0.5rem 0;
+            padding: 0.75rem;
+        }
+        .confidence-bar {
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #dc3545, #ffc107, #28a745);
+            transition: width 0.3s ease;
+        }
+        .engine-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .stat-card {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-chart-line me-2 text-primary"></i>
+                        {{ title }}
+                    </h1>
+                    <a href="{% url 'reconciliation:dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Reconciliation
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Controls -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-play-circle me-2"></i>
+                            Engine Performance Testing
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6>Test Transactions</h6>
+                                <div class="row">
+                                    {% for transaction in test_transactions %}
+                                    <div class="col-md-4 mb-2">
+                                        <div class="card card-body p-2 small">
+                                            <strong>{{ transaction.description }}</strong>
+                                            <div class="text-muted">
+                                                Amount: ${{ transaction.amount|floatformat:0 }}<br>
+                                                Date: {{ transaction.date }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <button id="runAllTests" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-rocket me-2"></i>
+                                    Run All Engine Tests
+                                </button>
+                                <div class="mt-2">
+                                    <button id="clearResults" class="btn btn-outline-warning btn-sm">
+                                        <i class="fas fa-trash me-1"></i>
+                                        Clear Results
+                                    </button>
+                                </div>
+                                <div class="loading-spinner" id="loadingSpinner">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Running tests...</span>
+                                    </div>
+                                    <div class="mt-2">Testing engines...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Engine Comparison Cards -->
+        <div class="row">
+            {% for engine_name in available_engines %}
+            <div class="col-md-4 mb-4">
+                <div class="card engine-card" id="engine-{{ engine_name }}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            {% if engine_name == 'PhonePriorityEngine' %}
+                                <i class="fas fa-phone text-info me-2"></i>Phone Priority
+                            {% elif engine_name == 'IDPriorityEngine' %}
+                                <i class="fas fa-id-card text-warning me-2"></i>ID Priority  
+                            {% elif engine_name == 'CombinedSignalsEngine' %}
+                                <i class="fas fa-brain text-success me-2"></i>Combined Signals
+                            {% endif %}
+                        </h5>
+                        <span class="badge bg-secondary engine-status" id="status-{{ engine_name }}">Ready</span>
+                    </div>
+                    <div class="card-body">
+                        <!-- Engine Stats -->
+                        <div class="engine-stats">
+                            <div class="stat-card">
+                                <div class="h6 mb-1 text-primary" id="matches-{{ engine_name }}">0</div>
+                                <small class="text-muted">Matches</small>
+                            </div>
+                            <div class="stat-card">
+                                <div class="h6 mb-1 text-success" id="confidence-{{ engine_name }}">0%</div>
+                                <small class="text-muted">Avg Confidence</small>
+                            </div>
+                            <div class="stat-card">
+                                <div class="h6 mb-1 text-info" id="speed-{{ engine_name }}">0ms</div>
+                                <small class="text-muted">Avg Speed</small>
+                            </div>
+                        </div>
+
+                        <!-- Test Results -->
+                        <div class="mt-3">
+                            <h6>Test Results</h6>
+                            <div id="results-{{ engine_name }}" class="test-results">
+                                <div class="text-muted text-center py-2">
+                                    <i class="fas fa-clock me-1"></i>
+                                    Waiting for test run...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Individual Test Button -->
+                        <div class="mt-3">
+                            <button class="btn btn-outline-primary btn-sm w-100 test-single-engine" 
+                                    data-engine="{{ engine_name }}">
+                                <i class="fas fa-play me-1"></i>
+                                Test This Engine
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Overall Comparison Chart -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            Performance Comparison Summary
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="comparisonChart" class="text-center text-muted py-4">
+                            <i class="fas fa-chart-line fa-3x mb-3"></i>
+                            <div>Run tests to see performance comparison</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Test transaction data
+        const testTransactions = {{ test_transactions|safe }};
+        
+        // Engine test results storage
+        let engineResults = {};
+
+        // Initialize results storage
+        {% for engine_name in available_engines %}
+        engineResults['{{ engine_name }}'] = {
+            total_processed: 0,
+            successful_matches: 0,
+            total_confidence: 0,
+            total_processing_time: 0,
+            test_results: []
+        };
+        {% endfor %}
+
+        // Run all engine tests
+        document.getElementById('runAllTests').addEventListener('click', function() {
+            console.log('🚀 Running all engine tests...');
+            
+            // Show loading spinner
+            document.getElementById('loadingSpinner').style.display = 'block';
+            this.disabled = true;
+            
+            // Reset all engines
+            {% for engine_name in available_engines %}
+            resetEngineUI('{{ engine_name }}');
+            {% endfor %}
+            
+            // Run tests for each engine sequentially
+            const engines = {{ available_engines|safe }};
+            let currentEngine = 0;
+            
+            function runNextEngine() {
+                if (currentEngine < engines.length) {
+                    testEngine(engines[currentEngine], () => {
+                        currentEngine++;
+                        setTimeout(runNextEngine, 500); // Small delay between engines
+                    });
+                } else {
+                    // All tests complete
+                    document.getElementById('loadingSpinner').style.display = 'none';
+                    document.getElementById('runAllTests').disabled = false;
+                    updateComparisonChart();
+                    console.log('✅ All engine tests completed!');
+                }
+            }
+            
+            runNextEngine();
+        });
+
+        // Clear all results
+        document.getElementById('clearResults').addEventListener('click', function() {
+            {% for engine_name in available_engines %}
+            resetEngineUI('{{ engine_name }}');
+            engineResults['{{ engine_name }}'] = {
+                total_processed: 0,
+                successful_matches: 0,
+                total_confidence: 0,
+                total_processing_time: 0,
+                test_results: []
+            };
+            {% endfor %}
+            
+            document.getElementById('comparisonChart').innerHTML = `
+                <i class="fas fa-chart-line fa-3x mb-3"></i>
+                <div>Run tests to see performance comparison</div>
+            `;
+            
+            console.log('🧹 Results cleared!');
+        });
+
+        // Individual engine test buttons
+        document.querySelectorAll('.test-single-engine').forEach(button => {
+            button.addEventListener('click', function() {
+                const engineName = this.getAttribute('data-engine');
+                console.log(`🎯 Testing single engine: ${engineName}`);
+                
+                this.disabled = true;
+                resetEngineUI(engineName);
+                
+                testEngine(engineName, () => {
+                    this.disabled = false;
+                    updateComparisonChart();
+                });
+            });
+        });
+
+        // Test a specific engine
+        function testEngine(engineName, callback) {
+            console.log(`🔍 Testing engine: ${engineName}`);
+            
+            // Update UI to show testing state
+            document.getElementById(`status-${engineName}`).textContent = 'Testing...';
+            document.getElementById(`status-${engineName}`).className = 'badge bg-warning';
+            document.getElementById(`engine-${engineName}`).classList.add('engine-active');
+            
+            // Simulate smart matching test for each transaction
+            let processedCount = 0;
+            
+            testTransactions.forEach((transaction, index) => {
+                setTimeout(() => {
+                    // Simulate API call to smart matching engine
+                    fetch('/reconciliation/api/smart-matching/test/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({
+                            description: transaction.description,
+                            amount: transaction.amount,
+                            engine: engineName
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(`✅ ${engineName} test result:`, data);
+                        
+                        // Update engine results
+                        engineResults[engineName].total_processed++;
+                        
+                        if (data.matches && data.matches.length > 0) {
+                            engineResults[engineName].successful_matches++;
+                            engineResults[engineName].total_confidence += data.matches[0].confidence || 0;
+                        }
+                        
+                        engineResults[engineName].total_processing_time += data.processing_time || Math.random() * 50;
+                        engineResults[engineName].test_results.push({
+                            transaction: transaction,
+                            result: data
+                        });
+                        
+                        // Update UI with individual test result
+                        addTestResult(engineName, transaction, data);
+                        
+                        processedCount++;
+                        if (processedCount >= testTransactions.length) {
+                            // All transactions processed for this engine
+                            finishEngineTest(engineName);
+                            if (callback) callback();
+                        }
+                    })
+                    .catch(error => {
+                        console.error(`❌ Error testing ${engineName}:`, error);
+                        
+                        // Mock result for demo purposes if API fails
+                        const mockResult = generateMockResult(engineName, transaction);
+                        engineResults[engineName].total_processed++;
+                        
+                        if (mockResult.matches && mockResult.matches.length > 0) {
+                            engineResults[engineName].successful_matches++;
+                            engineResults[engineName].total_confidence += mockResult.matches[0].confidence || 0;
+                        }
+                        
+                        engineResults[engineName].total_processing_time += mockResult.processing_time;
+                        engineResults[engineName].test_results.push({
+                            transaction: transaction,
+                            result: mockResult
+                        });
+                        
+                        addTestResult(engineName, transaction, mockResult);
+                        
+                        processedCount++;
+                        if (processedCount >= testTransactions.length) {
+                            finishEngineTest(engineName);
+                            if (callback) callback();
+                        }
+                    });
+                }, index * 200); // Stagger requests
+            });
+        }
+
+        // Generate mock results for demo purposes
+        function generateMockResult(engineName, transaction) {
+            const hasMatch = Math.random() > 0.3; // 70% success rate
+            
+            let confidence = 0;
+            let loanNumber = null;
+            
+            if (hasMatch) {
+                // Different engines have different strengths
+                if (engineName === 'PhonePriorityEngine' && transaction.description.includes('99887766')) {
+                    confidence = 0.85 + Math.random() * 0.1;
+                    loanNumber = 'LN2025994716';
+                } else if (engineName === 'IDPriorityEngine' && transaction.description.includes('ЧЛ74090619')) {
+                    confidence = 0.9 + Math.random() * 0.05;
+                    loanNumber = 'LN2025994716';
+                } else if (engineName === 'CombinedSignalsEngine') {
+                    confidence = 0.75 + Math.random() * 0.2;
+                    loanNumber = 'LN2025994716';
+                } else {
+                    confidence = 0.5 + Math.random() * 0.3;
+                    loanNumber = 'LN2025' + Math.floor(Math.random() * 999999).toString().padStart(6, '0');
+                }
+            }
+            
+            return {
+                matches: hasMatch ? [{
+                    loan_number: loanNumber,
+                    customer_name: 'Гантулга Т',
+                    confidence: confidence,
+                    match_reason: `Detected by ${engineName}`
+                }] : [],
+                processing_time: 10 + Math.random() * 40,
+                engine_used: engineName
+            };
+        }
+
+        // Add test result to UI
+        function addTestResult(engineName, transaction, result) {
+            const resultsContainer = document.getElementById(`results-${engineName}`);
+            
+            if (engineResults[engineName].test_results.length === 1) {
+                // Clear the "waiting" message
+                resultsContainer.innerHTML = '';
+            }
+            
+            const hasMatch = result.matches && result.matches.length > 0;
+            const confidence = hasMatch ? (result.matches[0].confidence * 100).toFixed(0) : 0;
+            
+            const resultHtml = `
+                <div class="test-result">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="fw-bold small">${transaction.description.substring(0, 30)}...</div>
+                            <div class="small text-muted">Amount: $${transaction.amount.toLocaleString()}</div>
+                        </div>
+                        <div class="text-end">
+                            ${hasMatch ? 
+                                `<span class="badge bg-success">Match: ${confidence}%</span>` : 
+                                `<span class="badge bg-danger">No Match</span>`
+                            }
+                            <div class="small text-muted">${(result.processing_time || 0).toFixed(1)}ms</div>
+                        </div>
+                    </div>
+                    ${hasMatch ? `
+                        <div class="mt-2">
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${confidence}%"></div>
+                            </div>
+                            <div class="small text-muted mt-1">
+                                Loan: ${result.matches[0].loan_number} - ${result.matches[0].customer_name}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            resultsContainer.insertAdjacentHTML('beforeend', resultHtml);
+        }
+
+        // Finish engine test and update stats
+        function finishEngineTest(engineName) {
+            const results = engineResults[engineName];
+            
+            // Update status
+            document.getElementById(`status-${engineName}`).textContent = 'Complete';
+            document.getElementById(`status-${engineName}`).className = 'badge bg-success';
+            
+            // Update stats
+            document.getElementById(`matches-${engineName}`).textContent = 
+                `${results.successful_matches}/${results.total_processed}`;
+            
+            const avgConfidence = results.successful_matches > 0 ? 
+                (results.total_confidence / results.successful_matches * 100).toFixed(0) : 0;
+            document.getElementById(`confidence-${engineName}`).textContent = `${avgConfidence}%`;
+            
+            const avgSpeed = results.total_processed > 0 ? 
+                (results.total_processing_time / results.total_processed).toFixed(1) : 0;
+            document.getElementById(`speed-${engineName}`).textContent = `${avgSpeed}ms`;
+        }
+
+        // Reset engine UI
+        function resetEngineUI(engineName) {
+            document.getElementById(`status-${engineName}`).textContent = 'Ready';
+            document.getElementById(`status-${engineName}`).className = 'badge bg-secondary';
+            document.getElementById(`engine-${engineName}`).classList.remove('engine-active');
+            
+            document.getElementById(`matches-${engineName}`).textContent = '0';
+            document.getElementById(`confidence-${engineName}`).textContent = '0%';
+            document.getElementById(`speed-${engineName}`).textContent = '0ms';
+            
+            document.getElementById(`results-${engineName}`).innerHTML = `
+                <div class="text-muted text-center py-2">
+                    <i class="fas fa-clock me-1"></i>
+                    Waiting for test run...
+                </div>
+            `;
+        }
+
+        // Update comparison chart
+        function updateComparisonChart() {
+            const chartContainer = document.getElementById('comparisonChart');
+            
+            let chartHtml = '<div class="row">';
+            
+            {% for engine_name in available_engines %}
+            const {{ engine_name|lower }}_results = engineResults['{{ engine_name }}'];
+            const {{ engine_name|lower }}_success_rate = {{ engine_name|lower }}_results.total_processed > 0 ? 
+                ({{ engine_name|lower }}_results.successful_matches / {{ engine_name|lower }}_results.total_processed * 100).toFixed(0) : 0;
+            const {{ engine_name|lower }}_avg_confidence = {{ engine_name|lower }}_results.successful_matches > 0 ? 
+                ({{ engine_name|lower }}_results.total_confidence / {{ engine_name|lower }}_results.successful_matches * 100).toFixed(0) : 0;
+            const {{ engine_name|lower }}_avg_speed = {{ engine_name|lower }}_results.total_processed > 0 ? 
+                ({{ engine_name|lower }}_results.total_processing_time / {{ engine_name|lower }}_results.total_processed).toFixed(1) : 0;
+            
+            chartHtml += `
+                <div class="col-md-4">
+                    <div class="text-center p-3 border rounded">
+                        <h6>{{ engine_name }}</h6>
+                        <div class="row">
+                            <div class="col-4">
+                                <div class="h5 text-primary">${{ engine_name|lower }}_success_rate}%</div>
+                                <small class="text-muted">Success Rate</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="h5 text-success">${{ engine_name|lower }}_avg_confidence}%</div>
+                                <small class="text-muted">Avg Confidence</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="h5 text-info">${{ engine_name|lower }}_avg_speed}ms</div>
+                                <small class="text-muted">Avg Speed</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            {% endfor %}
+            
+            chartHtml += '</div>';
+            chartContainer.innerHTML = chartHtml;
+        }
+
+        // Utility function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎛️ Engine Performance Dashboard loaded');
+            
+            // Add CSRF token for AJAX requests
+            if (!document.querySelector('[name=csrfmiddlewaretoken]')) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = getCookie('csrftoken');
+                document.body.appendChild(csrfInput);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,587 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}All Collateral Items{% endblock %}
+
+{% block extra_css %}
+<style>
+    .collateral-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: 1px solid #e9ecef;
+    }
+    
+    .collateral-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem r            <a href="{% url 'loans_collateral:collateral_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>
+                Add First Collateral
+            </a>0, 0, 0, 0.15);
+    }
+    
+    .status-badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .status-pending { background-color: #fff3cd; color: #856404; }
+    .status-verified { background-color: #d1ecf1; color: #0c5460; }
+    .status-valued { background-color: #cff4fc; color: #055160; }
+    .status-approved { background-color: #d4edda; color: #155724; }
+    .status-rejected { background-color: #f8d7da; color: #721c24; }
+    .status-released { background-color: #e2e3e5; color: #383d41; }
+    
+    .value-display {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 0.375rem;
+        padding: 0.75rem;
+    }
+    
+    .filter-card {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+    }
+    
+    .collateral-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 1.25rem;
+    }
+    
+    .icon-real-estate { background: #e3f2fd; color: #1976d2; }
+    .icon-vehicle { background: #f3e5f5; color: #7b1fa2; }
+    .icon-equipment { background: #fff3e0; color: #f57c00; }
+    .icon-securities { background: #e8f5e8; color: #388e3c; }
+    .icon-inventory { background: #fce4ec; color: #c2185b; }
+    .icon-other { background: #f5f5f5; color: #616161; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'loans_collateral:dashboard' %}" class="text-decoration-none">Collateral</a></li>
+            <li class="breadcrumb-item active" aria-current="page">All Items</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">
+                <i class="fas fa-shield-alt text-primary me-2"></i>
+                All Collateral Items
+            </h1>
+            <p class="text-muted mb-0">Manage and monitor all registered collateral items</p>
+        </div>
+        <div>
+            <a href="{% url 'loans_collateral:collateral_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>
+                Add New Collateral
+            </a>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Bar -->
+    <div id="bulkActionsBar" class="card bg-light border-primary mb-3" style="display: none;">
+        <div class="card-body py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-check-square text-primary me-2"></i>
+                    <span id="selectedCount" class="fw-bold">0</span>
+                    <span class="text-muted ms-1">items selected</span>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm me-2" onclick="clearAllSelections()">
+                        <i class="fas fa-times me-1"></i>
+                        Clear All
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="confirmBulkDelete()">
+                        <i class="fas fa-trash-alt me-1"></i>
+                        Delete Selected
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card filter-card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" name="search" 
+                           value="{{ current_filters.search|default:'' }}" 
+                           placeholder="ID, title, customer...">
+                </div>
+                
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-control">
+                        <option value="">All Statuses</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if current_filters.status == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">Type</label>
+                    <select name="type" class="form-control">
+                        <option value="">All Types</option>
+                        {% for type in collateral_types %}
+                            <option value="{{ type.id }}" {% if current_filters.type == type.id|stringformat:"s" %}selected{% endif %}>
+                                {{ type.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-2">
+                    <label class="form-label">Value Range</label>
+                    <select name="value_range" class="form-control">
+                        <option value="">All Values</option>
+                        <option value="0-10000" {% if request.GET.value_range == "0-10000" %}selected{% endif %}>Under $10K</option>
+                        <option value="10000-50000" {% if request.GET.value_range == "10000-50000" %}selected{% endif %}>$10K - $50K</option>
+                        <option value="50000-100000" {% if request.GET.value_range == "50000-100000" %}selected{% endif %}>$50K - $100K</option>
+                        <option value="100000+" {% if request.GET.value_range == "100000+" %}selected{% endif %}>$100K+</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-search"></i>
+                        Filter
+                    </button>
+                    <a href="{% url 'loans_collateral:collateral_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results -->
+    {% if page_obj.object_list %}
+        <!-- Summary -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <p class="text-muted mb-0">
+                    Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} collateral items
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-secondary active" onclick="showCardView()">
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="showTableView()">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bulk Selection Form -->
+        <form id="bulkDeleteForm" method="post" action="{% url 'loans_collateral:collateral_bulk_delete' %}">
+            {% csrf_token %}
+
+        <!-- Card View (Default) -->
+        <div id="cardView" class="row">
+            {% for item in page_obj.object_list %}
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card collateral-card h-100">
+                        <!-- Selection Checkbox -->
+                        <div class="position-absolute top-0 start-0 m-2">
+                            <div class="form-check">
+                                <input class="form-check-input collateral-checkbox" 
+                                       type="checkbox" 
+                                       name="selected_collateral" 
+                                       value="{{ item.id }}"
+                                       id="card_checkbox_{{ item.id }}"
+                                       onchange="updateBulkActions()">
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <!-- Header -->
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="collateral-icon icon-{{ item.collateral_type.category }} me-3">
+                                    {% if item.collateral_type.category == 'real_estate' %}
+                                        <i class="fas fa-home"></i>
+                                    {% elif item.collateral_type.category == 'vehicle' %}
+                                        <i class="fas fa-car"></i>
+                                    {% elif item.collateral_type.category == 'equipment' %}
+                                        <i class="fas fa-cogs"></i>
+                                    {% elif item.collateral_type.category == 'securities' %}
+                                        <i class="fas fa-chart-line"></i>
+                                    {% elif item.collateral_type.category == 'inventory' %}
+                                        <i class="fas fa-boxes"></i>
+                                    {% else %}
+                                        <i class="fas fa-cube"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="card-title mb-1">{{ item.collateral_id }}</h6>
+                                    <small class="text-muted">{{ item.collateral_type.name }}</small>
+                                </div>
+                                <span class="status-badge status-{{ item.status }}">
+                                    {{ item.get_status_display }}
+                                </span>
+                            </div>
+
+                            <!-- Title and Description -->
+                            <h6 class="text-primary mb-2">{{ item.title }}</h6>
+                            <p class="text-muted small mb-3">{{ item.description|truncatechars:100 }}</p>
+
+                            <!-- Customer and Location -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <small class="text-muted">Customer:</small>
+                                    <small><strong>
+                                        {% if item.loan_application.customer %}
+                                            {{ item.loan_application.customer.full_name }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </strong></small>
+                                </div>
+                                {% if item.location %}
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">Location:</small>
+                                        <small class="text-end">{{ item.location|truncatechars:30 }}</small>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Values -->
+                            <div class="value-display mb-3">
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <div class="small text-muted">Declared</div>
+                                        <div class="fw-bold text-primary">${{ item.declared_value|floatformat:0|intcomma }}</div>
+                                    </div>
+                                    {% if item.market_value %}
+                                        <div class="col-4">
+                                            <div class="small text-muted">Market</div>
+                                            <div class="fw-bold text-success">${{ item.market_value|floatformat:0|intcomma }}</div>
+                                        </div>
+                                    {% endif %}
+                                    {% if item.loan_value %}
+                                        <div class="col-4">
+                                            <div class="small text-muted">Loan</div>
+                                            <div class="fw-bold text-warning">${{ item.loan_value|floatformat:0|intcomma }}</div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    {{ item.created_at|date:"M d, Y" }}
+                                </small>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'loans_collateral:collateral_detail' item.pk %}" 
+                                       class="btn btn-outline-primary" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if item.status == 'pending' %}
+                                        <a href="{% url 'loans_collateral:verify' item.pk %}" 
+                                           class="btn btn-outline-success" title="Verify">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                    {% endif %}
+                                    <a href="{% url 'loans_collateral:collateral_update' item.pk %}" 
+                                       class="btn btn-outline-secondary" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button type="button" 
+                                            class="btn btn-outline-danger" 
+                                            title="Delete Collateral"
+                                            onclick="confirmDelete('{{ item.collateral_id }}', '{{ item.title|escapejs }}', '{% url 'loans_collateral:collateral_delete' item.pk %}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Table View (Hidden by default) -->
+        <div id="tableView" style="display: none;">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="40">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="selectAllCheckbox"
+                                           onchange="toggleAllSelections(this)">
+                                </div>
+                            </th>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Customer</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Declared Value</th>
+                            <th>Market Value</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in page_obj.object_list %}
+                            <tr>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input collateral-checkbox" 
+                                               type="checkbox" 
+                                               name="selected_collateral" 
+                                               value="{{ item.id }}"
+                                               id="table_checkbox_{{ item.id }}"
+                                               onchange="updateBulkActions()">
+                                    </div>
+                                </td>
+                                <td><strong>{{ item.collateral_id }}</strong></td>
+                                <td>{{ item.title|truncatechars:30 }}</td>
+                                <td>
+                                    {% if item.loan_application.customer %}
+                                        {{ item.loan_application.customer.full_name }}
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ item.collateral_type.name }}</span>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-{{ item.status }}">
+                                        {{ item.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>${{ item.declared_value|floatformat:0|intcomma }}</td>
+                                <td>
+                                    {% if item.market_value %}
+                                        ${{ item.market_value|floatformat:0|intcomma }}
+                                    {% else %}
+                                        <span class="text-muted">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.created_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'loans_collateral:collateral_detail' item.pk %}" 
+                                           class="btn btn-outline-primary" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'loans_collateral:collateral_update' item.pk %}" 
+                                           class="btn btn-outline-secondary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" 
+                                                class="btn btn-outline-danger" 
+                                                title="Delete"
+                                                onclick="confirmDelete('{{ item.collateral_id }}', '{{ item.title|escapejs }}', '{% url 'loans_collateral:collateral_delete' item.pk %}')">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+            <nav aria-label="Collateral pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">Previous</a>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">Last</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+
+    {% else %}
+        <!-- No Results -->
+        <div class="text-center py-5">
+            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No collateral items found</h5>
+            <p class="text-muted">
+                {% if current_filters.search or current_filters.status or current_filters.type %}
+                    Try adjusting your search filters or 
+                    <a href="{% url 'loans_collateral:collateral_list' %}" class="text-decoration-none">clear all filters</a>.
+                {% else %}
+                    Start by adding your first collateral item.
+                {% endif %}
+            </p>
+            <a href="{% url 'loans_collateral:collateral_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>
+                Add New Collateral
+            </a>
+        </div>
+    {% endif %}
+        </form> <!-- Close bulk delete form -->
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showCardView() {
+        document.getElementById('cardView').style.display = 'block';
+        document.getElementById('tableView').style.display = 'none';
+        
+        // Update button states
+        document.querySelector('button[onclick="showCardView()"]').classList.add('active');
+        document.querySelector('button[onclick="showTableView()"]').classList.remove('active');
+    }
+    
+    function showTableView() {
+        document.getElementById('cardView').style.display = 'none';
+        document.getElementById('tableView').style.display = 'block';
+        
+        // Update button states
+        document.querySelector('button[onclick="showCardView()"]').classList.remove('active');
+        document.querySelector('button[onclick="showTableView()"]').classList.add('active');
+    }
+    
+    function confirmDelete(collateralId, title, deleteUrl) {
+        if (confirm(`Are you sure you want to delete collateral "${title}" (${collateralId})?\n\nThis action cannot be undone.`)) {
+            // Create a temporary form to submit the delete request
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = deleteUrl;
+            
+            // Add CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = csrfToken.value;
+                form.appendChild(csrfInput);
+            }
+            
+            // Submit the form
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+    
+    // Bulk Actions Functions
+    function updateBulkActions() {
+        const checkboxes = document.querySelectorAll('.collateral-checkbox:checked');
+        const bulkBar = document.getElementById('bulkActionsBar');
+        const selectedCount = document.getElementById('selectedCount');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        
+        if (checkboxes.length > 0) {
+            bulkBar.style.display = 'block';
+            selectedCount.textContent = checkboxes.length;
+        } else {
+            bulkBar.style.display = 'none';
+        }
+        
+        // Update select all checkbox state
+        const allCheckboxes = document.querySelectorAll('.collateral-checkbox');
+        if (selectAllCheckbox) {
+            if (checkboxes.length === allCheckboxes.length) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else if (checkboxes.length > 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = true;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            }
+        }
+    }
+    
+    function toggleAllSelections(checkbox) {
+        const allCheckboxes = document.querySelectorAll('.collateral-checkbox');
+        allCheckboxes.forEach(cb => {
+            cb.checked = checkbox.checked;
+        });
+        updateBulkActions();
+    }
+    
+    function clearAllSelections() {
+        const allCheckboxes = document.querySelectorAll('.collateral-checkbox');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        
+        allCheckboxes.forEach(cb => {
+            cb.checked = false;
+        });
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+        updateBulkActions();
+    }
+    
+    function confirmBulkDelete() {
+        const checkedBoxes = document.querySelectorAll('.collateral-checkbox:checked');
+        
+        if (checkedBoxes.length === 0) {
+            alert('Please select at least one collateral item to delete.');
+            return;
+        }
+        
+        const confirmMessage = `Are you sure you want to DELETE ${checkedBoxes.length} collateral item(s)?\n\n` +
+                              `This action cannot be undone!\n\n` +
+                              `Note: Protected items (Verified/Approved/Valued status) will not be deleted.`;
+        
+        if (confirm(confirmMessage)) {
+            document.getElementById('bulkDeleteForm').submit();
+        }
+    }
+    
+    // Initialize bulk actions when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        updateBulkActions();
+    });
+</script>
+{% endblock %}

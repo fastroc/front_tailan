@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% load humanize %}
 
 {% block title %}Loan Applications{% endblock %}
@@ -9,6 +10,86 @@
 .dropdown-menu {
     z-index: 1050;
     min-width: 200px;
+}
+
+/* Progress Badge Styling */
+.badge {
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+}
+
+.badge i {
+    margin-right: 0.25rem;
+}
+
+/* Progress Bar Styling */
+.progress {
+    background-color: #e9ecef;
+    border-radius: 0.25rem;
+}
+
+.progress-bar {
+    /* No transitions - keep it simple */
+}
+
+/* Progress Column Styling */
+.approval-progress {
+    min-width: 120px;
+}
+
+.approval-progress .progress {
+    margin-top: 2px;
+}
+
+/* Quick Action Button Styling */
+.btn-sm {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    margin-left: 0.25rem;
+}
+
+/* Badge Colors */
+.badge-secondary {
+    background-color: #6c757d !important;
+    color: white;
+}
+
+.badge-success {
+    background-color: #28a745 !important;
+    color: white;
+}
+
+.badge-warning {
+    background-color: #ffc107 !important;
+    color: #212529;
+}
+
+.badge-info {
+    background-color: #17a2b8 !important;
+    color: white;
+}
+
+/* Hover effects for progress badges */
+.badge:hover {
+    /* Simple hover - no transitions */
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .approval-progress {
+        min-width: 100px;
+    }
+    
+    .progress {
+        width: 50px !important;
+    }
+    
+    .btn-sm {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+    }
 }
 </style>
 {% endblock %}
@@ -29,6 +110,12 @@
                 <div>
                     <a href="{% url 'loans_core:application_create' %}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>New Application
+                    </a>
+                    <a href="{% url 'loans_core:application_bulk_upload' %}" class="btn btn-success ms-2">
+                        <i class="fas fa-upload me-2"></i>Bulk Upload
+                    </a>
+                    <a href="{% url 'loans_core:bulk_upload_review' %}" class="btn btn-info ms-2">
+                        <i class="fas fa-clipboard-check me-2"></i>Review Uploads
                     </a>
                     <!-- DEBUG: Simple test button -->
                     <button class="btn btn-warning ms-2" onclick="console.log('🧪 TEST BUTTON CLICKED!'); alert('JavaScript is working!');">
@@ -133,7 +220,7 @@
                 <div class="card-body">
                     <form method="get" action="">
                         <div class="row">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label for="search" class="form-label">Search Applications</label>
                                 <input type="text" class="form-control" id="search" name="search" 
                                        value="{{ search_query }}" placeholder="Application ID, customer name, email">
@@ -148,6 +235,16 @@
                                 </select>
                             </div>
                             <div class="col-md-2">
+                                <label for="progress" class="form-label">Approval Progress</label>
+                                <select class="form-select" id="progress" name="progress">
+                                    <option value="">All Progress</option>
+                                    <option value="completed" {% if progress_filter == 'completed' %}selected{% endif %}>All Approved</option>
+                                    <option value="partial" {% if progress_filter == 'partial' %}selected{% endif %}>Partially Approved</option>
+                                    <option value="not_started" {% if progress_filter == 'not_started' %}selected{% endif %}>Not Started</option>
+                                    <option value="pending_disbursement" {% if progress_filter == 'pending_disbursement' %}selected{% endif %}>Pending Disbursement</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
                                 <label for="product" class="form-label">Product</label>
                                 <select class="form-select" id="product" name="product">
                                     <option value="">All Products</option>
@@ -156,14 +253,14 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col-md-2 d-flex align-items-end">
+                            <div class="col-md-1 d-flex align-items-end">
                                 <button type="submit" class="btn btn-outline-primary w-100">
-                                    <i class="fas fa-search me-2"></i>Search
+                                    <i class="fas fa-search"></i>
                                 </button>
                             </div>
                             <div class="col-md-2 d-flex align-items-end">
                                 <a href="{% url 'loans_core:application_list' %}" class="btn btn-outline-secondary w-100">
-                                    <i class="fas fa-times me-2"></i>Clear
+                                    <i class="fas fa-times me-1"></i>Clear
                                 </a>
                             </div>
                         </div>
@@ -185,75 +282,101 @@
                         <table class="table table-bordered" width="100%" cellspacing="0">
                             <thead>
                                 <tr>
+                                    <th>Loan Number</th>
                                     <th>Application ID</th>
                                     <th>Customer</th>
                                     <th>Product</th>
                                     <th>Amount Requested</th>
                                     <th>Term</th>
                                     <th>Status</th>
+                                    <th>Approval Progress</th>
                                     <th>Date Applied</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                {% for application in page_obj %}
-                                <tr>
+                            <tbody class="applications-tbody">
+                                {% for item in page_obj %}
+                                <tr data-application-id="{{ item.application.pk }}">
                                     <td>
-                                        <strong>{{ application.application_id }}</strong>
+                                        {% if item.loan %}
+                                            <small class="text-muted">{{ item.loan.loan_number }}</small>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ item.application.application_id }}</small>
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="avatar bg-primary text-white rounded-circle me-3" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">
-                                                <strong>{{ application.customer.first_name|first }}{{ application.customer.last_name|first }}</strong>
+                                                <strong>{{ item.application.customer.first_name|first }}{{ item.application.customer.last_name|first }}</strong>
                                             </div>
                                             <div>
-                                                <strong>{{ application.customer.full_name }}</strong><br>
-                                                <small class="text-muted">{{ application.customer.email }}</small>
+                                                <strong>{{ item.application.customer.full_name }}</strong><br>
+                                                <small class="text-muted">{{ item.application.customer.email }}</small>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        <strong>{{ application.loan_product.name }}</strong><br>
-                                        <small class="text-muted">{{ application.loan_product.category|title }}</small>
+                                        <strong>{{ item.application.loan_product.name }}</strong><br>
+                                        <small class="text-muted">{{ item.application.loan_product.category|title }}</small>
                                     </td>
                                     <td>
-                                        <strong>${{ application.requested_amount|floatformat:0|intcomma }}</strong>
-                                        {% if application.approved_amount %}
-                                            <br><small class="text-success">Approved: ${{ application.approved_amount|floatformat:0|intcomma }}</small>
+                                        <strong>${{ item.application.requested_amount|floatformat:0|intcomma }}</strong>
+                                        {% if item.application.approved_amount %}
+                                            <br><small class="text-success">Approved: ${{ item.application.approved_amount|floatformat:0|intcomma }}</small>
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {{ application.term_months }} months<br>
-                                        <small class="text-muted">{{ application.interest_rate }}% APR</small>
+                                        {{ item.application.term_months }} months<br>
+                                        <small class="text-muted">{{ item.application.interest_rate }}% APR</small>
                                     </td>
                                     <td>
-                                        {% if application.status == 'approved' %}
-                                            <span class="badge bg-success">{{ application.status|title }}</span>
-                                        {% elif application.status == 'submitted' or application.status == 'under_review' %}
-                                            <span class="badge bg-warning">{{ application.get_status_display }}</span>
-                                        {% elif application.status == 'rejected' %}
-                                            <span class="badge bg-danger">{{ application.status|title }}</span>
-                                        {% elif application.status == 'draft' %}
-                                            <span class="badge bg-secondary">{{ application.status|title }}</span>
+                                        {% if item.application.status == 'approved' %}
+                                            <span class="badge bg-success">{{ item.application.status|title }}</span>
+                                        {% elif item.application.status == 'submitted' or item.application.status == 'under_review' %}
+                                            <span class="badge bg-warning">{{ item.application.get_status_display }}</span>
+                                        {% elif item.application.status == 'rejected' %}
+                                            <span class="badge bg-danger">{{ item.application.status|title }}</span>
+                                        {% elif item.application.status == 'draft' %}
+                                            <span class="badge bg-secondary">{{ item.application.status|title }}</span>
                                         {% else %}
-                                            <span class="badge bg-info">{{ application.get_status_display }}</span>
+                                            <span class="badge bg-info">{{ item.application.get_status_display }}</span>
                                         {% endif %}
                                     </td>
+                                    <td class="approval-progress progress-cell">
+                                        <!-- Server-side progress with lazy loading fallback -->
+                                        {% with progress=item.application.get_approval_progress %}
+                                            <div class="progress-container">
+                                                <div class="progress-bar">
+                                                    <div class="progress-fill progress-{{ progress.status }}" style="width: {{ progress.percentage }}%"></div>
+                                                </div>
+                                                <div class="progress-text">
+                                                    <span class="progress-percentage">{{ progress.percentage }}%</span>
+                                                    <span class="progress-status">({{ progress.approved_payments }}/{{ progress.total_payments }})</span>
+                                                </div>
+                                                <div class="progress-label">
+                                                    <span class="badge badge-{{ progress.status }}">{{ progress.status_display }}</span>
+                                                </div>
+                                            </div>
+                                        {% endwith %}
+                                    </td>
                                     <td>
-                                        {{ application.application_date|date:"M d, Y" }}<br>
-                                        <small class="text-muted">{{ application.created_at|timesince }} ago</small>
+                                        {{ item.application.application_date|date:"M d, Y" }}<br>
+                                        <small class="text-muted">{{ item.application.created_at|timesince }} ago</small>
                                     </td>
                                     <td>
                                             <div class="btn-group btn-group-sm" role="group">
-                                                <a href="{% url 'loans_core:application_detail' application.pk %}" 
+                                                <a href="{% url 'loans_core:application_detail' item.application.pk %}" 
                                                    class="btn btn-outline-primary" 
                                                    title="View Application Details" 
                                                    data-bs-toggle="tooltip">
                                                     <i class="fas fa-eye me-1"></i>View
                                                 </a>
 
-                                                {% if application.status == 'submitted' or application.status == 'under_review' %}
-                                                <a href="{% url 'loans_core:application_approve' application.pk %}" 
+                                                {% if item.application.status == 'submitted' or item.application.status == 'under_review' %}
+                                                <a href="{% url 'loans_core:application_approve' item.application.pk %}" 
                                                    class="btn btn-outline-success" 
                                                    title="Review & Approve/Reject" 
                                                    data-bs-toggle="tooltip">
@@ -261,7 +384,7 @@
                                                 </a>
                                                 {% endif %}
 
-                                                {% if application.status == 'draft' %}
+                                                {% if item.application.status == 'draft' %}
                                                 <a href="#" 
                                                    class="btn btn-outline-info" 
                                                    title="Edit Application" 
@@ -274,20 +397,39 @@
                                                 Progress button - Show for applications with sufficient data for analysis
                                                 Required: interest_rate, term_months, and requested_amount (minimum)
                                                 {% endcomment %}
-                                                {% if application.interest_rate and application.term_months and application.requested_amount %}
+                                                {% if item.application.interest_rate and item.application.term_months and item.application.requested_amount %}
                                                 <!-- Progress Button - Available for any application with complete loan terms -->
-                                                <a href="{% url 'loans_core:application_progress' application.pk %}" 
-                                                   class="btn btn-outline-{% if application.status == 'approved' %}success{% else %}info{% endif %}" 
-                                                   title="View Payment Analysis {% if application.status != 'approved' %}(Projected){% endif %}" 
+                                                <a href="{% url 'loans_core:application_progress' item.application.pk %}" 
+                                                   class="btn btn-outline-{% if item.application.status == 'approved' %}success{% else %}info{% endif %}" 
+                                                   title="View Payment Analysis {% if item.application.status != 'approved' %}(Projected){% endif %}" 
                                                    data-bs-toggle="tooltip">
                                                     <i class="fas fa-chart-line me-1"></i>Progress
-                                                    {% if application.status != 'approved' %}
+                                                    {% if item.application.status != 'approved' %}
                                                         <small class="d-block" style="font-size: 0.7em;">Projected</small>
                                                     {% endif %}
                                                 </a>
+                                                
+                                                <!-- Quick Progress Actions for Approved Applications -->
+                                                {% if item.application.status == 'approved' and item.progress %}
+                                                    {% if item.progress.status == 'partial' %}
+                                                        <a href="{% url 'loans_core:application_progress' item.application.pk %}#approve-pending" 
+                                                           class="btn btn-outline-warning btn-sm" 
+                                                           title="Quick approve {{ item.progress.total_payments|add:'-'|add:item.progress.approved_payments }} pending payments" 
+                                                           data-bs-toggle="tooltip">
+                                                            <i class="fas fa-bolt me-1"></i>Quick Approve
+                                                        </a>
+                                                    {% elif item.progress.status == 'not_started' and item.progress.total_payments > 0 %}
+                                                        <a href="{% url 'loans_core:application_progress' item.application.pk %}#approve-all" 
+                                                           class="btn btn-outline-primary btn-sm" 
+                                                           title="Start approving {{ item.progress.total_payments }} payments" 
+                                                           data-bs-toggle="tooltip">
+                                                            <i class="fas fa-play me-1"></i>Start Approvals
+                                                        </a>
+                                                    {% endif %}
+                                                {% endif %}
                                                 {% endif %}
 
-                                                {% if application.status == 'approved' %}
+                                                {% if item.application.status == 'approved' %}
                                                 <!-- Contract and Schedule buttons for approved applications -->
                                                 <a href="#" 
                                                    class="btn btn-outline-info" 
@@ -297,7 +439,7 @@
                                                 </a>
                                                 <button type="button" 
                                                         class="btn btn-outline-secondary toggle-schedule" 
-                                                        data-application-id="{{ application.pk }}"
+                                                        data-application-id="{{ item.application.pk }}"
                                                         title="Toggle Payment Schedule" 
                                                         data-bs-toggle="tooltip">
                                                     <i class="fas fa-calendar-alt me-1"></i>Schedule
@@ -315,37 +457,37 @@
                                                     </button>
                                                     <ul class="dropdown-menu dropdown-menu-end">
                                                         <li>
-                                                            <a class="dropdown-item" href="{% url 'loans_customers:customer_detail' application.customer.pk %}">
+                                                            <a class="dropdown-item" href="{% url 'loans_customers:customer_detail' item.application.customer.pk %}">
                                                                 <i class="fas fa-user me-2 text-info"></i>View Customer
                                                             </a>
                                                         </li>
                                                         <li>
-                                                            <a class="dropdown-item" href="{% url 'loans_customers:customer_documents' application.customer.pk %}">
+                                                            <a class="dropdown-item" href="{% url 'loans_customers:customer_documents' item.application.customer.pk %}">
                                                                 <i class="fas fa-folder me-2 text-info"></i>Customer Documents
                                                             </a>
                                                         </li>
                                                         <li><hr class="dropdown-divider"></li>
                                                         <li>
-                                                            <a class="dropdown-item" href="#" onclick="printApplication({{ application.pk }})">
+                                                            <a class="dropdown-item" href="#" onclick="printApplication({{ item.application.pk }})">
                                                                 <i class="fas fa-print me-2 text-secondary"></i>Print Application
                                                             </a>
                                                         </li>
                                                         <li>
-                                                            <a class="dropdown-item" href="#" onclick="downloadApplication({{ application.pk }})">
+                                                            <a class="dropdown-item" href="#" onclick="downloadApplication({{ item.application.pk }})">
                                                                 <i class="fas fa-download me-2 text-secondary"></i>Download PDF
                                                             </a>
                                                         </li>
-                                                        {% if application.status == 'draft' %}
+                                                        {% if item.application.status in 'draft,submitted,rejected,cancelled' %}
                                                         <li><hr class="dropdown-divider"></li>
                                                         <li>
-                                                            <a class="dropdown-item text-danger" href="#" onclick="deleteApplication({{ application.pk }}, '{{ application.customer.full_name|escapejs }}')">
+                                                            <a class="dropdown-item text-danger" href="#" onclick="deleteApplication({{ item.application.pk }}, '{{ item.application.customer.full_name|escapejs }}')">
                                                                 <i class="fas fa-trash me-2"></i>Delete Application
                                                             </a>
                                                         </li>
                                                         {% endif %}
-                                                        {% if application.status == 'submitted' %}
+                                                        {% if item.application.status == 'submitted' %}
                                                         <li>
-                                                            <a class="dropdown-item text-warning" href="#" onclick="requestDocuments({{ application.pk }})">
+                                                            <a class="dropdown-item text-warning" href="#" onclick="requestDocuments({{ item.application.pk }})">
                                                                 <i class="fas fa-file-upload me-2"></i>Request Documents
                                                             </a>
                                                         </li>
@@ -357,45 +499,45 @@
                                 </tr>
 
                                 {# Collapsible Payment Schedule Row(s) #}
-                                {% if application.status == 'approved' %}
-                                    {% if application.loan %}
+                                {% if item.application.status == 'approved' %}
+                                    {% if item.loan %}
                                     <!-- REAL schedule row (unique ID) -->
-                                    <tr class="schedule-row d-none" id="schedule-{{ application.pk }}">
-                                        <td colspan="8" class="p-0">
+                                    <tr class="schedule-row d-none" id="schedule-{{ item.application.pk }}">
+                                        <td colspan="9" class="p-0">
                                             <div class="card border-0 shadow-sm m-2">
                                                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                                     <h6 class="mb-0">
                                                         <i class="fas fa-calendar-alt text-primary me-2"></i>
-                                                        Payment Schedule - Loan #{{ application.loan.loan_number }}
+                                                        Payment Schedule - Loan #{{ item.loan.loan_number }}
                                                     </h6>
                                                     <small class="text-muted">
-                                                        {{ application.loan.payment_schedule.schedule_type|title }} Schedule
+                                                        {{ item.loan.payment_schedule.schedule_type|title }} Schedule
                                                     </small>
                                                 </div>
                                                 <div class="card-body">
-                                                    {% if application.loan.payment_schedule %}
+                                                    {% if item.loan.payment_schedule %}
                                                     <div class="row mb-3">
                                                         <div class="col-md-3">
                                                             <div class="text-center">
-                                                                <h5 class="text-primary">${{ application.loan.payment_schedule.total_amount|floatformat:2|intcomma }}</h5>
+                                                                <h5 class="text-primary">${{ item.loan.payment_schedule.total_amount|floatformat:2|intcomma }}</h5>
                                                                 <small class="text-muted">Total Amount</small>
                                                             </div>
                                                         </div>
                                                         <div class="col-md-3">
                                                             <div class="text-center">
-                                                                <h5 class="text-success">${{ application.loan.payment_schedule.total_principal|floatformat:2|intcomma }}</h5>
+                                                                <h5 class="text-success">${{ item.loan.payment_schedule.total_principal|floatformat:2|intcomma }}</h5>
                                                                 <small class="text-muted">Principal</small>
                                                             </div>
                                                         </div>
                                                         <div class="col-md-3">
                                                             <div class="text-center">
-                                                                <h5 class="text-info">${{ application.loan.payment_schedule.total_interest|floatformat:2|intcomma }}</h5>
+                                                                <h5 class="text-info">${{ item.loan.payment_schedule.total_interest|floatformat:2|intcomma }}</h5>
                                                                 <small class="text-muted">Interest</small>
                                                             </div>
                                                         </div>
                                                         <div class="col-md-3">
                                                             <div class="text-center">
-                                                                <h5 class="text-warning">{{ application.loan.payment_schedule.total_payments }}</h5>
+                                                                <h5 class="text-warning">{{ item.loan.payment_schedule.total_payments }}</h5>
                                                                 <small class="text-muted">Payments</small>
                                                             </div>
                                                         </div>
@@ -415,7 +557,7 @@
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                {% for payment in application.loan.payment_schedule.scheduled_payments.all|slice:":10" %}
+                                                                {% for payment in item.loan.payment_schedule.scheduled_payments.all|slice:":10" %}
                                                                 <tr>
                                                                     <td>
                                                                         <strong>{{ payment.payment_number }}</strong>
@@ -449,11 +591,11 @@
                                                                     </td>
                                                                 </tr>
                                                                 {% endfor %}
-                                                                {% if application.loan.payment_schedule.scheduled_payments.count > 10 %}
+                                                                {% if item.loan.payment_schedule.scheduled_payments.count > 10 %}
                                                                 <tr>
                                                                     <td colspan="7" class="text-center text-muted">
-                                                                        <small>... and {{ application.loan.payment_schedule.scheduled_payments.count|add:"-10" }} more payments</small>
-                                                                        <a href="{% url 'loans_core:loan_detail' application.loan.pk %}" class="btn btn-sm btn-outline-primary ms-2">
+                                                                        <small>... and {{ item.loan.payment_schedule.scheduled_payments.count|add:"-10" }} more payments</small>
+                                                                        <a href="{% url 'loans_core:loan_detail' item.loan.pk %}" class="btn btn-sm btn-outline-primary ms-2">
                                                                             View Full Schedule
                                                                         </a>
                                                                     </td>
@@ -475,10 +617,10 @@
                                     </tr>
                                     {% else %}
                                     <!-- TEST/Placeholder row when no loan exists (distinct ID) -->
-                                    <tr class="schedule-row d-none" id="schedule-test-{{ application.pk }}">
-                                        <td colspan="8" class="p-3 bg-light">
+                                    <tr class="schedule-row d-none" id="schedule-test-{{ item.application.pk }}">
+                                        <td colspan="9" class="p-3 bg-light">
                                             <div class="alert alert-info mb-0">
-                                                <h5>🧪 TEST SCHEDULE for Application {{ application.pk }}</h5>
+                                                <h5>🧪 TEST SCHEDULE for Application {{ item.application.pk }}</h5>
                                                 <p><strong>❌ No loan found for this approved application.</strong></p>
                                                 <p>This placeholder verifies the toggle works even without a payment schedule.</p>
                                             </div>
@@ -516,10 +658,10 @@
                         <ul class="pagination justify-content-center">
                             {% if page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">First</a>
+                                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if progress_filter %}&progress={{ progress_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">First</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">Previous</a>
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if progress_filter %}&progress={{ progress_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">Previous</a>
                                 </li>
                             {% endif %}
 
@@ -531,10 +673,10 @@
 
                             {% if page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">Next</a>
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if progress_filter %}&progress={{ progress_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">Next</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">Last</a>
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if progress_filter %}&progress={{ progress_filter }}{% endif %}{% if product_filter %}&product={{ product_filter }}{% endif %}">Last</a>
                                 </li>
                             {% endif %}
                         </ul>
@@ -548,9 +690,12 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Simple, clean frontend system -->
+<script src="{% static 'js/loan_system_simple.js' %}"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Application list JavaScript loaded');
+    console.log('Simple application list loaded');
     
     // Initialize Bootstrap tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -558,6 +703,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 });
+</script>
 
 // ---------- CSRF helper ----------
 function getCookie(name) {

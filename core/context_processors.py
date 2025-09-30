@@ -1,6 +1,7 @@
 """
 Context processors for global template variables
 """
+import django
 from company.models import Company
 from company.views import get_active_company
 
@@ -13,6 +14,7 @@ def company_context(request):
         'active_company': None,
         'user_companies': [],
         'setup_status': None,
+        'django_version': django.get_version(),
     }
     
     if request.user.is_authenticated:

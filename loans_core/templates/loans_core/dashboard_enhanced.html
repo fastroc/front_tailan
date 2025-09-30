@@ -14,7 +14,7 @@
                         <i class="fas fa-university text-primary me-2"></i>
                         Loan Management Dashboard
                         <span class="badge bg-success ms-2" id="live-indicator">
-                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i> Live
+                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i> 100% Dynamic
                         </span>
                     </h1>
                     <p class="text-muted mb-0">Real-time loan portfolio overview and management</p>
@@ -46,7 +46,13 @@
                                 ${{ stats.total_portfolio|floatformat:0|intcomma }}
                             </div>
                             <div class="text-xs text-success mt-1">
-                                <i class="fas fa-arrow-up"></i> 8.2% from last month
+                                {% if stats.disbursement_growth > 0 %}
+                                    <i class="fas fa-arrow-up"></i> +{{ stats.disbursement_growth }}% from last month
+                                {% elif stats.disbursement_growth < 0 %}
+                                    <i class="fas fa-arrow-down"></i> {{ stats.disbursement_growth }}% from last month
+                                {% else %}
+                                    <i class="fas fa-minus"></i> No change from last month
+                                {% endif %}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -68,7 +74,11 @@
                             </div>
                             <div class="h4 mb-0 font-weight-bold text-gray-800">{{ stats.active_loans }}</div>
                             <div class="text-xs text-success mt-1">
-                                <i class="fas fa-arrow-up"></i> +5 this week
+                                {% if stats.active_loans > 0 %}
+                                    <i class="fas fa-check-circle"></i> {{ stats.active_loans }} active loan{{ stats.active_loans|pluralize }}
+                                {% else %}
+                                    <i class="fas fa-info-circle"></i> No active loans
+                                {% endif %}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -90,7 +100,11 @@
                             </div>
                             <div class="h4 mb-0 font-weight-bold text-gray-800">{{ stats.pending_applications }}</div>
                             <div class="text-xs text-warning mt-1">
-                                <i class="fas fa-clock"></i> Needs attention
+                                {% if stats.pending_applications > 0 %}
+                                    <i class="fas fa-clock"></i> {{ stats.pending_applications }} awaiting review
+                                {% else %}
+                                    <i class="fas fa-check"></i> All applications reviewed
+                                {% endif %}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -114,7 +128,11 @@
                                 ${{ stats.overdue_amount|floatformat:0|intcomma }}
                             </div>
                             <div class="text-xs text-danger mt-1">
-                                <i class="fas fa-exclamation-triangle"></i> Requires action
+                                {% if stats.overdue_count > 0 %}
+                                    <i class="fas fa-exclamation-triangle"></i> {{ stats.overdue_count }} overdue loan{{ stats.overdue_count|pluralize }}
+                                {% else %}
+                                    <i class="fas fa-check-circle"></i> No overdue loans
+                                {% endif %}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -186,6 +204,81 @@
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Third Metrics Row - NEW Dynamic Metrics -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Approval Rate</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.approval_rate }}%</div>
+                            <div class="text-xs text-muted mt-1">
+                                {{ stats.approved_applications }}/{{ stats.total_applications }} applications
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-thumbs-up fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Outstanding Balance</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.total_outstanding|floatformat:0|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-balance-scale fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Payments Received</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.total_payments_received|floatformat:0|intcomma }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-hand-holding-usd fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Application Growth</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% if stats.application_growth > 0 %}+{% endif %}{{ stats.application_growth }}%
+                            </div>
+                            <div class="text-xs text-muted mt-1">
+                                {{ stats.current_month_applications }} this month
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-bar fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>

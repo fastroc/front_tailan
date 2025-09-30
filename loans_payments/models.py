@@ -4,6 +4,56 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
 from loans_core.base_models import BaseLoanModel
 
+
+class PaymentManager(models.Manager):
+    """Enhanced Payment Manager with three-tier system queries"""
+    
+    def by_source(self, source):
+        """Filter payments by data source"""
+        return self.filter(data_source=source)
+    
+    def manual_entries(self):
+        """Get manually entered payments"""
+        return self.filter(data_source='manual')
+    
+    def bulk_uploads(self):
+        """Get bulk uploaded payments"""
+        return self.filter(data_source='bulk_upload')
+    
+    def reconciliation_payments(self):
+        """Get bank reconciliation payments"""
+        return self.filter(data_source='reconciliation')
+    
+    def bank_verified(self):
+        """Get bank-verified payments"""
+        return self.filter(is_bank_verified=True)
+    
+    def pending_reconciliation(self):
+        """Get payments awaiting bank reconciliation"""
+        return self.filter(reconciliation_status='pending')
+    
+    def final_audited(self):
+        """Get audit-locked payments"""
+        return self.filter(reconciliation_status='final')
+    
+    def reconciliation_summary(self, company, date_range=None):
+        """Get reconciliation status summary"""
+        qs = self.filter(company=company)
+        if date_range:
+            qs = qs.filter(payment_date__range=date_range)
+        
+        return qs.aggregate(
+            total_payments=models.Count('id'),
+            manual_count=models.Count('id', filter=models.Q(data_source='manual')),
+            bulk_count=models.Count('id', filter=models.Q(data_source='bulk_upload')),
+            reconciled_count=models.Count('id', filter=models.Q(data_source='reconciliation')),
+            bank_verified_count=models.Count('id', filter=models.Q(is_bank_verified=True)),
+            pending_reconciliation=models.Count('id', filter=models.Q(reconciliation_status='pending')),
+            total_amount=models.Sum('payment_amount'),
+            bank_verified_amount=models.Sum('payment_amount', filter=models.Q(is_bank_verified=True))
+        )
+
+
 class Payment(BaseLoanModel):
     """Record of actual payments received - Company separated"""
     
@@ -126,6 +176,87 @@ class Payment(BaseLoanModel):
     refund_date = models.DateField(null=True, blank=True)
     refund_reason = models.TextField(blank=True)
     
+    # === THREE-TIER PAYMENT SYSTEM FIELDS ===
+    
+    # Data Source Identification
+    data_source = models.CharField(
+        max_length=20, 
+        choices=[
+            ('manual', 'Manual Entry'),
+            ('bulk_upload', 'Bulk Upload'),
+            ('reconciliation', 'Bank Reconciliation'),
+            ('api', 'API Integration'),
+        ], 
+        default='manual', 
+        help_text="Source of payment data entry",
+        db_index=True
+    )
+    
+    # Reconciliation Status Tracking
+    reconciliation_status = models.CharField(
+        max_length=20, 
+        choices=[
+            ('not_required', 'Not Required'),        # Manual/cash payments
+            ('pending', 'Awaiting Reconciliation'),  # Needs bank verification
+            ('matched', 'Bank Reconciled'),          # Matched with bank transaction
+            ('unmatched', 'Reconciliation Failed'),  # Cannot match with bank
+            ('final', 'Final/Audited'),             # Locked for audit compliance
+        ], 
+        default='not_required',
+        help_text="Status of bank reconciliation process",
+        db_index=True
+    )
+    
+    # Bank Transaction Links (for reconciliation payments only)
+    bank_transaction = models.ForeignKey(
+        'bank_accounts.BankTransaction', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        help_text="Linked bank transaction (reconciliation source only)",
+        related_name='loan_payments'
+    )
+    
+    transaction_match = models.ForeignKey(
+        'reconciliation.TransactionMatch',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True, 
+        help_text="Reconciliation match record reference",
+        related_name='loan_payments'
+    )
+    
+    # Bank Verification Audit Fields
+    is_bank_verified = models.BooleanField(
+        default=False,
+        help_text="True if payment verified against bank statement",
+        db_index=True
+    )
+    
+    bank_verification_date = models.DateTimeField(
+        null=True, 
+        blank=True,
+        help_text="Timestamp when payment was bank-verified"
+    )
+    
+    verified_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='verified_loan_payments',
+        help_text="User who verified payment against bank statement"
+    )
+    
+    # Reconciliation Process Notes
+    reconciliation_notes = models.TextField(
+        blank=True,
+        help_text="Internal notes from bank reconciliation process"
+    )
+    
+    # === CUSTOM MANAGER ===
+    objects = PaymentManager()
+    
     class Meta:
         ordering = ['company', '-payment_date', '-created_at']
         unique_together = [['company', 'payment_id']]  # Payment ID unique per company
@@ -135,6 +266,12 @@ class Payment(BaseLoanModel):
             models.Index(fields=['company', 'payment_id']),
             models.Index(fields=['company', 'status', 'payment_date']),
             models.Index(fields=['company', 'transaction_id']),
+            # === THREE-TIER PAYMENT SYSTEM INDEXES ===
+            models.Index(fields=['company', 'data_source', 'payment_date']),
+            models.Index(fields=['company', 'reconciliation_status']),
+            models.Index(fields=['company', 'is_bank_verified', 'payment_date']),
+            models.Index(fields=['bank_transaction']),  # For reconciliation lookups
+            models.Index(fields=['transaction_match']),  # For reconciliation lookups
         ]
     
     def __str__(self):
@@ -171,6 +308,128 @@ class Payment(BaseLoanModel):
     def is_successful(self):
         """Check if payment was successful"""
         return self.status == 'completed'
+    
+    # === THREE-TIER PAYMENT SYSTEM PROPERTIES ===
+    
+    @property
+    def is_reconciliation_payment(self):
+        """Check if payment originated from bank reconciliation"""
+        return self.data_source == 'reconciliation'
+    
+    @property
+    def is_bank_sourced(self):
+        """Check if payment has verified bank transaction source"""
+        return bool(self.bank_transaction and self.is_bank_verified)
+    
+    @property
+    def reconciliation_priority(self):
+        """Return reconciliation priority level (lower = higher priority)"""
+        priority_map = {
+            'reconciliation': 1,  # Highest priority - bank verified
+            'bulk_upload': 2,     # Medium priority - systematic
+            'manual': 3,          # Lower priority - manual entry
+            'api': 2,            # Medium priority - systematic
+        }
+        return priority_map.get(self.data_source, 99)
+    
+    @property
+    def needs_reconciliation(self):
+        """Check if payment needs bank reconciliation"""
+        return self.reconciliation_status == 'pending'
+    
+    @property
+    def is_final_audited(self):
+        """Check if payment is locked for audit"""
+        return self.reconciliation_status == 'final'
+    
+    @property
+    def reconciliation_match_status(self):
+        """Check if this payment has a matching counterpart from different data source"""
+        from decimal import Decimal
+        from datetime import timedelta
+        
+        # If this is a reconciliation payment, look for manual entries
+        if self.data_source == 'reconciliation':
+            matching_manual = Payment.objects.filter(
+                loan=self.loan,
+                data_source='manual',
+                payment_date__range=[
+                    self.payment_date - timedelta(days=3), 
+                    self.payment_date + timedelta(days=3)
+                ],
+                payment_amount__range=[
+                    self.payment_amount - Decimal('5.00'),
+                    self.payment_amount + Decimal('5.00')
+                ]
+            ).first()
+            
+            if matching_manual:
+                amount_diff = abs(self.payment_amount - matching_manual.payment_amount)
+                date_diff = abs((self.payment_date - matching_manual.payment_date).days)
+                
+                if amount_diff == 0 and date_diff == 0:
+                    return {'status': 'perfect_match', 'match': matching_manual}
+                elif amount_diff <= 5 and date_diff <= 1:
+                    return {'status': 'close_match', 'match': matching_manual, 'amount_diff': amount_diff, 'date_diff': date_diff}
+                else:
+                    return {'status': 'loose_match', 'match': matching_manual, 'amount_diff': amount_diff, 'date_diff': date_diff}
+            else:
+                return {'status': 'no_match', 'match': None}
+        
+        # If this is a manual payment, look for reconciliation entries
+        elif self.data_source == 'manual':
+            matching_recon = Payment.objects.filter(
+                loan=self.loan,
+                data_source='reconciliation',
+                payment_date__range=[
+                    self.payment_date - timedelta(days=3), 
+                    self.payment_date + timedelta(days=3)
+                ],
+                payment_amount__range=[
+                    self.payment_amount - Decimal('5.00'),
+                    self.payment_amount + Decimal('5.00')
+                ]
+            ).first()
+            
+            if matching_recon:
+                amount_diff = abs(self.payment_amount - matching_recon.payment_amount)
+                date_diff = abs((self.payment_date - matching_recon.payment_date).days)
+                
+                if amount_diff == 0 and date_diff == 0:
+                    return {'status': 'perfect_match', 'match': matching_recon}
+                elif amount_diff <= 5 and date_diff <= 1:
+                    return {'status': 'close_match', 'match': matching_recon, 'amount_diff': amount_diff, 'date_diff': date_diff}
+                else:
+                    return {'status': 'loose_match', 'match': matching_recon, 'amount_diff': amount_diff, 'date_diff': date_diff}
+            else:
+                return {'status': 'pending_reconciliation', 'match': None}
+        
+        # For bulk_upload or other sources
+        else:
+            return {'status': 'not_applicable', 'match': None}
+    
+    def mark_bank_verified(self, verified_by_user, bank_transaction=None, notes=''):
+        """Mark payment as bank verified"""
+        from django.utils import timezone
+        self.is_bank_verified = True
+        self.bank_verification_date = timezone.now()
+        self.verified_by = verified_by_user
+        self.reconciliation_status = 'matched'
+        if bank_transaction:
+            self.bank_transaction = bank_transaction
+        if notes:
+            self.reconciliation_notes = notes
+        self.save()
+    
+    def finalize_for_audit(self, user):
+        """Lock payment for audit compliance"""
+        from django.core.exceptions import ValidationError
+        from django.utils import timezone
+        if self.reconciliation_status != 'matched':
+            raise ValidationError("Payment must be bank reconciled before finalizing")
+        self.reconciliation_status = 'final'
+        self.reconciliation_notes += f"\n[{timezone.now()}] Finalized for audit by {user.username}"
+        self.save()
 
 
 class PaymentAllocation(BaseLoanModel):
@@ -600,10 +859,15 @@ class PaymentProcessor:
         return Decimal('0.00')
     
     def process_payment(self, loan, payment_amount, payment_date, payment_method, 
-                       processed_by=None, notes=''):
+                       processed_by=None, notes='', data_source='manual', 
+                       reconciliation_status='not_required'):
         """
         Process a payment with industry-standard allocation
         Returns Payment object and allocation details
+        
+        Args:
+            data_source: 'manual', 'bulk_upload', 'reconciliation', 'api'
+            reconciliation_status: 'not_required', 'pending', 'matched', 'final'
         """
         from django.db import transaction
         
@@ -623,7 +887,11 @@ class PaymentProcessor:
                 status='completed',
                 processed_by=processed_by,
                 notes=notes,
-                net_payment_amount=payment_amount  # Assuming no processing fees for now
+                net_payment_amount=payment_amount,  # Assuming no processing fees for now
+                # === THREE-TIER SYSTEM FIELDS ===
+                data_source=data_source,
+                reconciliation_status=reconciliation_status,
+                is_bank_verified=True if data_source == 'reconciliation' else False
             )
             
             # Create allocation records

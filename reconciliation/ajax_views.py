@@ -570,34 +570,11 @@ def edit_transaction_match(request, match_id):
 @require_http_methods(["GET"])
 # @login_required  # Temporarily disabled for testing
 def search_loan_customers(request):
-    """AJAX endpoint for hybrid customer search in WHO field"""
+    """AJAX endpoint for smart loan search in WHO field - searches loans, not just customers"""
     query = request.GET.get('q', '').strip()
     company_id = request.session.get('active_company_id')
     
-    print(f"🔍 Search request - Query: '{query}', Company ID: {company_id}")
-    
-    # If no company_id in session, get the first available company for testing
-    if not company_id:
-        try:
-            from company.models import Company
-            first_company = Company.objects.first()
-            if first_company:
-                company_id = first_company.id
-                print(f"🔧 Using first available company ID: {company_id}")
-            else:
-                print("❌ No companies found in database")
-                return JsonResponse({'customers': [], 'error': 'No companies available'})
-        except Exception as e:
-            print(f"❌ Error getting company: {e}")
-            return JsonResponse({'customers': [], 'error': 'Company lookup failed'})
-
-@require_http_methods(["GET"])
-# @login_required  # Temporarily disabled for testing  
-def get_all_loan_customers(request):
-    """AJAX endpoint to get all loan customers for dropdown"""
-    company_id = request.session.get('active_company_id')
-    
-    print(f"🔍 Get all loan customers request - Company ID: {company_id}")
+    print(f"🔍 Smart loan search - Query: '{query}', Company ID: {company_id}")
     
     # If no company_id in session, get the first available company for testing
     if not company_id:
@@ -616,58 +593,182 @@ def get_all_loan_customers(request):
 
     try:
         from loans_customers.models import Customer
-        from loans_core.models import Loan, LoanApplication
+        from loans_core.models import Loan
+        from django.db import models
+        import re
         
-        # Get customers with active loans OR approved applications (for reconciliation)
-        active_loan_customer_ids = Loan.objects.filter(
+        if not query:
+            # Return empty if no search query
+            return JsonResponse({'customers': []})
+        
+        # Smart search patterns
+        loans = Loan.objects.filter(
             company_id=company_id,
             status='active'
-        ).values_list('customer_id', flat=True).distinct()
+        ).select_related('customer', 'loan_product')
         
-        # Also include customers with approved loan applications
-        approved_app_customer_ids = LoanApplication.objects.filter(
-            company_id=company_id,
-            status='approved'
-        ).values_list('customer_id', flat=True).distinct()
+        # Search by multiple fields
+        search_results = []
         
-        # Combine both lists
-        all_loan_customer_ids = list(set(list(active_loan_customer_ids) + list(approved_app_customer_ids)))
+        # Check if query looks like phone number (8 digits)
+        phone_match = re.search(r'\b\d{8}\b', query)
+        if phone_match:
+            phone = phone_match.group()
+            loans_by_phone = loans.filter(customer__primary_phone=phone)
+            for loan in loans_by_phone:
+                search_results.append({
+                    'loan': loan,
+                    'match_type': 'phone_exact',
+                    'confidence': 95
+                })
         
-        print(f"🏢 Active loan customer IDs for company {company_id}: {list(active_loan_customer_ids)}")
-        print(f"🏢 Approved application customer IDs for company {company_id}: {list(approved_app_customer_ids)}")
-        print(f"🏢 Combined loan customer IDs: {all_loan_customer_ids}")
+        # Check if query looks like ID number (extract numbers)
+        id_match = re.search(r'[ЧЦCc][ЛЪLl](\d{8})', query, re.IGNORECASE)
+        if id_match:
+            id_number = id_match.group(1)
+            loans_by_id = loans.filter(customer__national_id__contains=id_number)
+            for loan in loans_by_id:
+                search_results.append({
+                    'loan': loan,
+                    'match_type': 'id_number',
+                    'confidence': 90
+                })
         
-        customers = Customer.objects.filter(
-            company_id=company_id,
-            id__in=all_loan_customer_ids
-        ).order_by('first_name', 'last_name')
-        
-        results = []
-        for customer in customers:
-            # Get customer's active loan info
-            active_loans = Loan.objects.filter(
-                customer=customer,
-                status='active'
-            )
-            
-            loan_info = ""
-            if active_loans.exists():
-                loan = active_loans.first()
-                loan_info = f" (Loan: {loan.loan_number})"
-            
-            full_name = f"{customer.first_name} {customer.last_name}".strip()
-            if customer.business_name:
-                full_name = f"{customer.business_name} - {full_name}"
-            
-            results.append({
-                'id': customer.id,
-                'name': full_name,
-                'display_name': f"{full_name}{loan_info}",
-                'customer_id': customer.customer_id,
-                'loan_info': loan_info.strip("() "),
+        # Search by loan number
+        loans_by_number = loans.filter(loan_number__icontains=query)
+        for loan in loans_by_number:
+            search_results.append({
+                'loan': loan,
+                'match_type': 'loan_number',
+                'confidence': 100
             })
         
-        print(f"📋 Found {len(results)} loan customers")
+        # Search by customer name
+        loans_by_name = loans.filter(
+            models.Q(customer__first_name__icontains=query) |
+            models.Q(customer__last_name__icontains=query) |
+            models.Q(customer__business_name__icontains=query)
+        )
+        for loan in loans_by_name:
+            search_results.append({
+                'loan': loan,
+                'match_type': 'name',
+                'confidence': 70
+            })
+        
+        # Remove duplicates and format results
+        unique_loans = {}
+        for result in search_results:
+            loan = result['loan']
+            if loan.id not in unique_loans or result['confidence'] > unique_loans[loan.id]['confidence']:
+                unique_loans[loan.id] = result
+        
+        # Format for frontend
+        formatted_results = []
+        for loan_data in unique_loans.values():
+            loan = loan_data['loan']
+            customer = loan.customer
+            
+            customer_name = f"{customer.first_name} {customer.last_name}".strip()
+            if customer.business_name:
+                customer_name = f"{customer.business_name} - {customer_name}"
+            
+            loan_display = f"{customer_name} - {loan.loan_number}"
+            loan_details = f"${loan.current_balance:,.2f} {loan.loan_product.category}"
+            
+            formatted_results.append({
+                'id': loan.id,
+                'loan_id': loan.id,
+                'loan_number': loan.loan_number,
+                'customer_id': customer.id,
+                'customer_name': customer_name,
+                'name': loan_display,
+                'display_name': f"{loan_display} ({loan_details})",
+                'loan_amount': str(loan.current_balance),
+                'loan_type': loan.loan_product.category,
+                'phone': customer.primary_phone,
+                'national_id': customer.national_id,
+                'match_type': loan_data['match_type'],
+                'confidence': loan_data['confidence']
+            })
+        
+        # Sort by confidence
+        formatted_results.sort(key=lambda x: x['confidence'], reverse=True)
+        
+        print(f"📋 Smart search found {len(formatted_results)} loan matches")
+        
+        return JsonResponse({
+            'customers': formatted_results,  # Keep 'customers' key for frontend compatibility
+            'count': len(formatted_results)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in smart loan search: {e}")
+        return JsonResponse({'customers': [], 'error': str(e)})
+
+@require_http_methods(["GET"])
+# @login_required  # Temporarily disabled for testing  
+def get_all_loan_customers(request):
+    """AJAX endpoint to get all ACTIVE LOANS for reconciliation (not just customers)"""
+    company_id = request.session.get('active_company_id')
+    
+    print(f"🔍 Get all active loans request - Company ID: {company_id}")
+    
+    # If no company_id in session, get the first available company for testing
+    if not company_id:
+        try:
+            from company.models import Company
+            first_company = Company.objects.first()
+            if first_company:
+                company_id = first_company.id
+                print(f"🔧 Using first available company ID: {company_id}")
+            else:
+                print("❌ No companies found in database")
+                return JsonResponse({'loans': [], 'error': 'No companies available'})
+        except Exception as e:
+            print(f"❌ Error getting company: {e}")
+            return JsonResponse({'loans': [], 'error': 'Company lookup failed'})
+
+    try:
+        from loans_customers.models import Customer
+        from loans_core.models import Loan, LoanApplication
+        
+        # Get all ACTIVE LOANS for this company
+        active_loans = Loan.objects.filter(
+            company_id=company_id,
+            status='active'
+        ).select_related('customer', 'loan_product').order_by('customer__first_name', 'loan_number')
+        
+        print(f"🏢 Found {active_loans.count()} active loans for company {company_id}")
+        
+        results = []
+        for loan in active_loans:
+            customer = loan.customer
+            
+            # Build customer display name
+            customer_name = f"{customer.first_name} {customer.last_name}".strip()
+            if customer.business_name:
+                customer_name = f"{customer.business_name} - {customer_name}"
+            
+            # Format loan details
+            loan_display = f"{customer_name} - {loan.loan_number}"
+            loan_details = f"${loan.current_balance:,.2f} {loan.loan_product.category}"
+            
+            results.append({
+                'id': loan.id,  # Using loan ID instead of customer ID
+                'loan_id': loan.id,
+                'loan_number': loan.loan_number,
+                'customer_id': customer.id,
+                'customer_name': customer_name,
+                'name': loan_display,  # Main display text
+                'display_name': f"{loan_display} ({loan_details})",
+                'loan_amount': str(loan.current_balance),
+                'loan_type': loan.loan_product.category,
+                'phone': customer.primary_phone,
+                'national_id': customer.national_id,
+            })
+        
+        print(f"📋 Returning {len(results)} active loans for reconciliation")
         
         return JsonResponse({
             'customers': results,
@@ -850,7 +951,16 @@ def create_loan_payment_from_reconciliation(request):
             notes=f'Auto-created from reconciliation: {transaction_match.bank_transaction.description}',
             net_payment_amount=amount,
             processed_by=request.user,
-            processed_date=timezone.now()
+            processed_date=timezone.now(),
+            # === THREE-TIER SYSTEM FIELDS ===
+            data_source='reconciliation',
+            reconciliation_status='matched',
+            is_bank_verified=True,
+            bank_transaction=transaction_match.bank_transaction,
+            transaction_match=transaction_match,
+            bank_verification_date=timezone.now(),
+            verified_by=request.user,
+            reconciliation_notes=f'Reconciled from bank transaction: {transaction_match.bank_transaction.description}',
         )
         
         # Update loan balance
@@ -1837,12 +1947,29 @@ def simple_match_transaction(request):
             # Create a default session if none exists
             from datetime import date
             bank_account = Account.objects.filter(company=company, account_type='Bank').first()
+            
+            # Get user for created_by field
+            user = request.user if request.user.is_authenticated else None
+            if not user:
+                # Fallback to first superuser if no authenticated user
+                from django.contrib.auth.models import User
+                user = User.objects.filter(is_superuser=True).first()
+                if not user:
+                    # Create a system user if none exists
+                    user = User.objects.create_user(
+                        username='system_reconciliation',
+                        email='system@reconciliation.local',
+                        password='system_password_change_me'
+                    )
+            
             session = ReconciliationSession.objects.create(
                 company=company,
                 account=bank_account or gl_account,
-                start_date=date.today(),
-                end_date=date.today(),
-                statement_balance=0
+                session_name=f"Auto-created session - {date.today()}",
+                period_start=date.today(),
+                period_end=date.today(),
+                statement_balance=0,
+                created_by=user
             )
 
         # Create or update transaction match

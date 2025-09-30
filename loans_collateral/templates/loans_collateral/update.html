@@ -1,0 +1,597 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit {{ collateral.title }} - Collateral{% endblock %}
+
+{% block extra_css %}
+<style>
+    .update-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+    
+    .form-card {
+        border: none;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        border-radius: 15px;
+        margin-bottom: 1.5rem;
+        transition: transform 0.2s ease;
+        background: linear-gradient(145deg, #ffffff, #f8f9ff);
+    }
+    
+    .form-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .form-card .card-header {
+        background: linear-gradient(45deg, #f0f4ff, #e8f2ff);
+        border-bottom: 2px solid #e1e8ed;
+        border-radius: 15px 15px 0 0;
+        font-weight: 600;
+        color: #2c3e50;
+        padding: 1.5rem;
+    }
+    
+    .form-card .card-body {
+        padding: 2rem;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 0.75rem;
+        font-size: 0.95rem;
+    }
+    
+    .form-control, .form-select {
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.875rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        background: white;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        background: #fafbff;
+    }
+    
+    .input-group-text {
+        background: linear-gradient(145deg, #f7f9fc, #edf2f7);
+        border: 2px solid #e2e8f0;
+        border-right: none;
+        color: #4a5568;
+        font-weight: 600;
+        border-radius: 10px 0 0 10px;
+    }
+    
+    .input-group .form-control {
+        border-left: none;
+        border-radius: 0 10px 10px 0;
+    }
+    
+    .vehicle-section {
+        background: linear-gradient(145deg, #f0fff4, #f7fafc);
+        border: 2px solid #68d391;
+        border-radius: 15px;
+        padding: 2rem;
+        margin: 1.5rem 0;
+        display: none;
+        transition: all 0.3s ease;
+    }
+    
+    .vehicle-section.show {
+        display: block;
+        animation: slideDown 0.4s ease;
+    }
+    
+    @keyframes slideDown {
+        from { 
+            opacity: 0; 
+            transform: translateY(-20px) scale(0.95);
+        }
+        to { 
+            opacity: 1; 
+            transform: translateY(0) scale(1);
+        }
+    }
+    
+    .btn-update {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 25px;
+        padding: 1rem 2.5rem;
+        color: white;
+        font-weight: 600;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-update:hover {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary {
+        background: linear-gradient(145deg, #f7fafc, #edf2f7);
+        border: 2px solid #e2e8f0;
+        color: #4a5568;
+        border-radius: 25px;
+        padding: 1rem 2.5rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-secondary:hover {
+        background: linear-gradient(145deg, #edf2f7, #e2e8f0);
+        color: #2d3748;
+        transform: translateY(-2px);
+    }
+    
+    .text-danger {
+        color: #e53e3e !important;
+        font-weight: 500;
+    }
+    
+    .alert-info {
+        background: linear-gradient(145deg, #ebf8ff, #bee3f8);
+        border: 2px solid #90cdf4;
+        border-radius: 12px;
+        color: #2b6cb0;
+    }
+    
+    .badge {
+        border-radius: 20px;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+    }
+    
+    .form-text {
+        color: #718096;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+    
+    /* Responsive improvements */
+    @media (max-width: 768px) {
+        .update-header {
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .form-card .card-body {
+            padding: 1.5rem;
+        }
+        
+        .btn-update, .btn-secondary {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+    }
+    
+    /* Animation for form validation errors */
+    .text-danger {
+        animation: shake 0.5s ease-in-out;
+    }
+    
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- Header Section -->
+    <div class="update-header">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="mb-2">
+                    <i class="fas fa-edit me-2"></i>Edit Collateral
+                </h1>
+                <p class="mb-0">Update details for: <strong>{{ collateral.title }}</strong></p>
+            </div>
+            <div class="col-lg-4 text-end">
+                <a href="{% url 'loans_collateral:collateral_detail' collateral.pk %}" 
+                   class="btn btn-light">
+                    <i class="fas fa-eye me-1"></i>View Details
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" id="updateCollateralForm">
+        {% csrf_token %}
+        
+        <div class="row">
+            <!-- Basic Information -->
+            <div class="col-lg-6">
+                <div class="card form-card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>Basic Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="{{ form.title.id_for_label }}" class="form-label">
+                                <strong>Title</strong> <span class="text-danger">*</span>
+                            </label>
+                            {{ form.title }}
+                            {% if form.title.errors %}
+                                <div class="text-danger small mt-1">{{ form.title.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.collateral_type.id_for_label }}" class="form-label">
+                                <strong>Collateral Type</strong> <span class="text-danger">*</span>
+                            </label>
+                            {{ form.collateral_type }}
+                            {% if form.collateral_type.errors %}
+                                <div class="text-danger small mt-1">{{ form.collateral_type.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                <strong>Description</strong>
+                            </label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                                <div class="text-danger small mt-1">{{ form.description.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.location.id_for_label }}" class="form-label">
+                                <strong>Location</strong>
+                            </label>
+                            {{ form.location }}
+                            {% if form.location.errors %}
+                                <div class="text-danger small mt-1">{{ form.location.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-0">
+                            <label for="{{ form.condition.id_for_label }}" class="form-label">
+                                <strong>Condition</strong> <span class="text-danger">*</span>
+                            </label>
+                            {{ form.condition }}
+                            {% if form.condition.errors %}
+                                <div class="text-danger small mt-1">{{ form.condition.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Valuation Information -->
+            <div class="col-lg-6">
+                <div class="card form-card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-dollar-sign me-2"></i>Valuation Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="{{ form.declared_value.id_for_label }}" class="form-label">
+                                <strong>Declared Value</strong> <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.declared_value }}
+                            </div>
+                            {% if form.declared_value.errors %}
+                                <div class="text-danger small mt-1">{{ form.declared_value.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.market_value.id_for_label }}" class="form-label">
+                                <strong>Market Value</strong>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.market_value }}
+                            </div>
+                            {% if form.market_value.errors %}
+                                <div class="text-danger small mt-1">{{ form.market_value.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <strong>Appraised Value</strong>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" step="0.01" min="0" placeholder="0.00" disabled>
+                            </div>
+                            <div class="form-text">Professional appraisal values are managed through valuations</div>
+                        </div>
+
+                        <div class="mb-0">
+                            <label class="form-label">
+                                <strong>LTV Ratio</strong>
+                            </label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" step="0.01" 
+                                       value="{% if collateral.loan_to_value_ratio %}{{ collateral.loan_to_value_ratio|floatformat:2 }}{% endif %}" 
+                                       placeholder="Calculated automatically" readonly>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">Calculated from market value and loan amount</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vehicle-Specific Fields -->
+        <div class="row" id="vehicleSection">
+            <div class="col-12">
+                <div class="card form-card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-car me-2"></i>Vehicle Information
+                            <span class="badge bg-info ms-2">Vehicle-Specific Fields</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="vehicle-section" id="vehicleFields">
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Vehicle Details:</strong> Complete the following fields for vehicle collateral.
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.vehicle_make.id_for_label }}" class="form-label">
+                                            <strong>Make</strong> <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.vehicle_make }}
+                                        {% if form.vehicle_make.errors %}
+                                            <div class="text-danger small mt-1">{{ form.vehicle_make.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="{{ form.vehicle_model.id_for_label }}" class="form-label">
+                                            <strong>Model</strong> <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.vehicle_model }}
+                                        {% if form.vehicle_model.errors %}
+                                            <div class="text-danger small mt-1">{{ form.vehicle_model.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="{{ form.vehicle_year.id_for_label }}" class="form-label">
+                                            <strong>Manufactured Year</strong> <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.vehicle_year }}
+                                        {% if form.vehicle_year.errors %}
+                                            <div class="text-danger small mt-1">{{ form.vehicle_year.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="{{ form.vehicle_registration_year.id_for_label }}" class="form-label">
+                                            <strong>Registration Year</strong>
+                                        </label>
+                                        {{ form.vehicle_registration_year }}
+                                        {% if form.vehicle_registration_year.errors %}
+                                            <div class="text-danger small mt-1">{{ form.vehicle_registration_year.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.vehicle_license_plate.id_for_label }}" class="form-label">
+                                            <strong>License Plate Number</strong> <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.vehicle_license_plate }}
+                                        {% if form.vehicle_license_plate.errors %}
+                                            <div class="text-danger small mt-1">{{ form.vehicle_license_plate.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="{{ form.vehicle_vin.id_for_label }}" class="form-label">
+                                            <strong>VIN</strong>
+                                        </label>
+                                        {{ form.vehicle_vin }}
+                                        {% if form.vehicle_vin.errors %}
+                                            <div class="text-danger small mt-1">{{ form.vehicle_vin.errors.0 }}</div>
+                                        {% endif %}
+                                        <div class="form-text">Vehicle Identification Number</div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="{{ form.vehicle_mileage.id_for_label }}" class="form-label">
+                                            <strong>Mileage</strong>
+                                        </label>
+                                        <div class="input-group">
+                                            {{ form.vehicle_mileage }}
+                                            <span class="input-group-text">miles</span>
+                                        </div>
+                                        {% if form.vehicle_mileage.errors %}
+                                            <div class="text-danger small mt-1">{{ form.vehicle_mileage.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="{{ form.vehicle_fuel_type.id_for_label }}" class="form-label">
+                                            <strong>Fuel Type</strong>
+                                        </label>
+                                        {{ form.vehicle_fuel_type }}
+                                        {% if form.vehicle_fuel_type.errors %}
+                                            <div class="text-danger small mt-1">{{ form.vehicle_fuel_type.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ownership & Other Information -->
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="card form-card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-user me-2"></i>Ownership Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="{{ form.owner_name.id_for_label }}" class="form-label">
+                                <strong>Owner Name</strong>
+                            </label>
+                            {{ form.owner_name }}
+                            {% if form.owner_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.owner_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.ownership_document.id_for_label }}" class="form-label">
+                                <strong>Ownership Document</strong>
+                            </label>
+                            {{ form.ownership_document }}
+                            {% if form.ownership_document.errors %}
+                                <div class="text-danger small mt-1">{{ form.ownership_document.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-0">
+                            <label for="{{ form.registration_number.id_for_label }}" class="form-label">
+                                <strong>Registration Number</strong>
+                            </label>
+                            {{ form.registration_number }}
+                            {% if form.registration_number.errors %}
+                                <div class="text-danger small mt-1">{{ form.registration_number.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card form-card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cog me-2"></i>Status & Notes
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="{{ form.status.id_for_label }}" class="form-label">
+                                <strong>Status</strong> <span class="text-danger">*</span>
+                            </label>
+                            {{ form.status }}
+                            {% if form.status.errors %}
+                                <div class="text-danger small mt-1">{{ form.status.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-0">
+                            <label for="{{ form.verification_notes.id_for_label }}" class="form-label">
+                                <strong>Additional Notes</strong>
+                            </label>
+                            {{ form.verification_notes }}
+                            {% if form.verification_notes.errors %}
+                                <div class="text-danger small mt-1">{{ form.verification_notes.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Buttons -->
+        <div class="row mt-4">
+            <div class="col-12 text-center">
+                <button type="submit" class="btn btn-update btn-lg me-3">
+                    <i class="fas fa-save me-2"></i>Update Collateral
+                </button>
+                <a href="{% url 'loans_collateral:collateral_detail' collateral.pk %}" 
+                   class="btn btn-secondary btn-lg">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const collateralTypeField = document.getElementById('{{ form.collateral_type.id_for_label }}');
+    const vehicleSection = document.getElementById('vehicleFields');
+    
+    function toggleVehicleFields() {
+        const selectedOption = collateralTypeField.options[collateralTypeField.selectedIndex];
+        const selectedValue = collateralTypeField.value;
+        
+        if (selectedValue) {
+            // Get collateral type details via API
+            fetch(`/loans/collateral/api/type/${selectedValue}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.category === 'vehicle') {
+                        vehicleSection.classList.add('show');
+                        // Make vehicle fields required
+                        ['{{ form.vehicle_make.id_for_label }}', 
+                         '{{ form.vehicle_model.id_for_label }}', 
+                         '{{ form.vehicle_year.id_for_label }}', 
+                         '{{ form.vehicle_license_plate.id_for_label }}'].forEach(fieldId => {
+                            const field = document.getElementById(fieldId);
+                            if (field) field.required = true;
+                        });
+                    } else {
+                        vehicleSection.classList.remove('show');
+                        // Remove required attribute from vehicle fields
+                        ['{{ form.vehicle_make.id_for_label }}', 
+                         '{{ form.vehicle_model.id_for_label }}', 
+                         '{{ form.vehicle_year.id_for_label }}', 
+                         '{{ form.vehicle_license_plate.id_for_label }}'].forEach(fieldId => {
+                            const field = document.getElementById(fieldId);
+                            if (field) field.required = false;
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.log('API call failed, hiding vehicle fields');
+                    vehicleSection.classList.remove('show');
+                });
+        } else {
+            vehicleSection.classList.remove('show');
+        }
+    }
+    
+    // Check initial state
+    toggleVehicleFields();
+    
+    // Listen for changes
+    collateralTypeField.addEventListener('change', toggleVehicleFields);
+});
+</script>
+{% endblock %}

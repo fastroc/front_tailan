@@ -182,8 +182,7 @@
     }
 
     #scheduleContainer {
-        max-height: 400px;
-        overflow-y: auto;
+        /* Remove height restriction to show all payments */
     }
 
     /* Responsive Design */
@@ -236,6 +235,33 @@
                             </p>
                         </div>
                     </div>
+                    
+                    {% if existing_loan %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="alert alert-success">
+                                <h6 class="alert-heading"><i class="fas fa-check-circle me-2"></i>Loan Already Created</h6>
+                                <p class="mb-2">This application has already been approved and loan <strong>{{ existing_loan.loan_number }}</strong> has been created.</p>
+                                <hr>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Principal Amount:</strong> ${{ existing_loan.principal_amount|floatformat:2 }}</p>
+                                        <p class="mb-1"><strong>Current Balance:</strong> ${{ existing_loan.current_balance|floatformat:2 }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Status:</strong> {{ existing_loan.get_status_display }}</p>
+                                        <p class="mb-0"><strong>Next Payment:</strong> {{ existing_loan.next_payment_date|date:"M d, Y" }}</p>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="{% url 'loans_core:loan_detail' existing_loan.pk %}" class="btn btn-success btn-sm">
+                                        <i class="fas fa-eye me-1"></i>View Loan Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -260,6 +286,9 @@
                                 <button type="button" class="btn btn-success btn-lg" onclick="approveApplication()">
                                     <i class="fas fa-handshake me-2"></i>Approve & Contract
                                 </button>
+                                {% if existing_loan %}
+                                <small class="text-info d-block mt-2">Note: Will update existing loan {{ existing_loan.loan_number }}</small>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -413,12 +442,35 @@
                                         <span class="payment-btn-desc">Fixed principal, varying payment</span>
                                     </button>
                                 </div>
+
+                                <!-- Full Custom Payment -->
+                                <div class="payment-type-wrapper">
+                                    <button type="button" class="custom-payment-btn" data-type="full-custom">
+                                        <span class="payment-btn-text">Full Custom</span>
+                                        <span class="payment-btn-desc">Fully adjustable payments & principals</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Schedule Display -->
                     <div class="row mb-4" id="scheduleContainer" style="display: none;">
+                        <!-- Custom Schedule Controls - Only for Full Custom -->
+                        <div class="col-12 mb-3" id="customScheduleControls" style="display: none;">
+                            <div class="alert alert-info">
+                                <strong>Full Custom Mode:</strong> Both payments and principals are fully editable. Interest calculations use ACT/365 daily method. Final payment auto-balances to zero.
+                            </div>
+                            <div class="btn-group mb-3" role="group">
+                                <button type="button" class="btn btn-outline-primary" id="templateEqualPayment">Equal Payment Template</button>
+                                <button type="button" class="btn btn-outline-secondary" id="templateEqualPrincipal">Equal Principal Template</button>
+                            </div>
+                            <div class="btn-group mb-3" role="group">
+                                <button type="button" class="btn btn-success btn-sm" onclick="recalculateCustomSchedule()">Recalculate Schedule</button>
+                                <button type="button" class="btn btn-warning btn-sm" onclick="resetCustomSchedule()">Reset Template</button>
+                            </div>
+                        </div>
+                        
                         <!-- Schedule Table -->
                         <div class="col-12">
                             <div class="schedule-table" id="standardScheduleTable">
@@ -459,7 +511,7 @@
                     <button type="button" class="btn btn-info me-2" onclick="calculateSchedule()">
                         <i class="fas fa-calculator me-1"></i>Calculate Schedule
                     </button>
-                    <button type="submit" class="btn btn-success btn-lg">
+                    <button type="submit" class="btn btn-success btn-lg" onclick="validateAndSubmitSchedule(event)">
                         <i class="fas fa-handshake me-1"></i>Approve & Create Contract
                     </button>
                 </div>
@@ -507,6 +559,7 @@
 <script>
 // NEW: global equal-payment cache (for "equal-total" mode)
 window.__EQUAL_PAYMENT_BASE__ = null;
+window.__CURRENT_SCHEDULE_TYPE__ = 'equal-total'; // Track current schedule type
 
 // Global Modal Functions (must be available immediately)
 function approveApplication() {
@@ -541,7 +594,87 @@ function calculateSchedule() {
     }
 }
 
-// Ensure functions are globally accessible
+// Full Custom Schedule Functions
+function recalculateCustomSchedule() {
+    if (window.__CURRENT_SCHEDULE_TYPE__ === 'full-custom') {
+        if (typeof window.calculateScheduleFunction === 'function') {
+            window.calculateScheduleFunction();
+        }
+    }
+}
+
+function resetCustomSchedule() {
+    if (window.__CURRENT_SCHEDULE_TYPE__ === 'full-custom') {
+        // Reset to equal payment base
+        $('#templateEqualPayment').click();
+    }
+}
+
+// Form validation and submission handler
+function validateAndSubmitSchedule(event) {
+    // Get current schedule data
+    let schedule = [];
+    try {
+        schedule = JSON.parse($('#schedule_data').val() || '[]');
+    } catch(e) {
+        schedule = [];
+    }
+
+    if (schedule.length > 0) {
+        // Round all values to 2 decimal places and ensure final balance is zero
+        const amount = parseFloat($('#approved_amount').val()) || 0;
+        const rate = parseFloat($('#interest_rate').val()) || 0;
+        const dailyRate = (rate / 100) / 365;
+
+        // Recalculate the entire schedule with proper rounding
+        let runningBalance = amount;
+        
+        for (let i = 0; i < schedule.length; i++) {
+            const isLast = (i === schedule.length - 1);
+            
+            if (!isLast) {
+                // Round payment and principal to 2 decimal places
+                schedule[i].payment = Math.round(schedule[i].payment * 100) / 100;
+                schedule[i].principal = Math.round(schedule[i].principal * 100) / 100;
+                schedule[i].interest = Math.round(schedule[i].interest * 100) / 100;
+                
+                runningBalance -= schedule[i].principal;
+                schedule[i].balance = Math.round(Math.max(0, runningBalance) * 100) / 100;
+            } else {
+                // Last payment: ensure exact balance to zero
+                const days = schedule[i].days || 0;
+                const interest = Math.round((runningBalance * dailyRate * days) * 100) / 100;
+                const principal = Math.round(runningBalance * 100) / 100;
+                const payment = interest + principal;
+                
+                schedule[i].interest = interest;
+                schedule[i].principal = principal;
+                schedule[i].payment = Math.round(payment * 100) / 100;
+                schedule[i].balance = 0.00;
+            }
+        }
+
+        // Update the schedule data with corrected values
+        $('#schedule_data').val(JSON.stringify(schedule));
+
+        // Update all input field values in the DOM to match corrected values
+        schedule.forEach((payment, index) => {
+            const $principalInput = $(`.editable-principal[data-row="${index}"]`);
+            const $paymentInput = $(`.editable-payment[data-row="${index}"]`);
+            
+            if ($principalInput.length) {
+                $principalInput.val(payment.principal.toFixed(2));
+            }
+            if ($paymentInput.length) {
+                $paymentInput.val(payment.payment.toFixed(2));
+            }
+        });
+    }
+
+    // Allow form submission to continue
+    return true;
+}
+
 window.approveApplication = approveApplication;
 window.rejectApplication = rejectApplication;
 window.leaveSubmitted = leaveSubmitted;
@@ -615,6 +748,13 @@ function initializeLoanApproval() {
 
         if (scheduleType === 'equal-principal') {
             // === Equal Principal (unchanged behavior, but final row balances) ===
+            
+            // Hide custom controls for equal principal
+            const customControls = document.getElementById('customScheduleControls');
+            if (customControls) {
+                customControls.style.display = 'none';
+            }
+            
             const principalPayment = amount / months;
 
             for (let i = 1; i <= months; i++) {
@@ -645,7 +785,113 @@ function initializeLoanApproval() {
             return;
         }
 
+        if (scheduleType === 'full-custom') {
+            // === Full Custom Schedule ===
+            
+            // Show custom controls for full custom
+            const customControls = document.getElementById('customScheduleControls');
+            if (customControls) {
+                customControls.style.display = 'block';
+            }
+            
+            // Check if we have existing custom schedule data
+            let existingSchedule = [];
+            try {
+                existingSchedule = JSON.parse($('#schedule_data').val() || '[]');
+            } catch(e) {
+                existingSchedule = [];
+            }
+            
+            // If no existing schedule or schedule length doesn't match, create new base schedule
+            if (existingSchedule.length !== months) {
+                // Create base schedule using equal payment as default
+                const monthlyRate = annualRate / 12;
+                let basePayment;
+                
+                if (annualRate === 0) {
+                    basePayment = amount / months;
+                } else {
+                    basePayment = amount * (monthlyRate * Math.pow(1 + monthlyRate, months)) /
+                                  (Math.pow(1 + monthlyRate, months) - 1);
+                }
+
+                for (let i = 1; i <= months; i++) {
+                    const daysInPeriod = daysBetween(previousDate, currentDate);
+                    const interestPayment = balance * dailyRate * daysInPeriod;
+
+                    let payment = (i === months) ? 0 : basePayment;
+                    let principal = payment - interestPayment;
+
+                    if (i !== months && principal < 0) {
+                        principal = 0;
+                        payment = basePayment;
+                    }
+
+                    if (principal > balance) {
+                        principal = balance;
+                    }
+
+                    if (i === months) {
+                        principal = balance;
+                        payment = principal + interestPayment;
+                    }
+
+                    balance -= principal;
+
+                    schedule.push({
+                        payment_number: i,
+                        date: new Date(currentDate).toISOString().split('T')[0],
+                        payment,
+                        principal,
+                        interest: interestPayment,
+                        balance: Math.max(0, balance),
+                        days: daysInPeriod
+                    });
+
+                    previousDate = new Date(currentDate);
+                    currentDate.setMonth(currentDate.getMonth() + 1);
+                }
+            } else {
+                // Use existing schedule but recalculate interest and balance
+                schedule = [...existingSchedule];
+                balance = amount;
+                previousDate = new Date(disbursementDate);
+                currentDate = new Date(firstPaymentDate);
+                
+                for (let i = 0; i < schedule.length; i++) {
+                    const daysInPeriod = daysBetween(previousDate, currentDate);
+                    const interestPayment = balance * dailyRate * daysInPeriod;
+                    
+                    // Keep existing payment and principal but recalculate interest
+                    schedule[i].interest = interestPayment;
+                    schedule[i].days = daysInPeriod;
+                    
+                    // For final payment, auto-balance
+                    if (i === schedule.length - 1) {
+                        schedule[i].principal = balance;
+                        schedule[i].payment = balance + interestPayment;
+                    }
+                    
+                    balance -= schedule[i].principal;
+                    schedule[i].balance = Math.max(0, balance);
+                    
+                    previousDate = new Date(currentDate);
+                    currentDate.setMonth(currentDate.getMonth() + 1);
+                }
+            }
+
+            updateCustomScheduleDisplay(schedule);
+            $('#schedule_data').val(JSON.stringify(schedule));
+            return;
+        }
+
         // === Equal Total Payment (constant payment) ===
+        
+        // Hide custom controls for equal payment
+        const customControls = document.getElementById('customScheduleControls');
+        if (customControls) {
+            customControls.style.display = 'none';
+        }
         // For true daily interest calculation, we need to use daily compounding for the base payment too
         const monthlyRate = annualRate / 12;
         let basePayment;
@@ -765,6 +1011,15 @@ function initializeLoanApproval() {
         updateScheduleDisplay(schedule);
         $('#schedule_data').val(JSON.stringify(schedule));
     }
+
+    // Choose the right display function based on schedule type  
+    function displaySchedule(schedule) {
+        if (window.__CURRENT_SCHEDULE_TYPE__ === 'full-custom') {
+            updateCustomScheduleDisplay(schedule);
+        } else {
+            updateScheduleDisplay(schedule);
+        }
+    }
     
     // Event handlers
     updatePaymentCalculation();
@@ -779,7 +1034,9 @@ function initializeLoanApproval() {
     $('.custom-payment-btn').on('click', function() {
         $('.custom-payment-btn').removeClass('active-payment');
         $(this).addClass('active-payment');
-        $('#schedule_type').val($(this).data('type'));
+        const scheduleType = $(this).data('type');
+        $('#schedule_type').val(scheduleType);
+        window.__CURRENT_SCHEDULE_TYPE__ = scheduleType;
         calculateScheduleMain();
     });
 
@@ -898,8 +1155,158 @@ function initializeLoanApproval() {
             }
         }
 
-        updateScheduleDisplay(schedule);
+        // Use appropriate display function
+        if (window.__CURRENT_SCHEDULE_TYPE__ === 'full-custom') {
+            updateCustomScheduleDisplay(schedule);
+        } else {
+            updateScheduleDisplay(schedule);
+        }
         $('#schedule_data').val(JSON.stringify(schedule));
+    });
+
+    // Handle custom payment editing (for full-custom mode)
+    $(document).on('input', '.editable-payment', function() {
+        if (window.__CURRENT_SCHEDULE_TYPE__ !== 'full-custom') return;
+        
+        const rowIndex = parseInt($(this).data('row'));
+        let newPayment = parseFloat($(this).val()) || 0;
+
+        // Current schedule
+        let schedule = [];
+        try {
+            schedule = JSON.parse($('#schedule_data').val() || '[]');
+        } catch(e) {
+            return;
+        }
+        if (!schedule.length || rowIndex < 0 || rowIndex >= schedule.length) return;
+
+        const amount = parseFloat($('#approved_amount').val()) || 0;
+        const rate = parseFloat($('#interest_rate').val()) || 0;
+        const dailyRate = (rate / 100) / 365;
+
+        // Rebuild running balance up to the edited row
+        let runningBalance = amount;
+        for (let i = 0; i < rowIndex; i++) {
+            runningBalance -= (schedule[i].principal || 0);
+        }
+
+        // Apply edit on the target row
+        const edited = schedule[rowIndex];
+        const isLast = (rowIndex === schedule.length - 1);
+
+        if (!isLast) {
+            // Calculate interest for this period
+            const days = edited.days || 0;
+            const interest = runningBalance * dailyRate * days;
+            
+            // Calculate principal from payment
+            let principal = newPayment - interest;
+            
+            // Ensure principal is not negative and doesn't exceed balance
+            principal = Math.max(0, Math.min(principal, runningBalance));
+            
+            edited.payment = newPayment;
+            edited.principal = principal;
+            edited.interest = interest;
+            
+            runningBalance -= principal;
+            edited.balance = Math.max(0, runningBalance);
+        }
+
+        // Recompute forward rows
+        for (let i = rowIndex + 1; i < schedule.length; i++) {
+            const isLastRow = (i === schedule.length - 1);
+            const days = schedule[i].days || 0;
+            const interest = runningBalance * dailyRate * days;
+
+            if (!isLastRow) {
+                // Recalculate principal from existing payment
+                let principal = schedule[i].payment - interest;
+                principal = Math.max(0, Math.min(principal, runningBalance));
+                
+                schedule[i].interest = interest;
+                schedule[i].principal = principal;
+                runningBalance -= principal;
+                schedule[i].balance = Math.max(0, runningBalance);
+            } else {
+                // Final row clears the account
+                const principal = runningBalance;
+                const payment = principal + interest;
+
+                schedule[i].interest = interest;
+                schedule[i].principal = principal;
+                schedule[i].payment = payment;
+                runningBalance = 0;
+                schedule[i].balance = 0;
+            }
+        }
+
+        updateCustomScheduleDisplay(schedule);
+        $('#schedule_data').val(JSON.stringify(schedule));
+    });
+
+    // Template button handlers
+    $(document).on('click', '#templateEqualPayment', function() {
+        if (window.__CURRENT_SCHEDULE_TYPE__ === 'full-custom') {
+            // Clear existing schedule data and recalculate with equal payment base
+            $('#schedule_data').val('');
+            calculateScheduleMain();
+        }
+    });
+
+    $(document).on('click', '#templateEqualPrincipal', function() {
+        if (window.__CURRENT_SCHEDULE_TYPE__ === 'full-custom') {
+            // Generate equal principal base schedule
+            const amount = parseFloat($('#approved_amount').val()) || 0;
+            const rate = parseFloat($('#interest_rate').val()) || 0;
+            const months = parseInt($('#term_months').val()) || 0;
+            const firstPaymentDate = $('#first_payment_date').val();
+            const disbursementDate = $('#disbursement_date').val();
+
+            if (!(amount > 0 && rate >= 0 && months > 0 && firstPaymentDate && disbursementDate)) return;
+
+            const annualRate = rate / 100;
+            const dailyRate = annualRate / 365;
+            const principalPayment = amount / months;
+
+            function daysBetween(startDate, endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                const diffTime = end - start;
+                return Math.max(0, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+            }
+
+            let schedule = [];
+            let balance = amount;
+            let currentDate = new Date(firstPaymentDate);
+            let previousDate = new Date(disbursementDate);
+
+            for (let i = 1; i <= months; i++) {
+                const daysInPeriod = daysBetween(previousDate, currentDate);
+                const interestPayment = balance * dailyRate * daysInPeriod;
+
+                let principal = (i === months) ? balance : principalPayment;
+                let payment = principal + interestPayment;
+
+                balance -= principal;
+
+                schedule.push({
+                    payment_number: i,
+                    date: new Date(currentDate).toISOString().split('T')[0],
+                    payment,
+                    principal,
+                    interest: interestPayment,
+                    balance: Math.max(0, balance),
+                    days: daysInPeriod
+                });
+
+                previousDate = new Date(currentDate);
+                currentDate.setMonth(currentDate.getMonth() + 1);
+            }
+
+            updateCustomScheduleDisplay(schedule);
+            $('#schedule_data').val(JSON.stringify(schedule));
+        }
     });
     
     // Helper function to update schedule display
@@ -908,16 +1315,61 @@ function initializeLoanApproval() {
         $tbody.empty();
         
         schedule.forEach((payment, index) => {
+            // Round values for display
+            const roundedPayment = Math.round(payment.payment * 100) / 100;
+            const roundedPrincipal = Math.round(payment.principal * 100) / 100;
+            const roundedInterest = Math.round(payment.interest * 100) / 100;
+            const roundedBalance = Math.round(payment.balance * 100) / 100;
+            
             $tbody.append(`
                 <tr>
                     <td>${payment.payment_number}</td>
                     <td>${new Date(payment.date).toLocaleDateString()}</td>
                     <td class="text-center"><span class="badge bg-info">${payment.days} days</span></td>
-                    <td>$${payment.payment.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                    <td>$${roundedPayment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                     <td><input type="number" class="form-control form-control-sm editable-principal" 
-                              value="${payment.principal.toFixed(2)}" step="0.01" min="0" data-row="${index}"></td>
-                    <td>$${payment.interest.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                    <td>$${payment.balance.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                              value="${roundedPrincipal.toFixed(2)}" step="any" min="0" data-row="${index}"></td>
+                    <td>$${roundedInterest.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td>$${roundedBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                </tr>
+            `);
+        });
+    }
+
+    // Helper function to update custom schedule display (both payment and principal editable)
+    function updateCustomScheduleDisplay(schedule) {
+        const $tbody = $('#standardScheduleTableBody');
+        $tbody.empty();
+        
+        schedule.forEach((payment, index) => {
+            const isLast = (index === schedule.length - 1);
+            // Round values for display
+            const roundedPayment = Math.round(payment.payment * 100) / 100;
+            const roundedPrincipal = Math.round(payment.principal * 100) / 100;
+            const roundedInterest = Math.round(payment.interest * 100) / 100;
+            const roundedBalance = Math.round(payment.balance * 100) / 100;
+            
+            $tbody.append(`
+                <tr>
+                    <td>${payment.payment_number}</td>
+                    <td>${new Date(payment.date).toLocaleDateString()}</td>
+                    <td class="text-center"><span class="badge bg-info">${payment.days} days</span></td>
+                    <td>
+                        ${isLast ? 
+                            `<span class="text-muted">$${roundedPayment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` :
+                            `<input type="number" class="form-control form-control-sm editable-payment" 
+                                    value="${roundedPayment.toFixed(2)}" step="any" min="0" data-row="${index}">`
+                        }
+                    </td>
+                    <td>
+                        ${isLast ? 
+                            `<span class="text-muted">$${roundedPrincipal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` :
+                            `<input type="number" class="form-control form-control-sm editable-principal" 
+                                    value="${roundedPrincipal.toFixed(2)}" step="any" min="0" data-row="${index}">`
+                        }
+                    </td>
+                    <td>$${roundedInterest.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td>$${roundedBalance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                 </tr>
             `);
         });

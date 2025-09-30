@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="fas fa-chart-line me-2"></i>{{ title }}</h2>
+                    <p class="text-muted mb-0">Bulk payment upload processing results</p>
+                </div>
+                <div>
+                    <a href="{% url 'loans_payments:bulk_payment_upload' %}" class="btn btn-primary me-2">
+                        <i class="fas fa-upload me-2"></i>Upload More
+                    </a>
+                    <a href="{% url 'loans_payments:payment_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Payments
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Message -->
+    {% if messages %}
+        <div class="row mb-4">
+            <div class="col-12">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {% if message.tags == 'success' %}
+                            <i class="fas fa-check-circle me-2"></i>
+                        {% elif message.tags == 'warning' %}
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                        {% elif message.tags == 'error' %}
+                            <i class="fas fa-times-circle me-2"></i>
+                        {% else %}
+                            <i class="fas fa-info-circle me-2"></i>
+                        {% endif %}
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Upload Summary -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <h3 class="text-success mb-2">{{ success_count|default:0 }}</h3>
+                    <h6 class="text-success">Successful</h6>
+                    <p class="text-muted mb-0 small">Payments processed</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-danger">
+                <div class="card-body text-center">
+                    <h3 class="text-danger mb-2">{{ error_count|default:0 }}</h3>
+                    <h6 class="text-danger">Errors</h6>
+                    <p class="text-muted mb-0 small">Processing errors</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-warning">
+                <div class="card-body text-center">
+                    <h3 class="text-warning mb-2">{{ duplicate_count|default:0 }}</h3>
+                    <h6 class="text-warning">Duplicates</h6>
+                    <p class="text-muted mb-0 small">Prevented uploads</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-info">
+                <div class="card-body text-center">
+                    <h3 class="text-info mb-2">{{ review_count|default:0 }}</h3>
+                    <h6 class="text-info">Review</h6>
+                    <p class="text-muted mb-0 small">Need attention</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Duplicate Prevention Results -->
+    {% if duplicates %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shield-alt me-2"></i>
+                        Duplicate Prevention ({{ duplicates|length }} duplicate{{ duplicates|length|pluralize }} prevented)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Duplicate Prevention Active:</strong> The following payments were rejected to prevent duplicates. 
+                        Review these carefully before attempting to re-upload.
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Row #</th>
+                                    <th>Loan Number</th>
+                                    <th>Amount</th>
+                                    <th>Type</th>
+                                    <th>Confidence</th>
+                                    <th>Reason</th>
+                                    <th>Matching Payments</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for duplicate in duplicates %}
+                                <tr>
+                                    <td><span class="badge bg-warning">{{ duplicate.row_number }}</span></td>
+                                    <td><strong>{{ duplicate.loan_number }}</strong></td>
+                                    <td>${{ duplicate.amount }}</td>
+                                    <td>
+                                        {% if duplicate.duplicate_type == "EXTERNAL" %}
+                                            <span class="badge bg-danger">External</span>
+                                        {% elif duplicate.duplicate_type == "INTERNAL" %}
+                                            <span class="badge bg-warning">Internal</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ duplicate.duplicate_type }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if duplicate.confidence %}
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar {% if duplicate.confidence > 0.8 %}bg-danger{% elif duplicate.confidence > 0.6 %}bg-warning{% else %}bg-info{% endif %}" 
+                                                     style="width: {{ duplicate.confidence|floatformat:0|add:"%"|default:"0%" }}">
+                                                    {{ duplicate.confidence|floatformat:0 }}%
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><small>{{ duplicate.reason|truncatechars:50 }}</small></td>
+                                    <td>
+                                        {% if duplicate.matching_payments %}
+                                            {% for payment_id in duplicate.matching_payments %}
+                                                <span class="badge bg-secondary">{{ payment_id }}</span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Review Items -->
+    {% if review_items %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-eye me-2"></i>
+                        Items Requiring Review ({{ review_items|length }} item{{ review_items|length|pluralize }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Review Recommended:</strong> These payments were processed but flagged for review due to potential duplicate concerns.
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Row #</th>
+                                    <th>Payment ID</th>
+                                    <th>Loan Number</th>
+                                    <th>Reason</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in review_items %}
+                                <tr>
+                                    <td><span class="badge bg-info">{{ item.row_number }}</span></td>
+                                    <td><strong>{{ item.payment_id }}</strong></td>
+                                    <td>{{ item.loan_number }}</td>
+                                    <td><small>{{ item.reason }}</small></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="reviewPayment('{{ item.payment_id }}')">
+                                            <i class="fas fa-search me-1"></i>Review
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Batch Processing Summary -->
+    {% if batch_summary %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-light">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Batch Processing Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-primary">{{ batch_summary.total_rows }}</h4>
+                                <small class="text-muted">Total Rows</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-success">{{ batch_summary.clean_payments }}</h4>
+                                <small class="text-muted">Clean Payments</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-warning">{{ batch_summary.external_duplicates }}</h4>
+                                <small class="text-muted">External Duplicates</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-info">{{ batch_summary.internal_duplicates }}</h4>
+                                <small class="text-muted">Internal Duplicates</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Error Details (if any) -->
+    {% if errors %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Processing Errors ({{ errors|length }} error{{ errors|length|pluralize }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        The following rows had errors and were not processed. Please review and correct the data before re-uploading.
+                    </p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th width="10%">#</th>
+                                    <th width="90%">Error Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for error in errors %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>
+                                        <span class="text-danger">
+                                            <i class="fas fa-times-circle me-2"></i>{{ error }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Download Error Report -->
+                    <div class="mt-3 text-center">
+                        <button class="btn btn-outline-danger" onclick="downloadErrorReport()">
+                            <i class="fas fa-download me-2"></i>Download Error Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- No Errors - All Successful -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-success">
+                <div class="card-body text-center py-5">
+                    <h1 class="text-success mb-4">
+                        <i class="fas fa-check-circle"></i>
+                    </h1>
+                    <h3 class="text-success mb-3">All Payments Processed Successfully!</h3>
+                    <p class="text-muted mb-4">
+                        All payments from your upload file were processed without errors.
+                    </p>
+                    <div>
+                        <a href="{% url 'loans_payments:payment_list' %}" class="btn btn-success btn-lg me-3">
+                            <i class="fas fa-list me-2"></i>View Payments
+                        </a>
+                        <a href="{% url 'loans_payments:bulk_payment_upload' %}" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-upload me-2"></i>Upload More
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Next Steps -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-light">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Next Steps</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">Review Processed Payments</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-arrow-right text-muted me-2"></i>View all payments in the <a href="{% url 'loans_payments:payment_list' %}">Payment List</a></li>
+                                <li><i class="fas fa-arrow-right text-muted me-2"></i>Verify payment allocations and balances</li>
+                                <li><i class="fas fa-arrow-right text-muted me-2"></i>Check for any loan status updates</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-secondary">Additional Actions</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-arrow-right text-muted me-2"></i>Generate payment reports</li>
+                                <li><i class="fas fa-arrow-right text-muted me-2"></i>Send payment confirmations to customers</li>
+                                <li><i class="fas fa-arrow-right text-muted me-2"></i>Update accounting records</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function downloadErrorReport() {
+    // Create CSV content
+    const errors = {{ errors|safe }};
+    if (!Array.isArray(errors)) {
+        alert('No errors to download');
+        return;
+    }
+    
+    let csvContent = "Row,Error Description\n";
+    errors.forEach(function(error, index) {
+        csvContent += (index + 1) + ',"' + error.replace(/"/g, '""') + '"\n';
+    });
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bulk_payment_errors_' + new Date().toISOString().split('T')[0] + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+function reviewPayment(paymentId) {
+    // Open payment detail in new tab/window for review
+    const url = "{% url 'loans_payments:payment_detail' pk=0 %}".replace('0', paymentId);
+    window.open(url, '_blank');
+}
+
+function downloadDuplicateReport() {
+    // Create CSV for duplicate analysis
+    const duplicates = {{ duplicates|safe }};
+    if (!Array.isArray(duplicates) || duplicates.length === 0) {
+        alert('No duplicates to download');
+        return;
+    }
+    
+    let csvContent = "Row Number,Loan Number,Amount,Type,Confidence,Reason,Matching Payments\n";
+    duplicates.forEach(function(dup) {
+        const matchingPayments = Array.isArray(dup.matching_payments) ? dup.matching_payments.join('; ') : '';
+        csvContent += `${dup.row_number},"${dup.loan_number}",${dup.amount},"${dup.duplicate_type}",${dup.confidence || ''},"${dup.reason.replace(/"/g, '""')}","${matchingPayments}"\n`;
+    });
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'duplicate_analysis_' + new Date().toISOString().split('T')[0] + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// Auto-refresh payment list link to show updated data
+setTimeout(function() {
+    const paymentListLinks = document.querySelectorAll('a[href*="payment_list"]');
+    paymentListLinks.forEach(function(link) {
+        link.href += '?refreshed=' + Date.now();
+    });
+}, 1000);
+
+// Add download button for duplicates if they exist
+document.addEventListener('DOMContentLoaded', function() {
+    const duplicatesCard = document.querySelector('.card.border-warning');
+    if (duplicatesCard && {{ duplicates|length }} > 0) {
+        const cardBody = duplicatesCard.querySelector('.card-body');
+        if (cardBody) {
+            const downloadBtn = document.createElement('div');
+            downloadBtn.className = 'mt-3 text-center';
+            downloadBtn.innerHTML = '<button class="btn btn-outline-warning" onclick="downloadDuplicateReport()"><i class="fas fa-download me-2"></i>Download Duplicate Report</button>';
+            cardBody.appendChild(downloadBtn);
+        }
+    }
+});
+</script>
+
+{% endblock %}

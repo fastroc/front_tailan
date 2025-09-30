@@ -203,3 +203,29 @@ class LoanDisbursementForm(forms.ModelForm):
             'disbursement_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'first_payment_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
+
+
+class LoanApplicationBulkUploadForm(forms.Form):
+    """Form for bulk uploading loan applications from Excel/CSV"""
+    file = forms.FileField(
+        validators=[
+            # File size validation (10MB max)
+            lambda file: file.size <= 10 * 1024 * 1024 or forms.ValidationError('File size must be less than 10MB.')
+        ],
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.xlsx,.csv',
+            'id': 'id_file'
+        }),
+        help_text='Upload Excel (.xlsx) or CSV file with loan application data. Maximum file size: 10MB.'
+    )
+    
+    def clean_file(self):
+        file = self.cleaned_data['file']
+        if file:
+            # Check file extension
+            allowed_extensions = ['.xlsx', '.csv']
+            file_extension = file.name.lower().split('.')[-1]
+            if f'.{file_extension}' not in allowed_extensions:
+                raise forms.ValidationError('Only Excel (.xlsx) and CSV files are supported.')
+        return file

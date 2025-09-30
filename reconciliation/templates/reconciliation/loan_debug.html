@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Loan Customer Debug{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>Loan Customer Debug Test</h2>
+    
+    <div class="row">
+        <div class="col-12">
+            <h3>Loan Customers Data ({{ loan_customers|length }} total)</h3>
+            <pre id="debug-output"></pre>
+            
+            <h3>Test WHO Dropdown</h3>
+            <button class="btn btn-primary" onclick="testWhoDropdown()">Test WHO Dropdown</button>
+            <div id="test-dropdown-area"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load loan customer data
+console.log('🧪 Loading loan customer data...');
+
+window.loanCustomers = [
+    {% for loan_info in loan_customers %}
+    {
+        loan_id: {{ loan_info.loan_id }},
+        loan_number: '{{ loan_info.loan_number|escapejs }}',
+        customer_name: '{{ loan_info.customer_name|escapejs }}',
+        customer_id: {{ loan_info.customer_id }},
+        loan_amount: {{ loan_info.loan_amount|default:0 }},
+        loan_type: '{{ loan_info.loan_type|default:""|escapejs }}',
+        display_text: '{{ loan_info.display_text|escapejs }}',
+        display_detail: '{{ loan_info.display_detail|escapejs }}',
+        phone: '{{ loan_info.phone|default:""|escapejs }}',
+        national_id: '{{ loan_info.national_id|default:""|escapejs }}',
+        vehicle_plates: {{ loan_info.vehicle_plates|safe }},
+        vehicle_info: {{ loan_info.vehicle_info|safe }}
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+console.log('✅ Loan customers loaded:', window.loanCustomers.length);
+console.log('📊 Sample customer:', window.loanCustomers[0]);
+
+// Display debug info
+document.addEventListener('DOMContentLoaded', function() {
+    const debugOutput = document.getElementById('debug-output');
+    debugOutput.textContent = JSON.stringify(window.loanCustomers, null, 2);
+});
+
+// Test WHO dropdown function
+function testWhoDropdown() {
+    console.log('🎯 Testing WHO dropdown...');
+    
+    const testArea = document.getElementById('test-dropdown-area');
+    testArea.innerHTML = '';
+    
+    // Create test dropdown
+    const dropdown = document.createElement('div');
+    dropdown.className = 'border rounded p-3 mt-3';
+    dropdown.style.maxHeight = '300px';
+    dropdown.style.overflowY = 'auto';
+    
+    if (window.loanCustomers.length > 0) {
+        dropdown.innerHTML = `
+            <div class="fw-bold mb-2">Loan Customers (${window.loanCustomers.length} total)</div>
+            ${window.loanCustomers.map(loan => `
+                <div class="p-2 border-bottom" style="cursor: pointer;">
+                    <div class="fw-bold">${loan.display_text}</div>
+                    <small class="text-muted">${loan.display_detail}</small>
+                </div>
+            `).join('')}
+        `;
+    } else {
+        dropdown.innerHTML = '<div class="text-muted">No loan customers found</div>';
+    }
+    
+    testArea.appendChild(dropdown);
+}
+</script>
+
+{% endblock %}

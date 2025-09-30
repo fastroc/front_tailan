@@ -575,8 +575,8 @@ class ReconciliationService:
     def _create_loan_payment_if_applicable(cls, transaction_match, user):
         """
         Check if this transaction involves loan GL accounts and create Payment record if so.
-        Updated for Phase 3: Works with single loan GL accounts (1250, 1251) as well as split transactions.
-        Uses the same PaymentProcessor as manual loan payments for consistency
+        UPDATED: Now uses strict Account.is_loan_account() validation to only create Payment
+        records for principal loan accounts (122000 or configured principal_account).
         """
         # Check both split and non-split transactions
         gl_accounts_to_check = []
@@ -592,45 +592,29 @@ class ReconciliationService:
         if not gl_accounts_to_check:
             return None
             
-        # PHASE 3: Check for loan staging accounts (1250) as primary indicators
-        has_loan_staging = any(
-            gl_account.code in ['1250'] or  # Primary staging account
-            (gl_account.code in ['1252'] and 'loan' in gl_account.name.lower())  # Alternative staging
-            for gl_account in gl_accounts_to_check
-        )
+        # NEW VALIDATION: Use strict loan account detection
+        loan_accounts = []
+        non_loan_accounts = []
         
-        # LEGACY: Also check traditional loan receivable accounts for backward compatibility
-        has_loan_receivable = any(
-            gl_account.code in ['1200', '1201', '1202'] or 
-            'loan' in gl_account.name.lower() or
-            'receivable' in gl_account.name.lower()
-            for gl_account in gl_accounts_to_check
-        )
-        
-        # Check for interest income accounts (supporting evidence)
-        has_interest_income = any(
-            gl_account.code in ['4200', '4201'] or
-            'interest' in gl_account.name.lower()
-            for gl_account in gl_accounts_to_check
-        )
-        
-        # Determine if this is a loan payment
-        is_loan_payment = has_loan_staging or has_loan_receivable or has_interest_income
-        
-        if not is_loan_payment:
-            return None
-            
-        transaction_type = "STAGING" if has_loan_staging else "SPLIT" if transaction_match.is_split_transaction else "RECEIVABLE"
-        print(f"🏦 DETECTED LOAN PAYMENT ({transaction_type}): Transaction involves loan-related GL accounts")
-        
-        # Log which accounts triggered the detection
         for gl_account in gl_accounts_to_check:
-            if (gl_account.code in ['1250', '1251', '1252'] or 
-                'loan' in gl_account.name.lower() or 
-                'receivable' in gl_account.name.lower() or 
-                'interest' in gl_account.name.lower()):
-                print(f"  - Loan GL Account: {gl_account.code} - {gl_account.name}")
+            if gl_account.is_loan_account():
+                loan_accounts.append(gl_account)
+            else:
+                non_loan_accounts.append(gl_account)
         
+        # Only create Payment records if there's at least one actual loan account
+        if not loan_accounts:
+            print("🚫 NO LOAN PAYMENT: Transaction involves non-loan accounts only")
+            for gl_account in non_loan_accounts:
+                print(f"  - Non-loan account: {gl_account.code} - {gl_account.name}")
+            return None
+        
+        print(f"💰 LOAN PAYMENT DETECTED: Transaction involves {len(loan_accounts)} loan account(s)")
+        for gl_account in loan_accounts:
+            print(f"  - Loan account: {gl_account.code} - {gl_account.name}")
+        if non_loan_accounts:
+            print(f"  - Also includes {len(non_loan_accounts)} non-loan accounts (journal only)")
+            
         try:
             # Try to find the loan customer from the contact name
             from loans_customers.models import Customer
@@ -698,6 +682,14 @@ class ReconciliationService:
                 
             loan = active_loans.first()
             print(f"✅ Found active loan: {loan.loan_number}")
+            
+            # Determine transaction type for reporting
+            if transaction_match.is_split_transaction:
+                transaction_type = "SPLIT"
+            elif len(loan_accounts) > 1:
+                transaction_type = "MULTI-ACCOUNT"
+            else:
+                transaction_type = "SINGLE-ACCOUNT"
             
             # Use PaymentProcessor to create proper Payment record
             processor = PaymentProcessor(company=transaction_match.bank_transaction.coa_account.company)

@@ -71,9 +71,13 @@ INSTALLED_APPS = [
     # Loan Management System
     "loans_core",  # Foundation - loan products and applications
     "loans_customers",  # Customer management and KYC
+    "loans_collateral",  # Collateral management and valuations
     "loans_schedule",  # Payment scheduling and interest calculations
     "loans_payments",  # Payment processing and accounting integration
     "loan_reconciliation_bridge",  # Bridge between loan system and reconciliation
+    "loan_report",  # Advanced loan reporting and analytics module
+    # Phase 3 Advanced Features - Ready for Celery when available
+    # "django_celery_beat",  # Uncomment when Celery is properly installed
 ]
 
 # Add debug toolbar only in development
@@ -150,6 +154,59 @@ if os.getenv("USE_SQLITE", "False").lower() == "true":
     }
 
 
+# Cache Configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'loan-management-cache',
+    }
+}
+
+# Redis Configuration for Advanced Caching (Phase 3 Performance)
+REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
+REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
+REDIS_CACHE_DB = int(os.getenv('REDIS_CACHE_DB', 1))
+
+# Try to configure Redis cache if available
+REDIS_AVAILABLE = False
+
+# For now, always use local memory cache (Redis optional)
+print("📦 Using local memory cache (Redis integration ready but not required)")
+
+# Celery Configuration (Phase 3 Background Processing)  
+# Use database broker as fallback when Redis not available
+CELERY_BROKER_URL = 'django://'
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'django-cache'
+
+print("⚙️  Celery configured with database broker")
+
+# Celery Database Fallback
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_RETRY = True
+
+# Celery Task Configuration
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
+CELERY_ENABLE_UTC = True
+
+# Celery Beat (for periodic tasks)
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# Task time limits
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
+
+# Worker settings
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
+
+# Background Processing Configuration
+ENABLE_BACKGROUND_PROCESSING = os.getenv('ENABLE_BACKGROUND_PROCESSING', 'True').lower() == 'true'
+
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
@@ -186,6 +243,11 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Additional locations of static files during development
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
 
 # Media files (uploaded files)
 MEDIA_URL = "/media/"
@@ -244,3 +306,11 @@ if DEBUG:
             },
         },
     }
+
+# CSRF Settings - Ensure CSRF tokens are available for AJAX requests
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript access to CSRF token
+CSRF_COOKIE_SECURE = False    # Set to True in production with HTTPS
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_USE_SESSIONS = False     # Use cookies instead of sessions
+CSRF_COOKIE_AGE = 31449600    # 1 year

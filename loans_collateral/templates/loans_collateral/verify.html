@@ -1,0 +1,390 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Verify {{ collateral.title }} - Collateral{% endblock %}
+
+{% block extra_css %}
+<style>
+    .verify-header {
+        background: white;
+        border-radius: 0.5rem;
+        border: 1px solid #e5e7eb;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .verify-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+        transition: all 0.2s ease;
+    }
+    .verify-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-1px);
+    }
+    .verify-card .card-header {
+        background: #f8fafc;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.875rem;
+    }
+    .status-current {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .status-after {
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .detail-label {
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.875rem;
+    }
+    .detail-value {
+        color: #111827;
+        font-size: 0.875rem;
+    }
+    .verification-section {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-left: 4px solid #059669;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin: 1rem 0;
+    }
+    .btn-verify {
+        background: #059669;
+        border: none;
+        color: white;
+        font-weight: 600;
+    }
+    .btn-verify:hover {
+        background: #047857;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- Header Section -->
+    <div class="verify-header">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="h3 mb-2 text-gray-800">Verify Collateral</h1>
+                <p class="mb-2 text-muted">
+                    <strong>Collateral ID:</strong> {{ collateral.collateral_id }}
+                </p>
+                <p class="mb-0 text-muted">
+                    Confirm the accuracy and completeness of collateral information
+                </p>
+            </div>
+            <div class="col-lg-4 text-end">
+                <div class="btn-group">
+                    <a href="{% url 'loans_collateral:collateral_detail' collateral.pk %}" 
+                       class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Collateral Summary -->
+        <div class="col-lg-8">
+            <div class="card verify-card">
+                <div class="card-header">
+                    <i class="bi bi-info-circle me-2"></i>Collateral Summary
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-4">
+                            <span class="detail-label">Title:</span>
+                        </div>
+                        <div class="col-8">
+                            <span class="detail-value">{{ collateral.title }}</span>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-4">
+                            <span class="detail-label">Type:</span>
+                        </div>
+                        <div class="col-8">
+                            <span class="badge bg-primary">{{ collateral.collateral_type.name }}</span>
+                            <small class="text-muted ms-2">({{ collateral.collateral_type.get_category_display }})</small>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-4">
+                            <span class="detail-label">Owner:</span>
+                        </div>
+                        <div class="col-8">
+                            <span class="detail-value">{{ collateral.owner_name|default:"Not specified" }}</span>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-4">
+                            <span class="detail-label">Declared Value:</span>
+                        </div>
+                        <div class="col-8">
+                            <strong class="text-success">${{ collateral.declared_value|floatformat:2 }}</strong>
+                        </div>
+                    </div>
+                    {% if collateral.market_value %}
+                    <div class="row mb-3">
+                        <div class="col-4">
+                            <span class="detail-label">Market Value:</span>
+                        </div>
+                        <div class="col-8">
+                            <strong class="text-info">${{ collateral.market_value|floatformat:2 }}</strong>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="row mb-3">
+                        <div class="col-4">
+                            <span class="detail-label">Current Status:</span>
+                        </div>
+                        <div class="col-8">
+                            <span class="status-current">{{ collateral.get_status_display|capfirst }}</span>
+                        </div>
+                    </div>
+                    <div class="row mb-0">
+                        <div class="col-4">
+                            <span class="detail-label">Location:</span>
+                        </div>
+                        <div class="col-8">
+                            <span class="detail-value">{{ collateral.location|default:"Not specified" }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if collateral.collateral_type.category == 'vehicle' %}
+            <!-- Vehicle Information -->
+            <div class="card verify-card">
+                <div class="card-header">
+                    <i class="bi bi-car-front me-2"></i>Vehicle Information
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="row mb-2">
+                                <div class="col-5">
+                                    <span class="detail-label">Make:</span>
+                                </div>
+                                <div class="col-7">
+                                    <span class="detail-value">{{ collateral.vehicle_make|default:"Not specified" }}</span>
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-5">
+                                    <span class="detail-label">Model:</span>
+                                </div>
+                                <div class="col-7">
+                                    <span class="detail-value">{{ collateral.vehicle_model|default:"Not specified" }}</span>
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-5">
+                                    <span class="detail-label">Year:</span>
+                                </div>
+                                <div class="col-7">
+                                    <span class="detail-value">{{ collateral.vehicle_year|default:"Not specified" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="row mb-2">
+                                <div class="col-5">
+                                    <span class="detail-label">License Plate:</span>
+                                </div>
+                                <div class="col-7">
+                                    <code class="bg-light px-2 py-1 rounded">{{ collateral.vehicle_license_plate|default:"Not specified" }}</code>
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-5">
+                                    <span class="detail-label">Mileage:</span>
+                                </div>
+                                <div class="col-7">
+                                    <span class="detail-value">
+                                        {% if collateral.vehicle_mileage %}
+                                            {{ collateral.vehicle_mileage|floatformat:0 }} miles
+                                        {% else %}
+                                            Not specified
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-5">
+                                    <span class="detail-label">Fuel Type:</span>
+                                </div>
+                                <div class="col-7">
+                                    <span class="badge bg-{% if collateral.vehicle_fuel_type == 'electric' %}success{% elif collateral.vehicle_fuel_type == 'diesel' %}warning{% else %}primary{% endif %}">
+                                        {{ collateral.get_vehicle_fuel_type_display|capfirst }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Verification Form -->
+        <div class="col-lg-4">
+            <div class="card verify-card">
+                <div class="card-header">
+                    <i class="bi bi-check-circle me-2"></i>Verification Action
+                </div>
+                <div class="card-body">
+                    <div class="verification-section">
+                        <div class="mb-3">
+                            <h6 class="text-success mb-2">Status Change</h6>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <span class="status-current">{{ collateral.get_status_display|capfirst }}</span>
+                                <i class="bi bi-arrow-right text-muted mx-2"></i>
+                                <span class="status-after">Verified</span>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <small>
+                                <i class="bi bi-info-circle me-1"></i>
+                                By verifying this collateral, you confirm that all provided information has been reviewed and validated.
+                            </small>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="verification_notes" class="form-label">
+                                <strong>Verification Notes</strong>
+                            </label>
+                            <textarea name="verification_notes" id="verification_notes" 
+                                      class="form-control" rows="4" 
+                                      placeholder="Add any notes about the verification process, observations, or conditions..."></textarea>
+                            <div class="form-text">These notes will be recorded with the verification.</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-verify">
+                                <i class="bi bi-check-circle me-2"></i>Verify Collateral
+                            </button>
+                            <a href="{% url 'loans_collateral:collateral_detail' collateral.pk %}" 
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Verification Checklist -->
+            <div class="card verify-card">
+                <div class="card-header">
+                    <i class="bi bi-list-check me-2"></i>Verification Checklist
+                </div>
+                <div class="card-body">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="check1">
+                        <label class="form-check-label small" for="check1">
+                            Ownership documents reviewed
+                        </label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="check2">
+                        <label class="form-check-label small" for="check2">
+                            Physical inspection completed
+                        </label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="check3">
+                        <label class="form-check-label small" for="check3">
+                            Market value assessment done
+                        </label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="check4">
+                        <label class="form-check-label small" for="check4">
+                            Legal status confirmed
+                        </label>
+                    </div>
+                    {% if collateral.collateral_type.category == 'vehicle' %}
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="check5">
+                        <label class="form-check-label small" for="check5">
+                            Vehicle registration verified
+                        </label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="check6">
+                        <label class="form-check-label small" for="check6">
+                            Insurance status confirmed
+                        </label>
+                    </div>
+                    {% endif %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="checkFinal">
+                        <label class="form-check-label small" for="checkFinal">
+                            <strong>All requirements met</strong>
+                        </label>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Complete all checks before verification
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.form-check-input');
+    const verifyButton = document.querySelector('.btn-verify');
+    const finalCheck = document.getElementById('checkFinal');
+    
+    // Enable final checkbox only when all others are checked
+    function updateFinalCheck() {
+        const otherChecks = Array.from(checkboxes).filter(cb => cb.id !== 'checkFinal');
+        const allChecked = otherChecks.every(cb => cb.checked);
+        finalCheck.disabled = !allChecked;
+        
+        if (allChecked && finalCheck.checked) {
+            verifyButton.classList.remove('btn-secondary');
+            verifyButton.classList.add('btn-verify');
+        } else {
+            verifyButton.classList.remove('btn-verify');
+            verifyButton.classList.add('btn-secondary');
+        }
+    }
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateFinalCheck);
+    });
+    
+    // Initial state
+    updateFinalCheck();
+});
+</script>
+{% endblock %}

@@ -20,6 +20,9 @@
                     <a href="#addCustomerModal" class="btn btn-primary" data-bs-toggle="modal">
                         <i class="fas fa-user-plus me-2"></i>Add New Customer
                     </a>
+                    <a href="{% url 'loans_customers:customer_bulk_upload' %}" class="btn btn-success ms-2">
+                        <i class="fas fa-upload me-2"></i>Bulk Upload
+                    </a>
                 </div>
             </div>
         </div>
@@ -165,8 +168,12 @@
     <div class="row">
         <div class="col-12">
             <div class="card shadow">
-                <div class="card-header py-3">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">Customer Database</h6>
+                    <div class="text-muted small">
+                        <i class="fas fa-database me-1"></i>{{ total_customers|default:0 }} customers | 
+                        <i class="fas fa-server me-1"></i>{{ db_backend }} ({{ db_name }})
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -339,6 +346,112 @@
                     </nav>
                     {% endif %}
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loan Applications Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-file-contract me-2"></i>Recent Loan Applications
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if applications_with_loans %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Application ID</th>
+                                    <th>Customer</th>
+                                    <th>Amount Requested</th>
+                                    <th>Status</th>
+                                    <th>Loan Number</th>
+                                    <th>Loan Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in applications_with_loans %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ item.application.application_id }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar bg-info text-white rounded-circle me-2" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 12px;">
+                                                <strong>{{ item.application.customer.first_name|first }}{{ item.application.customer.last_name|first }}</strong>
+                                            </div>
+                                            <div>
+                                                <strong>{{ item.application.customer.full_name }}</strong>
+                                                <br><small class="text-muted">{{ item.application.customer.national_id }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <strong>${{ item.application.requested_amount|floatformat:0 }}</strong>
+                                        {% if item.application.approved_amount and item.application.approved_amount != item.application.requested_amount %}
+                                            <br><small class="text-success">Approved: ${{ item.application.approved_amount|floatformat:0 }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.application.status == 'approved' %}
+                                            <span class="badge bg-success">{{ item.application.get_status_display }}</span>
+                                        {% elif item.application.status == 'under_review' %}
+                                            <span class="badge bg-warning">{{ item.application.get_status_display }}</span>
+                                        {% elif item.application.status == 'rejected' %}
+                                            <span class="badge bg-danger">{{ item.application.get_status_display }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ item.application.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.loan %}
+                                            <small class="text-muted">{{ item.loan.loan_number }}</small>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.loan %}
+                                            {% if item.loan.status == 'active' %}
+                                                <span class="badge bg-success">{{ item.loan.status|title }}</span>
+                                            {% elif item.loan.status == 'disbursed' %}
+                                                <span class="badge bg-info">{{ item.loan.status|title }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ item.loan.status|title }}</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">No Loan</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ item.application.created_at|date:"M d, Y" }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'loans_core:application_list' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-list me-2"></i>View All Applications
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-file-contract fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Loan Applications Found</h5>
+                        <p class="text-muted">No recent loan applications to display.</p>
+                        <a href="{% url 'loans_core:application_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Create First Application
+                        </a>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>

@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator, MinValueValidator
 from decimal import Decimal
-from loans_core.base_models import BaseLoanModel, CompanyAwareLoanModel
+from loans_core.base_models import BaseLoanModel
 
 class Customer(BaseLoanModel):
     """Customer information for loan applications - Company separated"""
@@ -42,8 +42,8 @@ class Customer(BaseLoanModel):
     national_id = models.CharField(
         max_length=20,
         validators=[RegexValidator(
-            regex=r'^[0-9A-Za-z\-]+$',
-            message='National ID must contain only numbers, letters, and dashes'
+            regex=r'^[0-9A-Za-zА-Яа-яЁё\-]+$',
+            message='National ID must contain only letters, numbers, and dashes'
         )]
     )
     

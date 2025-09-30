@@ -1,0 +1,744 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Enhanced Bank Statement Import{% endblock %}
+
+{% block extra_css %}
+<style>
+  .step { display:flex; align-items:center; gap:.5rem; color:#6b7280; }
+  .step.active { color:#111827; font-weight:600; }
+  .dropzone { 
+    border:2px dashed #cbd5e1; 
+    border-radius:.75rem; 
+    padding:3rem 2rem; 
+    text-align:center; 
+    color:#6b7280;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #fafbfc;
+  }
+  .dropzone:hover {
+    border-color: #3b82f6;
+    background: #f0f9ff;
+  }
+  .dropzone.file-selected {
+    border-color: #16a34a;
+    background: #f0fdf4;
+    border-style: solid;
+  }
+  .language-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+  }
+  .confidence-meter {
+    width: 60px;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .confidence-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+  .confidence-high { background: #10b981; }
+  .confidence-medium { background: #f59e0b; }
+  .confidence-low { background: #ef4444; }
+  
+  .translation-preview {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+  
+  .original-text {
+    background: rgba(59, 130, 246, 0.1);
+    border-left: 3px solid #3b82f6;
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+    border-radius: 0.25rem;
+  }
+  
+  .translated-text {
+    background: rgba(16, 185, 129, 0.1);
+    border-left: 3px solid #10b981;
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+    border-radius: 0.25rem;
+  }
+  
+  .verification-controls {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h5 class="mb-3">{{ account.name }} — Enhanced Bank Statement Import</h5>
+
+  <!-- Steps -->
+  <div class="d-flex align-items-center gap-4 mb-4">
+    <div class="step active"><span class="badge bg-primary">1</span> Upload</div>
+    <div class="step"><span class="badge bg-secondary">2</span> Translation Verification</div>
+    <div class="step"><span class="badge bg-secondary">3</span> Review & Complete</div>
+  </div>
+
+  <div class="card" style="max-width:1000px;">
+    <div class="card-body">
+      <h6 class="mb-3">
+        <i class="fas fa-upload me-2 text-primary"></i>Upload Bank Statement
+      </h6>
+      <p class="text-muted small mb-3">
+        Upload your bank statement as <strong>Excel (.xlsx, .xls)</strong> or <strong>CSV (.csv)</strong> file. 
+        Supports both English and Mongolian Cyrillic formats with automatic translation.
+      </p>
+      
+      <!-- Enhanced Format Example -->
+      <div class="alert alert-info mb-3">
+        <div class="row">
+          <div class="col-md-6">
+            <strong>📋 Supported Formats:</strong><br>
+            <div class="mt-2">
+              <span class="badge bg-success me-2">
+                <i class="fas fa-file-excel me-1"></i>Excel (.xlsx, .xls)
+              </span>
+              <span class="badge bg-info">
+                <i class="fas fa-file-csv me-1"></i>CSV (.csv)
+              </span>
+            </div>
+            <small class="text-muted mt-2 d-block">
+              • Automatic language detection (Mongolian Cyrillic / English / Mixed)<br>
+              • Preserves original data for legal compliance<br>
+              • Intelligent column mapping and translation
+            </small>
+          </div>
+          <div class="col-md-6">
+            <strong>🇲🇳 Mongolian Support:</strong><br>
+            <small class="text-muted">
+              • <strong>Огноо</strong> → Date<br>
+              • <strong>Дүн</strong> → Amount<br>
+              • <strong>Тайлбар</strong> → Description<br>
+              • <strong>Лавлагаа</strong> → Reference<br>
+              • <strong>Хүлээн авагч</strong> → Payee
+            </small>
+          </div>
+        </div>
+      </div>
+
+      <form method="post" enctype="multipart/form-data" id="uploadForm">
+        {% csrf_token %}
+        
+        <!-- Enhanced Dropzone Area -->
+        <div class="dropzone mb-3" id="dropzone">
+          <div id="dropzoneContent">
+            <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
+            <div class="mb-2">Drag and drop your bank statement here</div>
+            <div class="text-muted small mb-3">Excel (.xlsx, .xls) or CSV (.csv) files supported</div>
+            <button class="btn btn-outline-primary" type="button" id="selectFileBtn">
+              <i class="fas fa-folder-open me-1"></i>Select File
+            </button>
+          </div>
+        </div>
+        
+        <input type="file" id="fileInput" name="statement_file" class="d-none" accept=".xlsx,.xls,.csv"/>
+        
+        <div class="small text-muted mb-3">File should be Excel (.xlsx, .xls) or CSV format, maximum 50MB</div>
+
+        <!-- Processing Preview (Hidden initially) -->
+        <div id="processingPreview" class="d-none">
+          <div class="translation-preview">
+            <h6 class="mb-3">
+              <i class="fas fa-language me-2"></i>Translation Preview
+              <span id="languageBadge" class="language-badge ms-2"></span>
+            </h6>
+            
+            <!-- Header Information -->
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <div class="original-text">
+                  <small class="text-muted"><i class="fas fa-file-alt me-1"></i>Original (Cyrillic):</small>
+                  <div id="originalHeader" class="fw-medium"></div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="translated-text">
+                  <small class="text-muted"><i class="fas fa-language me-1"></i>Translated (English):</small>
+                  <div id="translatedHeader" class="fw-medium"></div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Sample Transaction -->
+            <h6 class="mb-2">Sample Transaction Translation:</h6>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="original-text">
+                  <small class="text-muted">Original Description:</small>
+                  <div id="originalTransaction" class="fw-medium"></div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="translated-text">
+                  <small class="text-muted">English Translation:</small>
+                  <div id="translatedTransaction" class="fw-medium"></div>
+                  <div class="mt-2">
+                    <small class="text-muted">Confidence: </small>
+                    <div class="confidence-meter d-inline-block">
+                      <div id="confidenceFill" class="confidence-fill"></div>
+                    </div>
+                    <small id="confidenceText" class="ms-2 text-muted"></small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Verification Controls -->
+          <div class="verification-controls">
+            <h6 class="mb-3">
+              <i class="fas fa-check-circle me-2"></i>Verification Required
+            </h6>
+            
+            <div class="row">
+              <div class="col-md-8">
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" id="verifyTranslations">
+                  <label class="form-check-label" for="verifyTranslations">
+                    <strong>I verify the translations are accurate</strong>
+                  </label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" id="verifyAccount">
+                  <label class="form-check-label" for="verifyAccount">
+                    <strong>Account information is correct</strong>
+                  </label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="proceedWithLowConfidence">
+                  <label class="form-check-label" for="proceedWithLowConfidence">
+                    I understand some translations have low confidence and will review manually
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="text-end">
+                  <div class="mb-2">
+                    <small class="text-muted">Overall Confidence:</small>
+                    <div class="confidence-meter d-inline-block ms-2">
+                      <div id="overallConfidenceFill" class="confidence-fill"></div>
+                    </div>
+                  </div>
+                  <div id="confidenceStats" class="small text-muted"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-between align-items-center">
+          <a href="{% url 'bank_accounts:dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Accounts
+          </a>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-warning d-none" id="clearBtn">
+              <i class="fas fa-times me-1"></i>Clear File
+            </button>
+            <button type="button" class="btn btn-outline-info d-none" id="previewBtn">
+              <i class="fas fa-eye me-1"></i>Preview Translations
+            </button>
+            <button type="submit" class="btn btn-primary" id="uploadBtn" disabled>
+              <i class="fas fa-upload me-1"></i>Process & Import
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Enhanced Upload History -->
+  {% if recent_uploads %}
+  <div class="card mt-4" style="max-width:1000px;">
+    <div class="card-header bg-light">
+      <div class="d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+          <i class="fas fa-history me-2 text-primary"></i>Processing History
+        </h6>
+        <small class="text-muted">{{ recent_uploads|length }} recent upload{{ recent_uploads|length|pluralize }}</small>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3">File & Language</th>
+              <th>Upload Date</th>
+              <th>Translation Results</th>
+              <th class="text-center">Confidence</th>
+              <th class="text-center">Status</th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for upload in recent_uploads %}
+            <tr>
+              <td class="ps-3">
+                <div class="d-flex align-items-center">
+                  <div class="bg-success bg-opacity-10 rounded p-2 me-3">
+                    {% if '.xlsx' in upload.original_filename or '.xls' in upload.original_filename %}
+                      <i class="fas fa-file-excel text-success"></i>
+                    {% else %}
+                      <i class="fas fa-file-csv text-success"></i>
+                    {% endif %}
+                  </div>
+                  <div>
+                    <div class="fw-semibold text-primary">{{ upload.original_filename }}</div>
+                    <div class="small text-muted">
+                      <i class="fas fa-weight me-1"></i>{{ upload.file_size|filesizeformat }}
+                      {% if upload.detected_language %}
+                        <span class="mx-2">•</span>
+                        <span class="language-badge">
+                          <i class="fas fa-language me-1"></i>
+                          {% if upload.detected_language == 'mn' %}Mongolian
+                          {% elif upload.detected_language == 'en' %}English
+                          {% elif upload.detected_language == 'mixed' %}Mixed
+                          {% else %}{{ upload.detected_language|title }}
+                          {% endif %}
+                        </span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="fw-medium">{{ upload.uploaded_at|date:"M j, Y" }}</div>
+                <div class="small text-muted">{{ upload.uploaded_at|time:"g:i A" }}</div>
+              </td>
+              <td>
+                <div class="d-flex flex-wrap gap-1">
+                  {% if upload.imported_count > 0 %}
+                  <span class="badge bg-success">
+                    <i class="fas fa-check me-1"></i>{{ upload.imported_count }} processed
+                  </span>
+                  {% endif %}
+                  {% if upload.high_confidence_count %}
+                  <span class="badge bg-success">
+                    <i class="fas fa-thumbs-up me-1"></i>{{ upload.high_confidence_count }} high conf.
+                  </span>
+                  {% endif %}
+                  {% if upload.needs_review_count %}
+                  <span class="badge bg-warning">
+                    <i class="fas fa-exclamation-triangle me-1"></i>{{ upload.needs_review_count }} need review
+                  </span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="text-center">
+                {% if upload.overall_confidence %}
+                <div class="confidence-meter mx-auto">
+                  <div class="confidence-fill {% if upload.overall_confidence >= 0.8 %}confidence-high{% elif upload.overall_confidence >= 0.5 %}confidence-medium{% else %}confidence-low{% endif %}" 
+                       style="width: {{ upload.overall_confidence|floatformat:0|add:0 }}%"></div>
+                </div>
+                <small class="text-muted d-block">{{ upload.overall_confidence|floatformat:1 }}%</small>
+                {% else %}
+                <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if upload.processing_complete %}
+                  <span class="badge bg-success">
+                    <i class="fas fa-check-circle me-1"></i>Complete
+                  </span>
+                {% else %}
+                  <span class="badge bg-warning">
+                    <i class="fas fa-clock me-1"></i>Processing
+                  </span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <div class="btn-group" role="group">
+                  <button class="btn btn-outline-info btn-sm" title="View Translation Details">
+                    <i class="fas fa-language"></i>
+                  </button>
+                  <button class="btn btn-outline-primary btn-sm" title="Review Translations">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="btn btn-outline-danger btn-sm" 
+                          onclick="confirmDelete('{{ upload.id }}', '{{ upload.original_filename }}')"
+                          title="Delete Upload">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const selectBtn = document.getElementById('selectFileBtn');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const previewBtn = document.getElementById('previewBtn');
+  const form = document.getElementById('uploadForm');
+  const dropzoneContent = document.getElementById('dropzoneContent');
+  const processingPreview = document.getElementById('processingPreview');
+  
+  let currentFile = null;
+  let processingData = null;
+  
+  // File selection handlers
+  selectBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    fileInput.click();
+  });
+  
+  dropzone.addEventListener('click', function(e) {
+    if (e.target === dropzone || e.target === dropzoneContent) {
+      fileInput.click();
+    }
+  });
+  
+  fileInput.addEventListener('change', function() {
+    handleFileSelection();
+  });
+  
+  clearBtn.addEventListener('click', function() {
+    clearFile();
+  });
+  
+  previewBtn.addEventListener('click', function() {
+    previewTranslations();
+  });
+  
+  // Drag and drop handlers
+  dropzone.addEventListener('dragover', function(e) { 
+    e.preventDefault(); 
+    dropzone.classList.add('border-primary');
+  });
+  
+  dropzone.addEventListener('dragleave', function(e) { 
+    e.preventDefault();
+    dropzone.classList.remove('border-primary');
+  });
+  
+  dropzone.addEventListener('drop', function(e) { 
+    e.preventDefault(); 
+    dropzone.classList.remove('border-primary');
+    
+    if (e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (isValidFileType(file)) {
+        fileInput.files = e.dataTransfer.files; 
+        handleFileSelection();
+      } else {
+        alert('Please drop an Excel (.xlsx, .xls) or CSV (.csv) file.');
+      }
+    }
+  });
+  
+  // Form submission handler
+  form.addEventListener('submit', function(e) {
+    if (!fileInput.files || fileInput.files.length === 0) {
+      e.preventDefault();
+      alert('Please select a file to upload.');
+      return false;
+    }
+    
+    // Check verification requirements for low confidence translations
+    if (processingData && processingData.needsVerification) {
+      const verifyTranslations = document.getElementById('verifyTranslations').checked;
+      const verifyAccount = document.getElementById('verifyAccount').checked;
+      const proceedWithLowConfidence = document.getElementById('proceedWithLowConfidence').checked;
+      
+      if (!verifyTranslations || !verifyAccount || !proceedWithLowConfidence) {
+        e.preventDefault();
+        alert('Please verify all translation requirements before proceeding.');
+        return false;
+      }
+    }
+    
+    // Show processing state
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+  });
+  
+  // File validation
+  function isValidFileType(file) {
+    const validExtensions = ['.xlsx', '.xls', '.csv'];
+    return validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+  }
+  
+  // Handle file selection
+  function handleFileSelection() {
+    if (fileInput.files.length === 0) return;
+    
+    const file = fileInput.files[0];
+    
+    // Validate file type
+    if (!isValidFileType(file)) {
+      alert('Please select an Excel (.xlsx, .xls) or CSV (.csv) file.');
+      fileInput.value = '';
+      return;
+    }
+    
+    // Validate file size (50MB max)
+    if (file.size > 50 * 1024 * 1024) {
+      alert('File size must be less than 50MB.');
+      fileInput.value = '';
+      return;
+    }
+    
+    currentFile = file;
+    showFilePreparation(file);
+  }
+  
+  // Show file preparation
+  function showFilePreparation(file) {
+    const fileSize = formatFileSize(file.size);
+    const fileIcon = (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) ? 'file-excel' : 'file-csv';
+    
+    dropzone.classList.add('file-selected');
+    dropzoneContent.innerHTML = `
+      <div class="text-info">
+        <i class="fas fa-${fileIcon} fa-3x mb-3 text-info"></i>
+        <div class="fw-bold fs-6 mb-2">${file.name}</div>
+        <div class="alert alert-info py-2 mb-3">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            <span class="fw-bold">Analyzing file...</span>
+          </div>
+          <div class="progress" style="height: 8px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
+                 style="width: 0%" id="analysisProgress">
+            </div>
+          </div>
+          <small class="text-muted mt-1 d-block">Detecting language and validating format...</small>
+        </div>
+      </div>
+    `;
+    
+    // Simulate analysis progress
+    simulateAnalysis();
+  }
+  
+  // Simulate file analysis
+  function simulateAnalysis() {
+    const progressBar = document.getElementById('analysisProgress');
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 15 + 5; // Variable progress speed
+      if (progress > 100) progress = 100;
+      
+      progressBar.style.width = progress + '%';
+      
+      if (progress >= 100) {
+        clearInterval(interval);
+        setTimeout(() => showAnalysisComplete(), 300);
+      }
+    }, 200);
+  }
+  
+  // Show analysis complete
+  function showAnalysisComplete() {
+    // Mock processing data (in real implementation, this would come from server)
+    processingData = {
+      language: 'mixed', // mn, en, mixed
+      confidence: 0.75,
+      accountHolder: 'АУРАГ ДЭВЖИХ',
+      accountNumber: '5176315185',
+      accountType: 'ХАРИЛЦАХ/БАЙГУУЛЛАГА',
+      sampleTransaction: 'Банкны шимтгэл татварын төлбөр',
+      translatedTransaction: 'Bank fee tax payment',
+      transactionConfidence: 0.85,
+      needsVerification: true,
+      highConfidence: 12,
+      mediumConfidence: 8,
+      lowConfidence: 3
+    };
+    
+    showFileReady();
+    showTranslationPreview();
+  }
+  
+  // Show file ready state
+  function showFileReady() {
+    const fileSize = formatFileSize(currentFile.size);
+    const fileIcon = (currentFile.name.toLowerCase().endsWith('.xlsx') || currentFile.name.toLowerCase().endsWith('.xls')) ? 'file-excel' : 'file-csv';
+    const languageIcon = processingData.language === 'mn' ? '🇲🇳' : 
+                        processingData.language === 'en' ? '🇺🇸' : '🌐';
+    
+    dropzoneContent.innerHTML = `
+      <div class="text-success">
+        <i class="fas fa-${fileIcon} fa-3x mb-3 text-success"></i>
+        <div class="fw-bold fs-6 mb-2">${currentFile.name}</div>
+        <div class="small text-muted mb-3">
+          <span class="badge bg-light text-dark me-2">
+            <i class="fas fa-weight me-1"></i>${fileSize}
+          </span>
+          <span class="badge bg-light text-dark me-2">
+            <i class="fas fa-language me-1"></i>${languageIcon} ${getLanguageDisplay(processingData.language)}
+          </span>
+          <span class="badge bg-light text-dark">
+            <i class="fas fa-chart-line me-1"></i>${Math.round(processingData.confidence * 100)}% confidence
+          </span>
+        </div>
+        <div class="alert alert-success py-2 mb-3">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fas fa-check-circle me-2"></i>
+            <span class="fw-bold">File analyzed and ready</span>
+          </div>
+          <div class="progress" style="height: 8px;">
+            <div class="progress-bar bg-success" role="progressbar" style="width: 100%"></div>
+          </div>
+          <small class="text-muted mt-1 d-block">
+            <i class="fas fa-info-circle me-1"></i>Translation preview available below
+          </small>
+        </div>
+      </div>
+    `;
+    
+    // Enable buttons
+    uploadBtn.disabled = false;
+    uploadBtn.innerHTML = `<i class="fas fa-upload me-1"></i>Process "${currentFile.name.length > 15 ? currentFile.name.substring(0, 15) + '...' : currentFile.name}"`;
+    clearBtn.classList.remove('d-none');
+    previewBtn.classList.remove('d-none');
+  }
+  
+  // Show translation preview
+  function showTranslationPreview() {
+    processingPreview.classList.remove('d-none');
+    
+    // Update language badge
+    const languageBadge = document.getElementById('languageBadge');
+    languageBadge.innerHTML = `
+      <span class="badge bg-info">
+        ${getLanguageDisplay(processingData.language)} 
+        <small>(${Math.round(processingData.confidence * 100)}%)</small>
+      </span>
+    `;
+    
+    // Update header information
+    document.getElementById('originalHeader').textContent = 
+      `${processingData.accountHolder} - ${processingData.accountNumber} (${processingData.accountType})`;
+    document.getElementById('translatedHeader').textContent = 
+      `${processingData.accountHolder} - ${processingData.accountNumber} (CURRENT/ORGANIZATION)`;
+    
+    // Update sample transaction
+    document.getElementById('originalTransaction').textContent = processingData.sampleTransaction;
+    document.getElementById('translatedTransaction').textContent = processingData.translatedTransaction;
+    
+    // Update confidence meter
+    const confidenceFill = document.getElementById('confidenceFill');
+    const confidenceValue = processingData.transactionConfidence;
+    confidenceFill.style.width = (confidenceValue * 100) + '%';
+    confidenceFill.className = `confidence-fill ${getConfidenceClass(confidenceValue)}`;
+    document.getElementById('confidenceText').textContent = `${Math.round(confidenceValue * 100)}% (${getConfidenceLevel(confidenceValue)})`;
+    
+    // Update overall confidence
+    const overallFill = document.getElementById('overallConfidenceFill');
+    overallFill.style.width = (processingData.confidence * 100) + '%';
+    overallFill.className = `confidence-fill ${getConfidenceClass(processingData.confidence)}`;
+    
+    // Update confidence stats
+    document.getElementById('confidenceStats').innerHTML = `
+      <div><span class="badge bg-success">${processingData.highConfidence}</span> High confidence</div>
+      <div><span class="badge bg-warning">${processingData.mediumConfidence}</span> Medium confidence</div>
+      <div><span class="badge bg-danger">${processingData.lowConfidence}</span> Need review</div>
+    `;
+  }
+  
+  // Utility functions
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+  
+  function getLanguageDisplay(lang) {
+    switch(lang) {
+      case 'mn': return 'Mongolian';
+      case 'en': return 'English';  
+      case 'mixed': return 'Mixed Languages';
+      default: return 'Unknown';
+    }
+  }
+  
+  function getConfidenceClass(confidence) {
+    if (confidence >= 0.8) return 'confidence-high';
+    if (confidence >= 0.5) return 'confidence-medium';
+    return 'confidence-low';
+  }
+  
+  function getConfidenceLevel(confidence) {
+    if (confidence >= 0.8) return 'High';
+    if (confidence >= 0.5) return 'Medium';
+    return 'Low';
+  }
+  
+  // Clear file selection
+  function clearFile() {
+    fileInput.value = '';
+    currentFile = null;
+    processingData = null;
+    
+    dropzone.classList.remove('file-selected');
+    processingPreview.classList.add('d-none');
+    
+    dropzoneContent.innerHTML = `
+      <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
+      <div class="mb-2">Drag and drop your bank statement here</div>
+      <div class="text-muted small mb-3">Excel (.xlsx, .xls) or CSV (.csv) files supported</div>
+      <button class="btn btn-outline-primary" type="button" id="selectFileBtn">
+        <i class="fas fa-folder-open me-1"></i>Select File
+      </button>
+    `;
+    
+    // Re-attach event listener
+    document.getElementById('selectFileBtn').addEventListener('click', function(e) {
+      e.preventDefault();
+      fileInput.click();
+    });
+    
+    // Reset buttons
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Process & Import';
+    clearBtn.classList.add('d-none');
+    previewBtn.classList.add('d-none');
+  }
+  
+  // Preview translations (could open modal or expand view)
+  function previewTranslations() {
+    alert('Translation preview functionality - would show detailed translation results');
+  }
+  
+  // Global function for delete confirmation
+  window.confirmDelete = function(uploadId, filename) {
+    if (confirm(`Are you sure you want to delete "${filename}" and all its translations?`)) {
+      // Handle deletion
+      console.log('Delete upload:', uploadId);
+    }
+  };
+});
+</script>
+{% endblock %}

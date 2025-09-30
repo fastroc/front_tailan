@@ -1,0 +1,673 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Smart Bank Transaction Processing{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'js/smart_suggestion_ui.js' %}">
+<style>
+  .transaction-form {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 24px;
+    margin: 16px 0;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+    position: relative;
+  }
+  
+  .form-label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+  }
+  
+  .form-control {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: all 0.2s ease;
+  }
+  
+  .form-control:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  .suggestion-container {
+    position: relative;
+  }
+  
+  .field-help {
+    font-size: 14px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+  
+  .processing-indicator {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    color: #3b82f6;
+    font-size: 14px;
+    margin-top: 8px;
+  }
+  
+  .processing-indicator.active {
+    display: flex;
+  }
+  
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e5e7eb;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .smart-features {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+  
+  .smart-features h3 {
+    margin: 0 0 12px 0;
+    font-size: 18px;
+  }
+  
+  .feature-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  
+  .feature-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+  }
+  
+  .feedback-section {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 20px;
+    display: none;
+  }
+  
+  .feedback-section.show {
+    display: block;
+  }
+  
+  .btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .btn-primary {
+    background: #3b82f6;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background: #2563eb;
+  }
+  
+  .btn-secondary {
+    background: #6b7280;
+    color: white;
+  }
+  
+  .btn-success {
+    background: #10b981;
+    color: white;
+  }
+  
+  .btn-danger {
+    background: #ef4444;
+    color: white;
+  }
+  
+  .auto-match-status {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  
+  .auto-match-status.success {
+    background: #d1fae5;
+    border: 1px solid #10b981;
+    color: #065f46;
+    display: block;
+  }
+  
+  .auto-match-status.partial {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    color: #92400e;
+    display: block;
+  }
+  
+  .match-details {
+    font-size: 14px;
+    margin-top: 8px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">🔮 Smart Bank Transaction Processing</h1>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'bank_accounts:dashboard' %}">Bank Accounts</a></li>
+            <li class="breadcrumb-item active">Smart Processing</li>
+          </ol>
+        </nav>
+      </div>
+      
+      <!-- Smart Features Overview -->
+      <div class="smart-features">
+        <h3>🚀 AI-Powered Transaction Matching</h3>
+        <ul class="feature-list">
+          <li class="feature-item">
+            <span>🎯</span>
+            <span>Real-time loan matching with confidence percentages</span>
+          </li>
+          <li class="feature-item">
+            <span>🔍</span>
+            <span>Multiple detection engines (License Plate, Disbursement, Pattern)</span>
+          </li>
+          <li class="feature-item">
+            <span>📊</span>
+            <span>Visual confidence indicators and match quality scores</span>
+          </li>
+          <li class="feature-item">
+            <span>🧠</span>
+            <span>Learns from your feedback to improve accuracy</span>
+          </li>
+        </ul>
+      </div>
+      
+      <!-- Transaction Processing Form -->
+      <div class="transaction-form">
+        <form id="smartTransactionForm" method="post">
+          {% csrf_token %}
+          
+          <!-- Auto-Match Status Display -->
+          <div id="autoMatchStatus" class="auto-match-status">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <strong id="matchStatusText">Auto-Match Found!</strong>
+                <div id="matchDetails" class="match-details"></div>
+              </div>
+              <div id="matchConfidence" class="font-weight-bold"></div>
+            </div>
+          </div>
+          
+          <!-- Transaction Description with Smart Suggestions -->
+          <div class="form-group suggestion-container">
+            <label for="description" class="form-label">
+              💬 Transaction Description
+              <small class="text-muted">(Start typing to see smart suggestions)</small>
+            </label>
+            <input 
+              type="text" 
+              class="form-control suggestion-input" 
+              id="description" 
+              name="description" 
+              placeholder="Enter bank transaction description..."
+              autocomplete="off"
+              required>
+            <div class="field-help">
+              Example: "EB-зээл олгов Б.Очмаа" or "6045УАМ 88980800"
+            </div>
+            <div class="processing-indicator" id="descriptionProcessing">
+              <div class="spinner"></div>
+              <span>Analyzing transaction...</span>
+            </div>
+          </div>
+          
+          <!-- Amount Field -->
+          <div class="form-group">
+            <label for="amount" class="form-label">💰 Transaction Amount</label>
+            <input 
+              type="number" 
+              class="form-control amount-input" 
+              id="amount" 
+              name="amount" 
+              placeholder="0.00" 
+              step="0.01"
+              min="0">
+            <div class="field-help">
+              Amount affects suggestion accuracy and GL account recommendations
+            </div>
+          </div>
+          
+          <!-- Customer Information with Auto-Population -->
+          <div class="form-group suggestion-container">
+            <label for="customer_name" class="form-label">
+              👤 Customer Name
+              <small class="text-success" id="customerAutoFilled" style="display: none;">(Auto-filled)</small>
+            </label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="customer_name" 
+              name="customer_name" 
+              placeholder="Customer name will be suggested automatically...">
+          </div>
+          
+          <!-- Loan Information -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="loan_number" class="form-label">
+                  🏦 Loan Number
+                  <small class="text-success" id="loanAutoFilled" style="display: none;">(Auto-filled)</small>
+                </label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="loan_number" 
+                  name="loan_number" 
+                  placeholder="Loan number will be suggested...">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="related_account" class="form-label">
+                  📋 Related Account
+                  <small class="text-success" id="accountAutoFilled" style="display: none;">(Auto-filled)</small>
+                </label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="related_account" 
+                  name="related_account" 
+                  placeholder="GL account will be suggested...">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Transaction Type -->
+          <div class="form-group">
+            <label for="transaction_type" class="form-label">🔄 Transaction Type</label>
+            <select class="form-control" id="transaction_type" name="transaction_type">
+              <option value="auto">Auto-Detect (Recommended)</option>
+              <option value="disbursement">Loan Disbursement</option>
+              <option value="payment">Loan Payment</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          
+          <!-- Additional Information -->
+          <div class="form-group">
+            <label for="notes" class="form-label">📝 Additional Notes</label>
+            <textarea 
+              class="form-control" 
+              id="notes" 
+              name="notes" 
+              rows="3"
+              placeholder="Any additional information about this transaction..."></textarea>
+          </div>
+          
+          <!-- Form Actions -->
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <button type="submit" class="btn btn-primary" id="submitBtn">
+                <i class="fas fa-save"></i>
+                Process Transaction
+              </button>
+              <button type="button" class="btn btn-secondary" onclick="clearForm()">
+                <i class="fas fa-eraser"></i>
+                Clear Form
+              </button>
+            </div>
+            
+            <div>
+              <button type="button" class="btn btn-success" id="feedbackGoodBtn" style="display: none;" onclick="provideFeedback(true)">
+                <i class="fas fa-thumbs-up"></i>
+                Good Match!
+              </button>
+              <button type="button" class="btn btn-danger" id="feedbackBadBtn" style="display: none;" onclick="provideFeedback(false)">
+                <i class="fas fa-thumbs-down"></i>
+                Poor Match
+              </button>
+            </div>
+          </div>
+        </form>
+        
+        <!-- Feedback Section -->
+        <div class="feedback-section" id="feedbackSection">
+          <h5>📊 Help Us Improve!</h5>
+          <p>Your feedback helps our AI learn and provide better suggestions over time.</p>
+          <div class="row">
+            <div class="col-md-6">
+              <label for="actualCustomer" class="form-label">Actual Customer (if different):</label>
+              <input type="text" class="form-control" id="actualCustomer" placeholder="Enter correct customer name">
+            </div>
+            <div class="col-md-6">
+              <label for="actualLoan" class="form-label">Actual Loan ID (if different):</label>
+              <input type="text" class="form-control" id="actualLoan" placeholder="Enter correct loan ID">
+            </div>
+          </div>
+          <div class="mt-3">
+            <button type="button" class="btn btn-primary" onclick="submitFeedback()">
+              <i class="fas fa-paper-plane"></i>
+              Submit Feedback
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="closeFeedback()">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Recent Transactions with Match History -->
+      <div class="transaction-form">
+        <h4>📈 Recent Processing History</h4>
+        <div id="recentTransactions">
+          <p class="text-muted">Recent transactions will appear here...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/smart_suggestion_ui.js' %}"></script>
+<script>
+// Enhanced Smart Transaction Processing
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Smart Suggestion UI with custom configuration
+    window.smartSuggestionUI = new SmartSuggestionUI({
+        inputSelector: '.suggestion-input',
+        amountSelector: '.amount-input',
+        containerSelector: '.suggestion-container',
+        apiEndpoint: '/api/smart-suggestions/suggestions/',
+        quickSuggestionsEndpoint: '/api/smart-suggestions/quick-suggestions/',
+        feedbackEndpoint: '/api/smart-suggestions/suggestion-feedback/',
+        minInputLength: 3,
+        maxSuggestions: 10,
+        debounceMs: 300
+    });
+    
+    // Listen for suggestion selection events
+    document.addEventListener('suggestion-selected', function(event) {
+        const suggestion = event.detail;
+        handleSuggestionSelection(suggestion);
+    });
+    
+    // Form enhancement
+    const form = document.getElementById('smartTransactionForm');
+    const descriptionInput = document.getElementById('description');
+    const amountInput = document.getElementById('amount');
+    
+    // Auto-trigger suggestions when amount changes
+    amountInput.addEventListener('input', function() {
+        if (descriptionInput.value.length >= 3) {
+            triggerSuggestionUpdate();
+        }
+    });
+    
+    // Real-time processing indicators
+    descriptionInput.addEventListener('input', function() {
+        const processingIndicator = document.getElementById('descriptionProcessing');
+        
+        if (this.value.length >= 3) {
+            processingIndicator.classList.add('active');
+            
+            // Hide after delay to simulate processing
+            setTimeout(() => {
+                processingIndicator.classList.remove('active');
+            }, 1500);
+        } else {
+            processingIndicator.classList.remove('active');
+        }
+    });
+    
+    // Form submission enhancement
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        processTransaction();
+    });
+});
+
+// Handle suggestion selection
+function handleSuggestionSelection(suggestion) {
+    // Show auto-match status
+    showAutoMatchStatus(suggestion);
+    
+    // Auto-fill form fields with visual feedback
+    autoFillField('customer_name', suggestion.customer_name, 'customerAutoFilled');
+    
+    if (suggestion.loan_number && suggestion.loan_number !== 'N/A') {
+        autoFillField('loan_number', suggestion.loan_number, 'loanAutoFilled');
+    }
+    
+    if (suggestion.related_account) {
+        autoFillField('related_account', suggestion.related_account, 'accountAutoFilled');
+    }
+    
+    // Show feedback buttons
+    document.getElementById('feedbackGoodBtn').style.display = 'inline-flex';
+    document.getElementById('feedbackBadBtn').style.display = 'inline-flex';
+    
+    // Store suggestion for feedback
+    window.currentSuggestion = suggestion;
+}
+
+// Auto-fill field with visual feedback
+function autoFillField(fieldId, value, indicatorId) {
+    const field = document.getElementById(fieldId);
+    const indicator = document.getElementById(indicatorId);
+    
+    // Animate field update
+    field.style.transition = 'background-color 0.3s ease';
+    field.style.backgroundColor = '#d1fae5';
+    field.value = value;
+    
+    // Show auto-filled indicator
+    indicator.style.display = 'inline';
+    
+    // Reset background after animation
+    setTimeout(() => {
+        field.style.backgroundColor = '';
+    }, 1000);
+}
+
+// Show auto-match status
+function showAutoMatchStatus(suggestion) {
+    const statusDiv = document.getElementById('autoMatchStatus');
+    const statusText = document.getElementById('matchStatusText');
+    const matchDetails = document.getElementById('matchDetails');
+    const matchConfidence = document.getElementById('matchConfidence');
+    
+    // Determine status class based on confidence
+    const confidenceClass = suggestion.match_percentage >= 85 ? 'success' : 'partial';
+    
+    statusDiv.className = `auto-match-status ${confidenceClass}`;
+    statusText.textContent = suggestion.match_percentage >= 85 ? 
+        '🎯 High Confidence Match Found!' : 
+        '⚠️ Partial Match Found';
+    
+    matchDetails.innerHTML = `
+        <strong>Customer:</strong> ${suggestion.customer_name} | 
+        <strong>Engine:</strong> ${suggestion.engine_display_name} | 
+        <strong>Method:</strong> ${suggestion.matching_method}
+    `;
+    
+    matchConfidence.innerHTML = `
+        <span style="color: ${suggestion.confidence_color}">
+            ${suggestion.confidence_icon} ${suggestion.match_percentage}%
+        </span>
+    `;
+}
+
+// Provide feedback
+function provideFeedback(isGood) {
+    if (isGood) {
+        // Good feedback - submit immediately
+        smartSuggestionUI.provideFeedback(true);
+        showMessage('Thank you for your feedback! 👍', 'success');
+        hideFeedbackButtons();
+    } else {
+        // Bad feedback - show correction form
+        document.getElementById('feedbackSection').classList.add('show');
+    }
+}
+
+// Submit detailed feedback
+function submitFeedback() {
+    const actualCustomer = document.getElementById('actualCustomer').value;
+    const actualLoan = document.getElementById('actualLoan').value;
+    
+    // Submit feedback with corrections
+    smartSuggestionUI.provideFeedback(false, actualLoan || null);
+    
+    showMessage('Thank you for the correction! Our AI will learn from this. 🧠', 'success');
+    closeFeedback();
+    hideFeedbackButtons();
+}
+
+// Close feedback section
+function closeFeedback() {
+    document.getElementById('feedbackSection').classList.remove('show');
+    document.getElementById('actualCustomer').value = '';
+    document.getElementById('actualLoan').value = '';
+}
+
+// Hide feedback buttons
+function hideFeedbackButtons() {
+    document.getElementById('feedbackGoodBtn').style.display = 'none';
+    document.getElementById('feedbackBadBtn').style.display = 'none';
+}
+
+// Process transaction
+function processTransaction() {
+    const submitBtn = document.getElementById('submitBtn');
+    const formData = new FormData(document.getElementById('smartTransactionForm'));
+    
+    // Show processing state
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+    
+    // Simulate processing (replace with actual submission)
+    setTimeout(() => {
+        showMessage('Transaction processed successfully! 🎉', 'success');
+        
+        // Add to recent transactions
+        addToRecentTransactions(formData);
+        
+        // Reset form
+        clearForm();
+        
+        // Reset button
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save"></i>Process Transaction';
+    }, 2000);
+}
+
+// Clear form
+function clearForm() {
+    document.getElementById('smartTransactionForm').reset();
+    document.getElementById('autoMatchStatus').className = 'auto-match-status';
+    
+    // Hide auto-filled indicators
+    document.getElementById('customerAutoFilled').style.display = 'none';
+    document.getElementById('loanAutoFilled').style.display = 'none';
+    document.getElementById('accountAutoFilled').style.display = 'none';
+    
+    hideFeedbackButtons();
+    closeFeedback();
+}
+
+// Add to recent transactions
+function addToRecentTransactions(formData) {
+    const recentDiv = document.getElementById('recentTransactions');
+    const description = formData.get('description');
+    const amount = formData.get('amount');
+    const customer = formData.get('customer_name');
+    
+    const transactionHtml = `
+        <div class="border rounded p-3 mb-2 bg-light">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <strong>${description}</strong><br>
+                    <small class="text-muted">Customer: ${customer} | Amount: ${amount}</small>
+                </div>
+                <div class="text-success">
+                    <i class="fas fa-check-circle"></i> Processed
+                </div>
+            </div>
+        </div>
+    `;
+    
+    recentDiv.innerHTML = transactionHtml + recentDiv.innerHTML;
+}
+
+// Trigger suggestion update
+function triggerSuggestionUpdate() {
+    const description = document.getElementById('description').value;
+    const amount = document.getElementById('amount').value;
+    
+    if (description.length >= 3) {
+        smartSuggestionUI.getSuggestions(
+            document.getElementById('description'),
+            description
+        );
+    }
+}
+
+// Show message utility
+function showMessage(message, type = 'info') {
+    smartSuggestionUI.showMessage(message, type);
+}
+
+// Load recent transactions on page load
+function loadRecentTransactions() {
+    // This would typically fetch from an API
+    // For now, just show a placeholder
+    const recentDiv = document.getElementById('recentTransactions');
+    recentDiv.innerHTML = '<p class="text-muted"><i class="fas fa-info-circle"></i> No recent transactions found. Start processing to see history here.</p>';
+}
+
+// Initialize
+loadRecentTransactions();
+</script>
+{% endblock %}

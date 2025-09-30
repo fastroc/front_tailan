@@ -1,0 +1,1277 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Add New Collateral{% endblock %}
+
+{% block extra_css %}
+<style>
+    .collateral-form-card {
+        border: none;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
+    .form-section {
+        background: #f8f9fa;
+        border-left: 4px solid #007bff;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border-radius: 0 0.375rem 0.375rem 0;
+    }
+    
+    .form-section h6 {
+        color: #495057;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+    
+    .required-field label::after {
+        content: " *";
+        color: #dc3545;
+    }
+    
+    .vehicle-required label::after {
+        content: " *";
+        color: #dc3545;
+    }
+    
+    .vehicle-specific-section {
+        background: #f0f8ff;
+        border: 1px solid #b3d9ff;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .collateral-type-info {
+        display: none;
+        background: #e3f2fd;
+        border: 1px solid #bbdefb;
+        padding: 1rem;
+        border-radius: 0.375rem;
+        margin-top: 0.5rem;
+    }
+    
+    .insurance-section {
+        background: #fff3e0;
+        border: 1px solid #ffcc02;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .value-calculator {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+    }
+    
+    .btn-calculate {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        color: white;
+        border: none;
+    }
+    
+    .btn-calculate:hover {
+        background: linear-gradient(45deg, #0056b3, #004085);
+        color: white;
+    }
+    
+    .ltv-indicator {
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    
+    .ltv-good { color: #28a745; }
+    .ltv-warning { color: #ffc107; }
+    .ltv-danger { color: #dc3545; }
+    
+    .step-indicator {
+        background: #007bff;
+        color: white;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        margin-right: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'loans_collateral:dashboard' %}" class="text-decoration-none">Collateral</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Add New Collateral</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">
+                <i class="fas fa-plus-circle text-primary me-2"></i>
+                Add New Collateral
+            </h1>
+            <p class="text-muted mb-0">Register a new collateral item to secure a loan application</p>
+        </div>
+        <div>
+            <a href="{% url 'loans_collateral:collateral_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-list me-1"></i>
+                View All Collateral
+            </a>
+        </div>
+    </div>
+
+    <!-- Duplicate Detection Alert - Professional -->
+    <div id="duplicateAlert" class="alert" role="alert" style="display: none; min-height: 80px;">
+        <div class="d-flex align-items-start">
+            <div class="me-3">
+                <i class="fas fa-info-circle text-primary" id="duplicateIcon"></i>
+            </div>
+            <div class="flex-grow-1">
+                <h6 class="mb-2" id="duplicateTitle">Similar Items Found</h6>
+                <p class="mb-2 text-muted" id="duplicateMessage">Please review existing items before proceeding.</p>
+                
+                <div id="duplicateResults" class="mb-3">
+                    <!-- Duplicate results will be inserted here -->
+                </div>
+                
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="dismissDuplicateAlert()">
+                    Dismiss
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Duplicate Checking Indicator -->
+    <div id="duplicateCheckingIndicator" class="text-muted small" style="display: none;">
+        <i class="fas fa-search me-1"></i>
+        Checking for similar items...
+    </div>
+
+    <!-- Main Form -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card collateral-form-card">
+                <div class="card-body">
+                    <form method="post" id="collateralForm">
+                        {% csrf_token %}
+                        
+                        <!-- Step 1: Basic Information -->
+                        <div class="form-section">
+                            <h6>
+                                <span class="step-indicator">1</span>
+                                Basic Information
+                            </h6>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3 required-field">
+                                        <label for="{{ form.loan_application.id_for_label }}" class="form-label">
+                                            {{ form.loan_application.label }}
+                                            <i class="fas fa-search text-muted ms-1" data-bs-toggle="tooltip" title="Search by customer first name or click to see all loans"></i>
+                                        </label>
+                                        
+                                        <!-- Hybrid Search Input -->
+                                        <div class="position-relative">
+                                            <input type="text" 
+                                                   id="loan-search-input" 
+                                                   class="form-control" 
+                                                   placeholder="Start typing customer first name or click to see all loans..."
+                                                   autocomplete="off">
+                                            <input type="hidden" 
+                                                   id="{{ form.loan_application.id_for_label }}" 
+                                                   name="{{ form.loan_application.name }}" 
+                                                   value="{{ form.loan_application.value|default:'' }}">
+                                            
+                                            <!-- Search Results Dropdown -->
+                                            <div id="loan-search-results" 
+                                                 class="position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm" 
+                                                 style="display: none; z-index: 1050; max-height: 350px; overflow-y: auto;">
+                                            </div>
+                                            
+                                            <!-- Loading Indicator -->
+                                            <div id="loan-search-loading" 
+                                                 class="position-absolute top-50 end-0 translate-middle-y me-3" 
+                                                 style="display: none;">
+                                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                    <span class="visually-hidden">Searching...</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Selected Loan Display -->
+                                        <div id="selected-loan-display" class="mt-2" style="display: none;">
+                                            <div class="alert alert-info py-2 px-3 mb-0">
+                                                <i class="fas fa-check-circle me-2"></i>
+                                                <strong>Selected:</strong> <span id="selected-loan-text"></span>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="clearLoanSelection()">
+                                                    <i class="fas fa-times"></i> Change
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        {% if form.loan_application.help_text %}
+                                            <div class="form-text">{{ form.loan_application.help_text }}</div>
+                                        {% endif %}
+                                        {% for error in form.loan_application.errors %}
+                                            <div class="text-danger small">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3 required-field">
+                                        <label for="{{ form.collateral_type.id_for_label }}" class="form-label">
+                                            {{ form.collateral_type.label }}
+                                        </label>
+                                        {{ form.collateral_type }}
+                                        {% if form.collateral_type.help_text %}
+                                            <div class="form-text">{{ form.collateral_type.help_text }}</div>
+                                        {% endif %}
+                                        {% for error in form.collateral_type.errors %}
+                                            <div class="text-danger small">{{ error }}</div>
+                                        {% endfor %}
+                                        
+                                        <!-- Collateral Type Information Display -->
+                                        <div id="collateralTypeInfo" class="collateral-type-info">
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <small><strong>Max LTV:</strong> <span id="maxLtv">-</span>%</small>
+                                                </div>
+                                                <div class="col-6">
+                                                    <small><strong>Risk Level:</strong> <span id="riskLevel">-</span></small>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted" id="typeDescription">Select a type to see details</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3 required-field">
+                                <label for="{{ form.title.id_for_label }}" class="form-label">
+                                    {{ form.title.label }}
+                                </label>
+                                {{ form.title }}
+                                {% for error in form.title.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            
+                            <div class="mb-3 required-field">
+                                <label for="{{ form.description.id_for_label }}" class="form-label">
+                                    {{ form.description.label }}
+                                </label>
+                                {{ form.description }}
+                                {% for error in form.description.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Physical & Location Details -->
+                        <div class="form-section">
+                            <h6>
+                                <span class="step-indicator">2</span>
+                                Physical & Location Details
+                            </h6>
+                            
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label for="{{ form.location.id_for_label }}" class="form-label">
+                                            {{ form.location.label }}
+                                        </label>
+                                        {{ form.location }}
+                                        {% for error in form.location.errors %}
+                                            <div class="text-danger small">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="mb-3 required-field">
+                                        <label for="{{ form.condition.id_for_label }}" class="form-label">
+                                            {{ form.condition.label }}
+                                        </label>
+                                        {{ form.condition }}
+                                        {% for error in form.condition.errors %}
+                                            <div class="text-danger small">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Vehicle-specific fields (initially hidden) -->
+                            <div id="vehicleFields" class="vehicle-specific-section" style="display: none;">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-car me-2"></i>
+                                    <strong>Vehicle Information</strong> - Please provide detailed vehicle specifications
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="mb-3 vehicle-required">
+                                            <label for="{{ form.vehicle_make.id_for_label }}" class="form-label">
+                                                {{ form.vehicle_make.label }}
+                                            </label>
+                                            {{ form.vehicle_make }}
+                                            {% for error in form.vehicle_make.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-3">
+                                        <div class="mb-3 vehicle-required">
+                                            <label for="{{ form.vehicle_model.id_for_label }}" class="form-label">
+                                                {{ form.vehicle_model.label }}
+                                            </label>
+                                            {{ form.vehicle_model }}
+                                            {% for error in form.vehicle_model.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-3">
+                                        <div class="mb-3 vehicle-required">
+                                            <label for="{{ form.vehicle_year.id_for_label }}" class="form-label">
+                                                {{ form.vehicle_year.label }}
+                                            </label>
+                                            {{ form.vehicle_year }}
+                                            {% for error in form.vehicle_year.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <label for="{{ form.vehicle_registration_year.id_for_label }}" class="form-label">
+                                                {{ form.vehicle_registration_year.label }}
+                                            </label>
+                                            {{ form.vehicle_registration_year }}
+                                            {% for error in form.vehicle_registration_year.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3 vehicle-required">
+                                            <label for="{{ form.vehicle_license_plate.id_for_label }}" class="form-label">
+                                                {{ form.vehicle_license_plate.label }}
+                                            </label>
+                                            {{ form.vehicle_license_plate }}
+                                            {% for error in form.vehicle_license_plate.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="{{ form.vehicle_vin.id_for_label }}" class="form-label">
+                                                {{ form.vehicle_vin.label }}
+                                            </label>
+                                            {{ form.vehicle_vin }}
+                                            <div class="form-text">17-character vehicle identification number</div>
+                                            {% for error in form.vehicle_vin.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="{{ form.vehicle_fuel_type.id_for_label }}" class="form-label">
+                                                {{ form.vehicle_fuel_type.label }}
+                                            </label>
+                                            {{ form.vehicle_fuel_type }}
+                                            {% for error in form.vehicle_fuel_type.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.vehicle_mileage.id_for_label }}" class="form-label">
+                                                {{ form.vehicle_mileage.label }}
+                                            </label>
+                                            <div class="input-group">
+                                                {{ form.vehicle_mileage }}
+                                                <span class="input-group-text">miles</span>
+                                            </div>
+                                            {% for error in form.vehicle_mileage.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Ownership Information -->
+                        <div class="form-section">
+                            <h6>
+                                <span class="step-indicator">3</span>
+                                Ownership Information
+                            </h6>
+                            
+                            <div class="mb-3 required-field">
+                                <label for="{{ form.owner_name.id_for_label }}" class="form-label">
+                                    {{ form.owner_name.label }}
+                                </label>
+                                {{ form.owner_name }}
+                                {% for error in form.owner_name.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.ownership_document.id_for_label }}" class="form-label">
+                                            {{ form.ownership_document.label }}
+                                        </label>
+                                        {{ form.ownership_document }}
+                                        {% for error in form.ownership_document.errors %}
+                                            <div class="text-danger small">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.registration_number.id_for_label }}" class="form-label">
+                                            {{ form.registration_number.label }}
+                                        </label>
+                                        {{ form.registration_number }}
+                                        {% for error in form.registration_number.errors %}
+                                            <div class="text-danger small">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Valuation -->
+                        <div class="form-section">
+                            <h6>
+                                <span class="step-indicator">4</span>
+                                Valuation Information
+                            </h6>
+                            
+                            <div class="mb-3 required-field">
+                                <label for="{{ form.declared_value.id_for_label }}" class="form-label">
+                                    {{ form.declared_value.label }}
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    {{ form.declared_value }}
+                                </div>
+                                {% if form.declared_value.help_text %}
+                                    <div class="form-text">{{ form.declared_value.help_text }}</div>
+                                {% endif %}
+                                {% for error in form.declared_value.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            
+                            <!-- Hidden Status Field with Default Value -->
+                            <input type="hidden" name="status" value="pending">
+                            
+                            <!-- LTV Calculator -->
+                            <div class="value-calculator">
+                                <h6 class="mb-3">
+                                    <i class="fas fa-calculator me-2"></i>
+                                    Loan-to-Value Estimation
+                                </h6>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Estimated Market Value</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control" id="marketValue" placeholder="0.00" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Potential Loan Value</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control" id="loanValue" placeholder="0.00" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <div class="w-100 text-center">
+                                            <div class="ltv-indicator" id="ltvDisplay">-</div>
+                                            <small class="text-muted">LTV Ratio</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 5: Insurance (Optional) -->
+                        <div class="form-section">
+                            <h6>
+                                <span class="step-indicator">5</span>
+                                Insurance Information
+                            </h6>
+                            
+                            <div class="form-check mb-3">
+                                {{ form.insurance_required }}
+                                <label class="form-check-label" for="{{ form.insurance_required.id_for_label }}">
+                                    This collateral requires insurance coverage
+                                </label>
+                            </div>
+                            
+                            <div id="insuranceDetails" class="insurance-section" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="{{ form.insurance_policy_number.id_for_label }}" class="form-label">
+                                                {{ form.insurance_policy_number.label }}
+                                            </label>
+                                            {{ form.insurance_policy_number }}
+                                            {% for error in form.insurance_policy_number.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="{{ form.insurance_expiry_date.id_for_label }}" class="form-label">
+                                                {{ form.insurance_expiry_date.label }}
+                                            </label>
+                                            {{ form.insurance_expiry_date }}
+                                            {% for error in form.insurance_expiry_date.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="{{ form.insurance_value.id_for_label }}" class="form-label">
+                                                {{ form.insurance_value.label }}
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                {{ form.insurance_value }}
+                                            </div>
+                                            {% for error in form.insurance_value.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between align-items-center mt-4">
+                            <a href="{% url 'loans_collateral:dashboard' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>
+                                Cancel
+                            </a>
+                            
+                            <div>
+                                <button type="button" class="btn btn-outline-primary me-2" onclick="validateForm()">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    Validate
+                                </button>
+                                
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i>
+                                    {{ submit_text|default:"Create Collateral" }}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar with Help -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2 text-info"></i>
+                        Collateral Guidelines
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-primary">Required Information</h6>
+                        <ul class="list-unstyled small">
+                            <li><i class="fas fa-check text-success me-2"></i>Loan application selection</li>
+                            <li><i class="fas fa-check text-success me-2"></i>Collateral type and details</li>
+                            <li><i class="fas fa-check text-success me-2"></i>Ownership documentation</li>
+                            <li><i class="fas fa-check text-success me-2"></i>Declared value assessment</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="text-warning">Important Notes</h6>
+                        <ul class="list-unstyled small text-muted">
+                            <li><i class="fas fa-exclamation-triangle text-warning me-2"></i>Professional valuation may be required</li>
+                            <li><i class="fas fa-shield-alt text-info me-2"></i>Insurance requirements vary by type</li>
+                            <li><i class="fas fa-percent text-primary me-2"></i>LTV ratios depend on collateral category</li>
+                            <li><i class="fas fa-car text-success me-2"></i>Vehicle types require make, model, year, and license plate</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <small><i class="fas fa-lightbulb me-2"></i>
+                        <strong>Tip:</strong> Select the collateral type first to see specific requirements and LTV ratios.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const collateralTypeSelect = document.getElementById('id_collateral_type');
+    const collateralTypeInfo = document.getElementById('collateralTypeInfo');
+    const insuranceCheckbox = document.getElementById('id_insurance_required');
+    const insuranceDetails = document.getElementById('insuranceDetails');
+    const vehicleFields = document.getElementById('vehicleFields');
+    const marketValueInput = document.getElementById('marketValue');
+    const loanValueInput = document.getElementById('loanValue');
+    const ltvDisplay = document.getElementById('ltvDisplay');
+    const declaredValueInput = document.getElementById('id_declared_value');
+    
+    // Show/hide vehicle fields based on collateral type
+    function toggleVehicleFields() {
+        const selectedOption = collateralTypeSelect.options[collateralTypeSelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            // Check if the selected type is a vehicle
+            const typeText = selectedOption.text.toLowerCase();
+            if (typeText.includes('vehicle') || typeText.includes('car') || typeText.includes('truck') || typeText.includes('motorcycle')) {
+                vehicleFields.style.display = 'block';
+                console.log('Showing vehicle fields for:', typeText); // Debug log
+            } else {
+                vehicleFields.style.display = 'none';
+                console.log('Hiding vehicle fields for:', typeText); // Debug log
+            }
+        } else {
+            vehicleFields.style.display = 'none';
+            console.log('No collateral type selected'); // Debug log
+        }
+    }
+    
+    // Show/hide insurance details
+    function toggleInsuranceDetails() {
+        if (insuranceCheckbox.checked) {
+            insuranceDetails.style.display = 'block';
+        } else {
+            insuranceDetails.style.display = 'none';
+        }
+    }
+    
+    insuranceCheckbox.addEventListener('change', toggleInsuranceDetails);
+    
+    // Load collateral type information
+    function loadCollateralTypeInfo() {
+        const typeId = collateralTypeSelect.value;
+        if (typeId) {
+            fetch(`/loans/collateral/api/type/${typeId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('maxLtv').textContent = data.max_ltv;
+                    document.getElementById('riskLevel').textContent = data.risk_level;
+                    document.getElementById('typeDescription').textContent = data.description;
+                    collateralTypeInfo.style.display = 'block';
+                    
+                    // Auto-check insurance if required
+                    if (data.requires_insurance) {
+                        insuranceCheckbox.checked = true;
+                        toggleInsuranceDetails();
+                    }
+                    
+                    // Show/hide vehicle fields based on category
+                    if (data.category === 'vehicle') {
+                        vehicleFields.style.display = 'block';
+                    } else {
+                        vehicleFields.style.display = 'none';
+                    }
+                    
+                    // Calculate LTV if values are present
+                    calculateLTV();
+                })
+                .catch(error => {
+                    console.error('Error loading collateral type info:', error);
+                });
+        } else {
+            collateralTypeInfo.style.display = 'none';
+            vehicleFields.style.display = 'none';
+        }
+    }
+    
+    collateralTypeSelect.addEventListener('change', function() {
+        loadCollateralTypeInfo();
+        toggleVehicleFields(); // Fallback mechanism
+    });
+    
+    // Calculate LTV ratio
+    function calculateLTV() {
+        const marketValue = parseFloat(marketValueInput.value) || 0;
+        const maxLtvText = document.getElementById('maxLtv').textContent;
+        const maxLtv = parseFloat(maxLtvText) || 0;
+        
+        if (marketValue > 0 && maxLtv > 0) {
+            const potentialLoanValue = marketValue * (maxLtv / 100);
+            loanValueInput.value = potentialLoanValue.toFixed(2);
+            
+            const ltvRatio = (potentialLoanValue / marketValue) * 100;
+            ltvDisplay.textContent = ltvRatio.toFixed(1) + '%';
+            
+            // Color code the LTV
+            ltvDisplay.className = 'ltv-indicator ';
+            if (ltvRatio <= 70) {
+                ltvDisplay.className += 'ltv-good';
+            } else if (ltvRatio <= 85) {
+                ltvDisplay.className += 'ltv-warning';
+            } else {
+                ltvDisplay.className += 'ltv-danger';
+            }
+        } else {
+            loanValueInput.value = '';
+            ltvDisplay.textContent = '-';
+            ltvDisplay.className = 'ltv-indicator';
+        }
+    }
+    
+    marketValueInput.addEventListener('input', calculateLTV);
+    
+    // Copy declared value to market value if empty
+    declaredValueInput.addEventListener('blur', function() {
+        if (!marketValueInput.value && declaredValueInput.value) {
+            marketValueInput.value = declaredValueInput.value;
+            calculateLTV();
+        }
+    });
+    
+    // Form validation
+    window.validateForm = function() {
+        const requiredFields = document.querySelectorAll('.required-field input, .required-field select, .required-field textarea');
+        const vehicleRequiredFields = document.querySelectorAll('.vehicle-required input, .vehicle-required select');
+        let isValid = true;
+        let firstInvalid = null;
+        
+        // Check regular required fields
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('is-invalid');
+                if (!firstInvalid) firstInvalid = field;
+                isValid = false;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        // Check vehicle-specific required fields if vehicle section is visible
+        if (vehicleFields.style.display === 'block') {
+            vehicleRequiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    if (!firstInvalid) firstInvalid = field;
+                    isValid = false;
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+        }
+        
+        if (!isValid) {
+            alert('Please fill in all required fields.');
+            if (firstInvalid) firstInvalid.focus();
+        } else {
+            alert('Form validation passed! You can now submit the form.');
+        }
+    };
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Hybrid Loan Application Search Functionality
+    const loanSearchInput = document.getElementById('loan-search-input');
+    const loanSearchResults = document.getElementById('loan-search-results');
+    const loanSearchLoading = document.getElementById('loan-search-loading');
+    const selectedLoanDisplay = document.getElementById('selected-loan-display');
+    const selectedLoanText = document.getElementById('selected-loan-text');
+    const loanApplicationHidden = document.getElementById('{{ form.loan_application.id_for_label }}');
+    
+    let searchTimeout;
+    let isSelectionMade = false;
+    
+    // Initialize with existing value if any
+    if (loanApplicationHidden.value) {
+        // Find and display the selected loan from the form's initial choices
+        {% for choice_value, choice_text in form.loan_application.field.choices %}
+            {% if choice_value %}
+                if ('{{ choice_value }}' === loanApplicationHidden.value) {
+                    selectedLoanText.textContent = '{{ choice_text|escapejs }}';
+                    loanSearchInput.style.display = 'none';
+                    selectedLoanDisplay.style.display = 'block';
+                    isSelectionMade = true;
+                }
+            {% endif %}
+        {% endfor %}
+    }
+    
+    loanSearchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        if (isSelectionMade) {
+            return; // Don't search if a selection has been made
+        }
+        
+        clearTimeout(searchTimeout);
+        
+        loanSearchLoading.style.display = 'block';
+        loanSearchResults.style.display = 'none';
+        
+        searchTimeout = setTimeout(() => {
+            performSearch(query);
+        }, 200); // Faster response for better UX
+    });
+    
+    // Show all loans when input is focused (dropdown behavior)
+    loanSearchInput.addEventListener('focus', function() {
+        if (isSelectionMade) {
+            return;
+        }
+        
+        const query = this.value.trim();
+        loanSearchLoading.style.display = 'block';
+        performSearch(query); // Show all or filtered results
+    });
+    
+    // Perform search function
+    function performSearch(query) {
+        fetch(`{% url 'loans_collateral:api_search_loan_applications' %}?query=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                loanSearchLoading.style.display = 'none';
+                
+                if (data.results && data.results.length > 0) {
+                    let resultsHtml = '';
+                    
+                    data.results.forEach(result => {
+                        resultsHtml += `
+                            <div class="loan-search-result p-3 border-bottom cursor-pointer" 
+                                 data-id="${result.id}" 
+                                 data-text="${result.text}"
+                                 onclick="selectLoanApplication(${result.id}, '${result.text.replace(/'/g, "\\'")}')">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-bold text-primary">${result.loan_number}</div>
+                                        <div class="text-muted small">Customer: <strong>${result.customer_name}</strong></div>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-success">${result.amount}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    loanSearchResults.innerHTML = resultsHtml;
+                    loanSearchResults.style.display = 'block';
+                } else {
+                    const message = query ? 'No matching loan applications found' : 'No loan applications available';
+                    loanSearchResults.innerHTML = `<div class="p-3 text-muted text-center">${message}</div>`;
+                    loanSearchResults.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+                loanSearchLoading.style.display = 'none';
+                loanSearchResults.innerHTML = '<div class="p-3 text-danger text-center">Error loading loan applications</div>';
+                loanSearchResults.style.display = 'block';
+            });
+    }
+    
+    // Hide results when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('#loan-search-input') && !event.target.closest('#loan-search-results')) {
+            loanSearchResults.style.display = 'none';
+        }
+    });
+    
+    // Select loan application function
+    window.selectLoanApplication = function(id, text) {
+        loanApplicationHidden.value = id;
+        selectedLoanText.textContent = text;
+        loanSearchInput.style.display = 'none';
+        selectedLoanDisplay.style.display = 'block';
+        loanSearchResults.style.display = 'none';
+        isSelectionMade = true;
+    };
+    
+    // Clear loan selection function
+    window.clearLoanSelection = function() {
+        loanApplicationHidden.value = '';
+        selectedLoanText.textContent = '';
+        loanSearchInput.style.display = 'block';
+        loanSearchInput.value = '';
+        selectedLoanDisplay.style.display = 'none';
+        loanSearchResults.style.display = 'none';
+        isSelectionMade = false;
+        loanSearchInput.focus();
+    };
+    
+    // Add hover effects to search results
+    document.addEventListener('mouseover', function(event) {
+        if (event.target.closest('.loan-search-result')) {
+            event.target.closest('.loan-search-result').style.backgroundColor = '#f8f9fa';
+        }
+    });
+    
+    document.addEventListener('mouseout', function(event) {
+        if (event.target.closest('.loan-search-result')) {
+            event.target.closest('.loan-search-result').style.backgroundColor = 'white';
+        }
+    });
+    
+    // Initialize on page load
+    toggleInsuranceDetails();
+    if (collateralTypeSelect.value) {
+        loadCollateralTypeInfo();
+        toggleVehicleFields();
+    }
+    
+    // Set up duplicate detection
+    setupDuplicateDetection();
+});
+
+// Duplicate Detection Functions
+let duplicateCheckTimeout;
+let duplicateResults = null;
+
+function setupDuplicateDetection() {
+    // Monitor only specific fields that are likely to be unique identifiers
+    const form = document.getElementById('collateralForm');
+    const monitorFields = [
+        'vehicle_license_plate', 'vehicle_vin', 'registration_number'
+    ];
+    
+    monitorFields.forEach(fieldName => {
+        const field = form.elements[fieldName];
+        if (field) {
+            field.addEventListener('input', debounceCheckDuplicates);
+            field.addEventListener('change', debounceCheckDuplicates);
+        }
+    });
+}
+
+function debounceCheckDuplicates() {
+    clearTimeout(duplicateCheckTimeout);
+    duplicateCheckTimeout = setTimeout(checkDuplicates, 2000); // Increased to 2 seconds to reduce frequency
+}
+
+function checkDuplicates() {
+    const form = document.getElementById('collateralForm');
+    const formData = new FormData(form);
+    
+    // Convert FormData to JSON
+    const data = {};
+    for (let [key, value] of formData.entries()) {
+        if (value && value.trim !== undefined) {
+            data[key] = value.trim();
+        } else if (value) {
+            data[key] = value;
+        }
+    }
+    
+    // Only check if we have meaningful data (minimum 3 characters for VIN/license)
+    const hasVin = data.vehicle_vin && data.vehicle_vin.length >= 3;
+    const hasLicense = data.vehicle_license_plate && data.vehicle_license_plate.length >= 3;
+    const hasRegistration = data.registration_number && data.registration_number.length >= 3;
+    
+    if (!hasVin && !hasLicense && !hasRegistration) {
+        return; // Don't show any indicators or do any checking
+    }
+    
+    // Show simple checking indicator only if we're actually going to check
+    const checkingIndicator = document.getElementById('duplicateCheckingIndicator');
+    checkingIndicator.style.display = 'block';
+    
+    // Make API call to check for duplicates
+    fetch('{% url "loans_collateral:api_check_duplicates" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(results => {
+        checkingIndicator.style.display = 'none';
+        duplicateResults = results;
+        displayDuplicateAlert(results);
+    })
+    .catch(error => {
+        checkingIndicator.style.display = 'none';
+        console.error('Duplicate check error:', error);
+        
+        // Show simple error message
+        const alertElement = document.getElementById('duplicateAlert');
+        alertElement.className = 'alert alert-warning';
+        alertElement.innerHTML = `
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Unable to check for duplicates. Please review manually.
+        `;
+        alertElement.style.display = 'block';
+    });
+}
+
+function displayDuplicateAlert(results) {
+    const alertElement = document.getElementById('duplicateAlert');
+    const titleElement = document.getElementById('duplicateTitle');
+    const messageElement = document.getElementById('duplicateMessage');
+    const resultsElement = document.getElementById('duplicateResults');
+    const iconElement = document.getElementById('duplicateIcon');
+    
+    // Check if we have any duplicates
+    const hasExactMatches = results.exact_matches.length > 0;
+    const hasHighRiskDuplicates = results.high_probability.length > 0;
+    const hasMediumRiskDuplicates = results.medium_probability.length > 0;
+    
+    if (hasExactMatches || hasHighRiskDuplicates || hasMediumRiskDuplicates) {
+        
+        // Set professional styling based on severity
+        if (hasExactMatches) {
+            alertElement.className = 'alert alert-danger';
+            titleElement.textContent = 'Exact Match Found';
+            messageElement.textContent = 'This item already exists in the system.';
+        } else if (hasHighRiskDuplicates) {
+            alertElement.className = 'alert alert-warning';
+            titleElement.textContent = 'Similar Item Found';
+            messageElement.textContent = 'Found a very similar item. Please verify this is not a duplicate.';
+        } else {
+            alertElement.className = 'alert alert-info';
+            titleElement.textContent = 'Potentially Similar Items';
+            messageElement.textContent = 'Found some similar items for your review.';
+        }
+        
+        // Build simple results HTML
+        let resultsHTML = '<div class="small">';
+        
+        // Show exact matches
+        if (hasExactMatches) {
+            results.exact_matches.forEach(match => {
+                resultsHTML += `<div class="mb-2 p-2 bg-light rounded">
+                    <strong>${match.title}</strong><br>
+                    <span class="text-muted">ID: ${match.id} | Type: ${match.collateral_type}</span>
+                </div>`;
+            });
+        }
+        
+        // Show high probability matches
+        if (hasHighRiskDuplicates) {
+            results.high_probability.forEach(match => {
+                resultsHTML += `<div class="mb-2 p-2 bg-light rounded">
+                    <strong>${match.title}</strong><br>
+                    <span class="text-muted">ID: ${match.id} | Similarity: ${match.confidence}%</span>
+                </div>`;
+            });
+        }
+        
+        // Show medium probability matches (max 2 to avoid clutter)
+        if (hasMediumRiskDuplicates) {
+            results.medium_probability.slice(0, 2).forEach(match => {
+                resultsHTML += `<div class="mb-2 p-2 bg-light rounded">
+                    <strong>${match.title}</strong><br>
+                    <span class="text-muted">ID: ${match.id} | Similarity: ${match.confidence}%</span>
+                </div>`;
+            });
+            if (results.medium_probability.length > 2) {
+                resultsHTML += `<div class="text-muted small">... and ${results.medium_probability.length - 2} more</div>`;
+            }
+        }
+        
+        resultsHTML += '</div>';
+        resultsElement.innerHTML = resultsHTML;
+        
+        // Show the alert without animations
+        alertElement.style.display = 'block';
+        
+    } else {
+        // Hide alert if no duplicates
+        alertElement.style.display = 'none';
+    }
+}
+
+function dismissDuplicateAlert() {
+    document.getElementById('duplicateAlert').style.display = 'none';
+}
+
+function showDuplicateDetails() {
+    if (!duplicateResults) return;
+    
+    // Create modal or expandable section with detailed duplicate information
+    const detailsHTML = generateDuplicateDetailsHTML(duplicateResults);
+    
+    // Show in a modal (requires Bootstrap modal)
+    const modalHtml = `
+        <div class="modal fade" id="duplicateDetailsModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-search me-2"></i>
+                            Duplicate Detection Results
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${detailsHTML}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('duplicateDetailsModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to page and show
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('duplicateDetailsModal'));
+    modal.show();
+}
+
+function generateDuplicateDetailsHTML(results) {
+    let html = '<div class="duplicate-details">';
+    
+    const categories = [
+        { key: 'exact_matches', title: 'Exact Matches', class: 'danger', icon: 'fas fa-exclamation-triangle' },
+        { key: 'high_probability', title: 'High Similarity', class: 'warning', icon: 'fas fa-exclamation-circle' },
+        { key: 'medium_probability', title: 'Medium Similarity', class: 'info', icon: 'fas fa-info-circle' },
+        { key: 'low_probability', title: 'Low Similarity', class: 'secondary', icon: 'fas fa-question-circle' }
+    ];
+    
+    categories.forEach(category => {
+        const matches = results[category.key];
+        if (matches && matches.length > 0) {
+            html += `
+                <div class="mb-4">
+                    <h6 class="text-${category.class}">
+                        <i class="${category.icon} me-2"></i>
+                        ${category.title} (${matches.length})
+                    </h6>
+                    <div class="row">
+            `;
+            
+            matches.forEach(match => {
+                html += `
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-${category.class}">
+                            <div class="card-header bg-light">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong>${match.collateral_id}</strong>
+                                    <span class="badge bg-${category.class}">${match.confidence}% match</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <h6 class="card-title">${match.title}</h6>
+                                <p class="card-text">
+                                    <strong>Customer:</strong> ${match.customer_name}<br>
+                                    <strong>Value:</strong> $${match.declared_value.toLocaleString()}<br>
+                                    <strong>Status:</strong> ${match.status}<br>
+                                    <strong>Created:</strong> ${match.created_at}
+                                </p>
+                                <p class="card-text text-${category.class}">
+                                    <small>${match.reason}</small>
+                                </p>
+                                <a href="${match.detail_url}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye me-1"></i>View Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    if (results.total_count === 0) {
+        html += `
+            <div class="text-center py-4">
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <h5 class="text-success">No Duplicates Found</h5>
+                <p class="text-muted">This collateral appears to be unique in the system.</p>
+            </div>
+        `;
+    }
+    
+    html += '</div>';
+    return html;
+}
+</script>
+
+<style>
+.loan-search-result {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.loan-search-result:hover {
+    background-color: #f8f9fa !important;
+}
+
+.loan-search-result:last-child {
+    border-bottom: none !important;
+}
+
+/* Simple Professional Duplicate Detection Styles */
+#duplicateAlert {
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+#duplicateCheckingIndicator {
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}

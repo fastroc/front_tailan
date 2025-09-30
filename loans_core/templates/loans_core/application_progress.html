@@ -17,16 +17,125 @@
 .payment-status.paid { background: #d4edda; color: #155724; }
 .payment-status.overdue { background: #f8d7da; color: #721c24; }
 .payment-status.due_soon { background: #fff3cd; color: #856404; }
-.payment-status.scheduled { background: #d1ecf1; color: #0c5460; }
+.payment-status.scheduled { background: #6c757d; color: white; }
+.payment-status.on-time { background: #d4edda; color: #155724; }
+.payment-status.slightly_late { background: #fff3cd; color: #856404; }
+.payment-status.moderately_late { background: #ffe8d1; color: #d84315; }
+.payment-status.late { background: #ffc1cc; color: #b71c1c; }
+.payment-status.severely_late { background: #f8d7da; color: #721c24; }
+
+/* Payment History Metrics */
+.payment-metric {
+    padding: 8px;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    transition: all 0.3s ease;
+}
+.payment-metric:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.payment-metric.on-time {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+.payment-metric.late {
+    background: linear-gradient(135deg, #ffe8d1 0%, #ffd19a 100%);
+    color: #d84315;
+    border-left: 4px solid #fd7e14;
+}
+.payment-metric.missed {
+    background: linear-gradient(135deg, #f8d7da 0%, #f1b4bc 100%);
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
+
+/* Enhanced Attention Badges */
+.attention-badge.excellent {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+.attention-badge.good {
+    background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+}
+.attention-badge.warning {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+    color: #212529;
+    border: none;
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+.attention-badge.danger {
+    background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
 
 .metric-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px;
+    border: none;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    height: 140px;
 }
-.metric-card.positive { background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%); }
-.metric-card.negative { background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%); }
-.metric-card.neutral { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.metric-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+.metric-card.excellent { 
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); 
+    border-left: 5px solid #28a745;
+    color: #155724;
+}
+.metric-card.good { 
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%); 
+    border-left: 5px solid #0dcaf0;
+    color: #0c5460;
+}
+.metric-card.fair { 
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); 
+    border-left: 5px solid #ffc107;
+    color: #856404;
+}
+.metric-card.poor { 
+    background: linear-gradient(135deg, #ffe8d1 0%, #ffd19a 100%); 
+    border-left: 5px solid #fd7e14;
+    color: #d84315;
+}
+.metric-card.critical { 
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); 
+    border-left: 5px solid #dc3545;
+    color: #721c24;
+}
+.metric-card .card-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 1.25rem;
+}
+.metric-card h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+.metric-card h6 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+}
+.metric-card small {
+    font-size: 0.75rem;
+    font-weight: 500;
+    opacity: 0.8;
+}
 
 .payment-timeline {
     position: relative;
@@ -59,10 +168,386 @@
 .timeline-item.overdue::before { background: #dc3545; }
 .timeline-item.due-soon::before { background: #ffc107; }
 
-/* Balance comparison styling */
-.balance-better { color: #28a745; font-weight: bold; }
-.balance-worse { color: #dc3545; font-weight: bold; }
+/* Balance comparison styling - CRITICAL VISUAL INDICATORS */
+.balance-better { color: #28a745 !important; font-weight: bold; }
+.balance-worse { color: #dc3545 !important; font-weight: bold; }
 .balance-same { color: #6c757d; }
+
+/* CRITICAL NEGATIVE/POSITIVE VISUAL DISTINCTIONS */
+.text-critical-negative {
+    color: #dc3545 !important;
+    font-weight: bold;
+    background-color: rgba(220, 53, 69, 0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.text-critical-positive {
+    color: #28a745 !important;
+    font-weight: bold;
+    background-color: rgba(40, 167, 69, 0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.overdue-highlight {
+    background-color: #f8d7da !important;
+    border-left: 4px solid #dc3545 !important;
+}
+
+.ahead-highlight {
+    background-color: #d4edda !important;
+    border-left: 4px solid #28a745 !important;
+}
+
+/* ENHANCED APPROVAL BUTTON STYLES - UX FRIENDLY */
+.approval-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.approve-btn {
+    position: relative;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.approve-btn:hover {
+    background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+    color: white;
+}
+
+.approve-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.approve-btn .btn-icon {
+    margin-right: 6px;
+    font-size: 14px;
+}
+
+.edit-btn {
+    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+.edit-btn:hover {
+    background: linear-gradient(135deg, #6610f2 0%, #e83e8c 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.4);
+    color: white;
+}
+
+.approved-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
+    animation: approvedPulse 2s ease-in-out;
+}
+
+.approved-badge .badge-icon {
+    font-size: 14px;
+    animation: checkMark 0.6s ease-in-out;
+}
+
+@keyframes approvedPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4); }
+    100% { transform: scale(1); }
+}
+
+@keyframes checkMark {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.pending-badge {
+    color: #6c757d;
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* Loading state for approval buttons */
+.approve-btn.loading {
+    position: relative;
+    color: transparent;
+    pointer-events: none;
+}
+
+.approve-btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ffffff;
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Whole loan approval section enhancement */
+.loan-approval-section {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.approve-loan-btn {
+    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+    border: none;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 6px rgba(220, 53, 69, 0.3);
+}
+
+.approve-loan-btn:hover {
+    background: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(220, 53, 69, 0.4);
+    color: white;
+}
+
+.loan-approved-badge {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 3px 6px rgba(40, 167, 69, 0.3);
+}
+
+/* =============================================== */
+/* UNIVERSAL 5-TIER PERFORMANCE QUINTILE SYSTEM */
+/* =============================================== */
+
+/* Quintile Badges */
+.quintile-badge.excellent {
+    background-color: #28a745 !important;
+    color: white;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.quintile-badge.good {
+    background-color: #0dcaf0 !important;
+    color: #0c5460;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+}
+
+.quintile-badge.fair {
+    background-color: #ffc107 !important;
+    color: #856404;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+}
+
+.quintile-badge.poor {
+    background-color: #fd7e14 !important;
+    color: white;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.quintile-badge.critical {
+    background-color: #dc3545 !important;
+    color: white;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Quintile Progress Bars */
+.quintile-progress.excellent {
+    background-color: #28a745;
+    background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent);
+}
+
+.quintile-progress.good {
+    background-color: #0dcaf0;
+    background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent);
+}
+
+.quintile-progress.fair {
+    background-color: #ffc107;
+    background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent);
+}
+
+.quintile-progress.poor {
+    background-color: #fd7e14;
+    background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent);
+}
+
+.quintile-progress.critical {
+    background-color: #dc3545;
+    background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent);
+}
+
+/* Quintile Status Indicators */
+.status-indicator.excellent {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.status-indicator.good {
+    background: linear-gradient(135deg, #0dcaf0 0%, #17a2b8 100%);
+    color: white;
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(13, 202, 240, 0.3);
+}
+
+.status-indicator.fair {
+    background: linear-gradient(135deg, #ffc107 0%, #ffca2c 100%);
+    color: #856404;
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+}
+
+.status-indicator.poor {
+    background: linear-gradient(135deg, #fd7e14 0%, #ff851b 100%);
+    color: white;
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(253, 126, 20, 0.3);
+}
+
+.status-indicator.critical {
+    background: linear-gradient(135deg, #dc3545 0%, #e85a71 100%);
+    color: white;
+    padding: 0.375rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+}
+
+/* Enhanced Payment Status Badges with Quintile System */
+.payment-status.on-time { 
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); 
+    color: #155724; 
+    border-left: 3px solid #28a745;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.payment-status.slightly_late { 
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%); 
+    color: #0c5460; 
+    border-left: 3px solid #0dcaf0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.payment-status.moderately_late { 
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); 
+    color: #856404; 
+    border-left: 3px solid #ffc107;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.payment-status.late { 
+    background: linear-gradient(135deg, #ffe8d1 0%, #ffd19a 100%); 
+    color: #d84315; 
+    border-left: 3px solid #fd7e14;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.payment-status.severely_late { 
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); 
+    color: #721c24; 
+    border-left: 3px solid #dc3545;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+/* Hover effects for interactive elements */
+.quintile-badge:hover, .status-indicator:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+}
 </style>
 {% endblock %}
 
@@ -118,47 +603,66 @@
                     <div class="row">
                         <div class="col-md-2">
                             <div class="text-center">
-                                <h5 class="text-primary">${{ loan_info.principal_amount|floatformat:0|intcomma }}</h5>
+                                <h5 class="text-dark">${{ loan_info.principal_amount|floatformat:0|intcomma }}</h5>
                                 <small class="text-muted">Principal Amount</small>
                             </div>
                         </div>
                         <div class="col-md-2">
                             <div class="text-center">
-                                <h5 class="text-info">{{ loan_info.interest_rate }}%</h5>
+                                <h5 class="text-dark">{{ loan_info.interest_rate }}%</h5>
                                 <small class="text-muted">Interest Rate</small>
                             </div>
                         </div>
                         <div class="col-md-2">
                             <div class="text-center">
-                                <h5 class="text-warning">{{ loan_info.term_months }} months</h5>
+                                <h5 class="text-dark">{{ loan_info.term_months }} months</h5>
                                 <small class="text-muted">Loan Term</small>
                             </div>
                         </div>
                         <div class="col-md-2">
                             <div class="text-center">
-                                <h5 class="text-success">${{ monthly_payment|floatformat:2|intcomma }}</h5>
+                                <h5 class="text-dark">${{ monthly_payment|floatformat:2|intcomma }}</h5>
                                 <small class="text-muted">Monthly Payment</small>
                             </div>
                         </div>
                         <div class="col-md-2">
                             <div class="text-center">
-                                <h5 class="text-secondary">${{ loan_info.current_balance|floatformat:2|intcomma }}</h5>
+                                <h5 class="text-dark">${{ loan_info.current_balance|floatformat:2|intcomma }}</h5>
                                 <small class="text-muted">Current Balance</small>
                             </div>
                         </div>
                         <div class="col-md-2">
                             <div class="text-center">
-                                {% with last_payment=scheduled_payments|last %}
-                                    {% if last_payment.actual_remaining_balance is not None %}
-                                        <h5 class="{% if last_payment.actual_remaining_balance < loan_info.current_balance %}text-success{% elif last_payment.actual_remaining_balance > loan_info.current_balance %}text-warning{% else %}text-muted{% endif %}">
-                                            ${{ last_payment.actual_remaining_balance|floatformat:2|intcomma }}
-                                        </h5>
-                                        <small class="text-muted">Actual Balance</small>
-                                    {% else %}
-                                        <h5 class="text-muted">${{ loan_info.current_balance|floatformat:2|intcomma }}</h5>
-                                        <small class="text-muted">Actual Balance</small>
+                                {% comment %}Show actual balance with smart coloring - simplified approach{% endcomment %}
+                                {% for scheduled in scheduled_payments reversed %}
+                                    {% if scheduled.actual_remaining_balance is not None %}
+                                        <div class="balance-match" style="{% if not forloop.first %}display: none;{% endif %}">
+                                            {% if scheduled.actual_remaining_balance > scheduled.remaining_balance %}
+                                                <h5 class="text-danger">
+                                                    ${{ scheduled.actual_remaining_balance|floatformat:2|intcomma }}
+                                                </h5>
+                                            {% elif scheduled.actual_remaining_balance < scheduled.remaining_balance %}
+                                                <h5 class="text-success">
+                                                    ${{ scheduled.actual_remaining_balance|floatformat:2|intcomma }}
+                                                </h5>
+                                            {% else %}
+                                                <h5 class="text-dark">
+                                                    ${{ scheduled.actual_remaining_balance|floatformat:2|intcomma }}
+                                                </h5>
+                                            {% endif %}
+                                            <small class="text-muted">Actual Balance</small>
+                                        </div>
                                     {% endif %}
-                                {% endwith %}
+                                {% empty %}
+                                    <h5 class="text-dark">${{ loan_info.current_balance|floatformat:2|intcomma }}</h5>
+                                    <small class="text-muted">Actual Balance</small>
+                                {% endfor %}
+                                {% comment %}Show fallback if no actual balances found{% endcomment %}
+                                <script>
+                                    if (document.querySelectorAll('#actual-balance-summary .balance-match').length === 0) {
+                                        document.querySelector('#actual-balance-summary').innerHTML = '<h5 class="text-dark">${{ loan_info.current_balance|floatformat:2|intcomma }}</h5><small class="text-muted">Actual Balance</small>';
+                                    }
+                                </script>
                             </div>
                         </div>
                     </div>
@@ -170,53 +674,135 @@
     <!-- Performance Metrics -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card metric-card {% if analysis.payment_score >= 90 %}positive{% elif analysis.payment_score >= 70 %}neutral{% else %}negative{% endif %} shadow h-100 py-3">
+            <div class="card metric-card {% if analysis.payment_score >= 80 %}excellent{% elif analysis.payment_score >= 60 %}good{% elif analysis.payment_score >= 40 %}fair{% elif analysis.payment_score >= 20 %}poor{% else %}critical{% endif %} shadow h-100 py-3">
                 <div class="card-body text-center">
                     <h2 class="mb-2">{{ analysis.payment_score }}%</h2>
-                    <h6 class="mb-0">Payment Score</h6>
+                    <h6 class="mb-0">Payment Consistency Score</h6>
                     <small>
-                        {% if analysis.payment_score >= 90 %}Excellent Performance
-                        {% elif analysis.payment_score >= 70 %}Good Performance
-                        {% else %}Needs Improvement{% endif %}
+                        {% if analysis.payment_score >= 80 %}Excellent Performance
+                        {% elif analysis.payment_score >= 60 %}Good Performance
+                        {% elif analysis.payment_score >= 40 %}Fair Performance
+                        {% elif analysis.payment_score >= 20 %}Poor Performance
+                        {% else %}Critical Performance{% endif %}
                     </small>
                 </div>
             </div>
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card metric-card {% if analysis.payment_variance >= 0 %}positive{% else %}negative{% endif %} shadow h-100 py-3">
+            <div class="card metric-card {{ analysis.variance_tier }} shadow h-100 py-3">
                 <div class="card-body text-center">
-                    <h2 class="mb-2">{{ analysis.payment_variance|floatformat:0 }}</h2>
+                    <h2 class="mb-2 {% if analysis.payment_variance_percentage >= 5 %}text-success{% elif analysis.payment_variance_percentage <= -15 %}text-danger{% endif %}">
+                        {% if analysis.payment_variance_percentage >= 0 %}+{% endif %}{{ analysis.payment_variance_percentage }}%
+                    </h2>
                     <h6 class="mb-0">Payment Variance</h6>
                     <small>
-                        {% if analysis.payment_variance >= 0 %}${{ analysis.payment_variance|floatformat:0|intcomma }} ahead
-                        {% else %}${{ analysis.payment_variance|floatformat:0|intcomma|slice:"1:" }} behind{% endif %}
+                        {% if analysis.variance_tier == 'excellent' %}<i class="fas fa-trophy me-1"></i>{{ analysis.time_variance_description|title }}
+                        {% elif analysis.variance_tier == 'good' %}<i class="fas fa-check me-1"></i>{{ analysis.time_variance_description|title }}
+                        {% elif analysis.variance_tier == 'fair' %}<i class="fas fa-info-circle me-1"></i>{{ analysis.time_variance_description|title }}
+                        {% elif analysis.variance_tier == 'poor' %}<i class="fas fa-exclamation-triangle me-1"></i>{{ analysis.time_variance_description|title }} - Review needed
+                        {% else %}<i class="fas fa-phone me-1"></i>Critical: {{ analysis.time_variance_description }} - Contact required{% endif %}
+                        <br><span class="{% if analysis.payment_variance >= 0 %}text-success fw-bold{% else %}text-danger fw-bold{% endif %}">${{ analysis.payment_variance|floatformat:0|intcomma }}{% if analysis.payment_variance >= 0 %} ahead{% else %} behind{% endif %}</span>
                     </small>
                 </div>
             </div>
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card metric-card {% if analysis.on_time_payments >= analysis.late_payments %}positive{% else %}negative{% endif %} shadow h-100 py-3">
-                <div class="card-body text-center">
-                    <h2 class="mb-2">{{ analysis.on_time_payments }}/{{ analysis.payments_due_to_date }}</h2>
-                    <h6 class="mb-0">On-Time Payments</h6>
-                    <small>{{ analysis.late_payments }} late, {{ analysis.missed_payments }} missed</small>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card metric-card {% if analysis.on_track %}positive{% else %}negative{% endif %} shadow h-100 py-3">
+            <div class="card metric-card {% if analysis.payment_score >= 80 %}excellent{% elif analysis.payment_score >= 60 %}good{% elif analysis.payment_score >= 40 %}fair{% elif analysis.payment_score >= 20 %}poor{% else %}critical{% endif %} shadow h-100 py-3">
                 <div class="card-body text-center">
                     <h2 class="mb-2">
-                        {% if analysis.on_track %}<i class="fas fa-check-circle"></i>
-                        {% else %}<i class="fas fa-exclamation-triangle"></i>{% endif %}
+                        {% if analysis.payment_score >= 80 %}<i class="fas fa-check-circle"></i>
+                        {% elif analysis.payment_score >= 60 %}<i class="fas fa-thumbs-up"></i>
+                        {% elif analysis.payment_score >= 40 %}<i class="fas fa-minus-circle"></i>
+                        {% elif analysis.payment_score >= 20 %}<i class="fas fa-exclamation-triangle"></i>
+                        {% else %}<i class="fas fa-times-circle"></i>{% endif %}
                     </h2>
                     <h6 class="mb-0">Loan Status</h6>
                     <small>
-                        {% if analysis.on_track %}On Track{% else %}At Risk{% endif %}
+                        {% if analysis.payment_score >= 80 %}Excellent Standing
+                        {% elif analysis.payment_score >= 60 %}Good Standing
+                        {% elif analysis.payment_score >= 40 %}Fair Standing
+                        {% elif analysis.payment_score >= 20 %}At Risk
+                        {% else %}Critical Risk{% endif %}
                     </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Universal 5-Tier Performance Overview -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>
+                        Performance Overview - Universal 5-Tier Quintile System
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="me-3">
+                                    <span class="badge quintile-badge {% if analysis.payment_score >= 80 %}excellent{% elif analysis.payment_score >= 60 %}good{% elif analysis.payment_score >= 40 %}fair{% elif analysis.payment_score >= 20 %}poor{% else %}critical{% endif %} fs-6">
+                                        {{ analysis.payment_score }}%
+                                    </span>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="progress" style="height: 12px; border-radius: 6px;">
+                                        <div class="progress-bar quintile-progress {% if analysis.payment_score >= 80 %}excellent{% elif analysis.payment_score >= 60 %}good{% elif analysis.payment_score >= 40 %}fair{% elif analysis.payment_score >= 20 %}poor{% else %}critical{% endif %}" 
+                                             style="width: {{ analysis.payment_score }}%"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mt-1">
+                                        <small class="text-muted">0%</small>
+                                        <small class="text-muted">20%</small>
+                                        <small class="text-muted">40%</small>
+                                        <small class="text-muted">60%</small>
+                                        <small class="text-muted">80%</small>
+                                        <small class="text-muted">100%</small>
+                                    </div>
+                                </div>
+                                <div class="ms-3">
+                                    <span class="status-indicator {% if analysis.payment_score >= 80 %}excellent{% elif analysis.payment_score >= 60 %}good{% elif analysis.payment_score >= 40 %}fair{% elif analysis.payment_score >= 20 %}poor{% else %}critical{% endif %}">
+                                        {% if analysis.payment_score >= 80 %}Excellent
+                                        {% elif analysis.payment_score >= 60 %}Good
+                                        {% elif analysis.payment_score >= 40 %}Fair
+                                        {% elif analysis.payment_score >= 20 %}Poor
+                                        {% else %}Critical{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="bg-light p-3 rounded">
+                                <h6 class="mb-2"><i class="fas fa-info-circle me-2"></i>Quintile Scale</h6>
+                                <div class="small">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="badge quintile-badge excellent">80-100%</span>
+                                        <span class="text-muted">Excellent</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="badge quintile-badge good">60-79%</span>
+                                        <span class="text-muted">Good</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="badge quintile-badge fair">40-59%</span>
+                                        <span class="text-muted">Fair</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="badge quintile-badge poor">20-39%</span>
+                                        <span class="text-muted">Poor</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="badge quintile-badge critical">0-19%</span>
+                                        <span class="text-muted">Critical</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -238,49 +824,109 @@
                     </h6>
                 </div>
                 <div class="card-body">
+                    <!-- Debug Information -->
+                    <div class="alert alert-info mb-3">
+                        <small>
+                            <strong>Debug Info:</strong> 
+                            Showing all {{ scheduled_payments|length }} payments | 
+                            {{ actual_payments|length }} actual payments made |
+                            Analysis: {{ analysis.payments_due_to_date }} due, {{ analysis.on_time_payments }} on-time, {{ analysis.late_payments }} late, {{ analysis.missed_payments }} missed
+                        </small>
+                    </div>
+                    
                     <div class="table-responsive">
                         <table class="table table-hover table-sm">
                             <thead class="table-light">
                                 <tr>
                                     <th rowspan="2" class="align-middle">Payment #</th>
                                     <th rowspan="2" class="align-middle">Due Date</th>
-                                    <th colspan="3" class="text-center border-bottom">Scheduled Payment</th>
-                                    <th colspan="4" class="text-center border-bottom">Actual Payment</th>
+                                    <th colspan="4" class="text-center border-bottom text-success fw-bold">Scheduled Payment</th>
+                                    <th colspan="6" class="text-center border-bottom text-warning fw-bold">Actual Payment</th>
                                     <th rowspan="2" class="align-middle">Difference</th>
                                     <th rowspan="2" class="align-middle">Actual Remaining Balance</th>
                                     <th rowspan="2" class="align-middle">Status</th>
+                                    <th rowspan="2" class="align-middle">Actions</th>
                                 </tr>
                                 <tr>
                                     <th class="text-center">Total</th>
                                     <th class="text-center">Interest</th>
                                     <th class="text-center">Principal</th>
+                                    <th class="text-center">Late Fees</th>
+                                    <th class="text-center">Date Paid</th>
                                     <th class="text-center">Total</th>
                                     <th class="text-center">Interest</th>
                                     <th class="text-center">Principal</th>
+                                    <th class="text-center">Late Fees</th>
                                     <th class="text-center">Method</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for scheduled in scheduled_payments|slice:":12" %}
+                                {% for scheduled in scheduled_payments %}
                                 <tr>
                                     <td><strong>{{ scheduled.payment_number }}</strong></td>
                                     <td>{{ scheduled.due_date|date:"M d, Y" }}</td>
                                     
                                     <!-- Scheduled Payment Breakdown -->
                                     <td class="text-end">
-                                        <strong>${{ scheduled.total_payment|floatformat:2|intcomma }}</strong>
+                                        <strong class="text-dark">${{ scheduled.total_payment|floatformat:2|intcomma }}</strong>
                                     </td>
-                                    <td class="text-end text-warning">
+                                    <td class="text-end text-dark">
                                         ${{ scheduled.interest_portion|floatformat:2|intcomma }}
                                     </td>
-                                    <td class="text-end text-primary">
+                                    <td class="text-end text-dark">
                                         ${{ scheduled.principal_portion|floatformat:2|intcomma }}
                                     </td>
+                                    <td class="text-end text-dark">
+                                        ${{ scheduled.late_fee_portion|default:"0.00"|floatformat:2|intcomma }}
+                                    </td>
                                     
-                                    <!-- Actual Payment Breakdown -->
+                                    <!-- Date Paid - Aligned with Status column -->
+                                    <td class="text-center">
+                                        {% if scheduled.actual_payment_date %}
+                                            <div class="mb-1">
+                                                <strong class="text-dark">{{ scheduled.actual_payment_date|date:"M d, Y" }}</strong>
+                                            </div>
+                                            <span class="badge payment-status {% if scheduled.payment_timing == 'on_time' %}on-time{% elif scheduled.payment_timing == 'slightly_late' %}slightly_late{% elif scheduled.payment_timing == 'moderately_late' %}moderately_late{% elif scheduled.payment_timing == 'late' %}late{% elif scheduled.payment_timing == 'severely_late' %}severely_late{% else %}slightly_late{% endif %}">
+                                                {% if scheduled.payment_timing == 'on_time' %}
+                                                    <i class="fas fa-check fa-sm"></i> On Time
+                                                {% elif scheduled.payment_timing == 'slightly_late' %}
+                                                    <i class="fas fa-clock fa-sm"></i> {{ scheduled.days_late }}d late
+                                                {% elif scheduled.payment_timing == 'moderately_late' %}
+                                                    <i class="fas fa-exclamation-triangle fa-sm"></i> {{ scheduled.days_late }}d late
+                                                {% elif scheduled.payment_timing == 'late' %}
+                                                    <i class="fas fa-exclamation-triangle fa-sm"></i> {{ scheduled.days_late }}d late
+                                                {% elif scheduled.payment_timing == 'severely_late' %}
+                                                    <i class="fas fa-times-circle fa-sm"></i> {{ scheduled.days_late }}d late
+                                                {% else %}
+                                                    <i class="fas fa-clock fa-sm"></i> Late
+                                                {% endif %}
+                                            </span>
+                                        {% elif scheduled.status == 'overdue' %}
+                                            <div class="mb-1">
+                                                <span class="text-muted">Not Paid</span>
+                                            </div>
+                                            <span class="badge payment-status overdue">
+                                                <i class="fas fa-times-circle fa-sm"></i> Overdue
+                                            </span>
+                                        {% elif scheduled.status == 'due_soon' %}
+                                            <div class="mb-1">
+                                                <span class="text-muted">{{ scheduled.due_date|date:"M d, Y" }}</span>
+                                            </div>
+                                            <span class="badge payment-status due_soon">
+                                                <i class="fas fa-clock fa-sm"></i> Due Soon
+                                            </span>
+                                        {% else %}
+                                            <div class="mb-1">
+                                                <span class="text-muted">{{ scheduled.due_date|date:"M d, Y" }}</span>
+                                            </div>
+                                            <span class="badge payment-status scheduled">
+                                                <i class="fas fa-calendar fa-sm"></i> Scheduled
+                                            </span>
+                                        {% endif %}
+                                    </td>
                                     <td class="text-end">
                                         {% if scheduled.actual_payment %}
-                                            <strong class="text-success">${{ scheduled.actual_payment|floatformat:2|intcomma }}</strong>
+                                            <strong class="text-dark">${{ scheduled.actual_payment|floatformat:2|intcomma }}</strong>
                                         {% elif scheduled.status == 'overdue' %}
                                             <span class="text-danger">Not Paid</span>
                                         {% elif scheduled.status == 'due_soon' %}
@@ -291,7 +937,7 @@
                                     </td>
                                     <td class="text-end">
                                         {% if scheduled.actual_interest_portion %}
-                                            <span class="text-warning">
+                                            <span class="text-dark">
                                                 ${{ scheduled.actual_interest_portion|floatformat:2|intcomma }}
                                             </span>
                                             {% if scheduled.interest_difference and scheduled.interest_difference != 0 %}
@@ -305,7 +951,7 @@
                                     </td>
                                     <td class="text-end">
                                         {% if scheduled.actual_principal_portion %}
-                                            <span class="text-primary">
+                                            <span class="text-dark">
                                                 ${{ scheduled.actual_principal_portion|floatformat:2|intcomma }}
                                             </span>
                                             {% if scheduled.principal_difference and scheduled.principal_difference != 0 %}
@@ -317,12 +963,23 @@
                                             <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
+                                    <td class="text-end">
+                                        {% if scheduled.actual_late_fee_portion %}
+                                            <span class="text-dark">
+                                                ${{ scheduled.actual_late_fee_portion|floatformat:2|intcomma }}
+                                            </span>
+                                            {% if scheduled.late_fee_difference and scheduled.late_fee_difference != 0 %}
+                                                <br><small class="{% if scheduled.late_fee_difference > 0 %}text-warning{% else %}text-success{% endif %}">
+                                                    {% if scheduled.late_fee_difference > 0 %}+{% endif %}${{ scheduled.late_fee_difference|floatformat:2|intcomma }}
+                                                </small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">$0.00</span>
+                                        {% endif %}
+                                    </td>
                                     <td class="text-center">
                                         {% if scheduled.actual_payment_method %}
-                                            <span class="badge bg-info">{{ scheduled.actual_payment_method|title }}</span>
-                                            {% if scheduled.actual_payment_date %}
-                                                <br><small class="text-muted">{{ scheduled.actual_payment_date|date:"M d" }}</small>
-                                            {% endif %}
+                                            <span class="badge bg-secondary">{{ scheduled.actual_payment_method|title }}</span>
                                         {% else %}
                                             <span class="text-muted">-</span>
                                         {% endif %}
@@ -353,11 +1010,11 @@
                                                     {% with balance_diff=scheduled.remaining_balance|add:scheduled.actual_remaining_balance|floatformat:2 %}
                                                         {% if scheduled.actual_remaining_balance < scheduled.remaining_balance %}
                                                             <span class="text-success">
-                                                                <i class="fas fa-arrow-down fa-sm ms-1"></i>
+                                                                <i class="fas fa-arrow-down fa-sm ms-1"></i> Better
                                                             </span>
                                                         {% elif scheduled.actual_remaining_balance > scheduled.remaining_balance %}
-                                                            <span class="text-warning">
-                                                                <i class="fas fa-arrow-up fa-sm ms-1"></i>
+                                                            <span class="text-danger">
+                                                                <i class="fas fa-arrow-up fa-sm ms-1"></i> Behind
                                                             </span>
                                                         {% endif %}
                                                     {% endwith %}
@@ -369,23 +1026,72 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <span class="badge payment-status {{ scheduled.status }}">
-                                            {% if scheduled.status == 'overdue' %}Overdue
-                                            {% elif scheduled.status == 'due_soon' %}Due Soon
-                                            {% else %}{{ scheduled.status|title }}{% endif %}
+                                    <!-- Status - Aligned with Date Paid column -->
+                                    <td class="text-center">
+                                        <span class="badge payment-status {% if scheduled.actual_payment_date and scheduled.payment_timing == 'on_time' %}on-time{% elif scheduled.actual_payment_date and scheduled.payment_timing == 'slightly_late' %}slightly_late{% elif scheduled.actual_payment_date and scheduled.payment_timing == 'moderately_late' %}moderately_late{% elif scheduled.actual_payment_date and scheduled.payment_timing == 'late' %}late{% elif scheduled.actual_payment_date and scheduled.payment_timing == 'severely_late' %}severely_late{% else %}{{ scheduled.status }}{% endif %}">
+                                            {% if scheduled.actual_payment_date %}
+                                                {% if scheduled.payment_timing == 'on_time' %}
+                                                    <i class="fas fa-check"></i> Paid On Time
+                                                {% elif scheduled.payment_timing == 'slightly_late' %}
+                                                    <i class="fas fa-clock"></i> Paid {{ scheduled.days_late }}d late
+                                                {% elif scheduled.payment_timing == 'moderately_late' %}
+                                                    <i class="fas fa-exclamation-triangle"></i> Paid {{ scheduled.days_late }}d late
+                                                {% elif scheduled.payment_timing == 'late' %}
+                                                    <i class="fas fa-exclamation-triangle"></i> Paid {{ scheduled.days_late }}d late
+                                                {% elif scheduled.payment_timing == 'severely_late' %}
+                                                    <i class="fas fa-times-circle"></i> Paid {{ scheduled.days_late }}d late
+                                                {% else %}
+                                                    <i class="fas fa-clock"></i> Paid Late
+                                                {% endif %}
+                                            {% elif scheduled.status == 'overdue' %}
+                                                <i class="fas fa-exclamation-triangle"></i> Overdue
+                                            {% elif scheduled.status == 'due_soon' %}
+                                                <i class="fas fa-clock"></i> Due Soon
+                                            {% else %}
+                                                <i class="fas fa-calendar"></i> Scheduled
+                                            {% endif %}
                                         </span>
+                                    </td>
+                                    <!-- Manager Approval Actions -->
+                                    <td class="text-center">
+                                        {% if scheduled.actual_payment_date and not scheduled.is_approved %}
+                                            <div class="approval-actions">
+                                                <button type="button" class="btn approve-btn" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#approvePaymentModal" 
+                                                        data-payment-id="{{ scheduled.payment_id }}"
+                                                        data-payment-number="{{ scheduled.payment_number }}"
+                                                        data-payment-amount="{{ scheduled.actual_payment }}"
+                                                        data-interest-amount="{{ scheduled.actual_interest_portion|default:'0.00' }}"
+                                                        data-principal-amount="{{ scheduled.actual_principal_portion|default:'0.00' }}"
+                                                        data-late-fee-amount="{{ scheduled.actual_late_fee_portion|default:'0.00' }}"
+                                                        title="Approve Split Allocation">
+                                                    <i class="fas fa-shield-check btn-icon"></i>Approve Split
+                                                </button>
+                                                <button type="button" class="btn edit-btn" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#editPaymentModal" 
+                                                        data-payment-id="{{ scheduled.payment_id }}"
+                                                        title="Edit Allocation">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </div>
+                                        {% elif scheduled.is_approved %}
+                                            <span class="approved-badge">
+                                                <i class="fas fa-check-circle badge-icon"></i>
+                                                <span>Approved</span>
+                                            </span>
+                                        {% else %}
+                                            <span class="pending-badge">
+                                                <i class="fas fa-clock"></i> Pending Payment
+                                            </span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                    
-                    {% if scheduled_payments|length > 12 %}
-                    <div class="text-center mt-3">
-                        <small class="text-muted">Showing first 12 payments. Total: {{ scheduled_payments|length }} payments</small>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -412,7 +1118,7 @@
                     <div class="mb-3">
                         <div class="d-flex justify-content-between">
                             <span>Total Paid:</span>
-                            <strong class="{% if analysis.total_paid >= analysis.total_scheduled_to_date %}text-success{% else %}text-warning{% endif %}">
+                            <strong class="text-dark">
                                 ${{ analysis.total_paid|floatformat:2|intcomma }}
                             </strong>
                         </div>
@@ -429,7 +1135,7 @@
                     <div class="mb-3">
                         <div class="d-flex justify-content-between">
                             <span>Payments Made:</span>
-                            <strong>{{ analysis.payments_made }} / {{ analysis.payments_due_to_date }}</strong>
+                            <strong class="text-dark">{{ analysis.payments_made }} / {{ analysis.payments_due_to_date }}</strong>
                         </div>
                     </div>
                     
@@ -457,34 +1163,44 @@
                 <div class="card-body">
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center">
-                            <span>Payment Consistency</span>
-                            <span class="badge {% if analysis.payment_score >= 90 %}bg-success{% elif analysis.payment_score >= 70 %}bg-warning{% else %}bg-danger{% endif %}">
+                            <span>Payment Consistency Score</span>
+                            <span class="badge quintile-badge {% if analysis.payment_score >= 80 %}excellent{% elif analysis.payment_score >= 60 %}good{% elif analysis.payment_score >= 40 %}fair{% elif analysis.payment_score >= 20 %}poor{% else %}critical{% endif %}">
                                 {{ analysis.payment_score }}%
                             </span>
                         </div>
-                        <div class="progress mt-1" style="height: 6px;">
-                            <div class="progress-bar {% if analysis.payment_score >= 90 %}bg-success{% elif analysis.payment_score >= 70 %}bg-warning{% else %}bg-danger{% endif %}" 
+                        <div class="progress mt-1" style="height: 8px; border-radius: 4px;">
+                            <div class="progress-bar quintile-progress {% if analysis.payment_score >= 80 %}excellent{% elif analysis.payment_score >= 60 %}good{% elif analysis.payment_score >= 40 %}fair{% elif analysis.payment_score >= 20 %}poor{% else %}critical{% endif %}" 
                                  style="width: {{ analysis.payment_score }}%"></div>
                         </div>
                     </div>
                     
                     <div class="mb-3">
-                        <small class="text-muted d-block">Payment History:</small>
+                        <small class="text-muted d-block mb-2">Payment History:</small>
                         <div class="row text-center">
-                            <div class="col-4">
-                                <div class="text-success">
+                            <div class="col-3">
+                                <div class="payment-metric on-time" style="background-color: #d4edda; color: #155724; border-left: 4px solid #28a745;">
+                                    <i class="fas fa-check-circle mb-1" style="color: #155724;"></i><br>
                                     <strong>{{ analysis.on_time_payments }}</strong><br>
                                     <small>On Time</small>
                                 </div>
                             </div>
-                            <div class="col-4">
-                                <div class="text-warning">
-                                    <strong>{{ analysis.late_payments }}</strong><br>
-                                    <small>Late</small>
+                            <div class="col-3">
+                                <div class="payment-metric slightly-late" style="background-color: #bee5eb; color: #0c5460; border-left: 4px solid #17a2b8;">
+                                    <i class="fas fa-clock mb-1" style="color: #0c5460;"></i><br>
+                                    <strong>{{ analysis.slightly_late_payments|add:analysis.moderately_late_payments }}</strong><br>
+                                    <small>Slightly Late</small>
                                 </div>
                             </div>
-                            <div class="col-4">
-                                <div class="text-danger">
+                            <div class="col-3">
+                                <div class="payment-metric late" style="background-color: #f8d7da; color: #721c24; border-left: 4px solid #dc3545;">
+                                    <i class="fas fa-exclamation-circle mb-1" style="color: #721c24;"></i><br>
+                                    <strong>{{ analysis.late_payments|add:analysis.severely_late_payments }}</strong><br>
+                                    <small>Very Late</small>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="payment-metric missed" style="background-color: #e9ecef; color: #6c757d; border-left: 4px solid #adb5bd;">
+                                    <i class="fas fa-ban mb-1" style="color: #6c757d;"></i><br>
                                     <strong>{{ analysis.missed_payments }}</strong><br>
                                     <small>Missed</small>
                                 </div>
@@ -493,13 +1209,25 @@
                     </div>
                     
                     <div class="text-center">
-                        {% if analysis.on_track %}
-                            <span class="badge bg-success">
-                                <i class="fas fa-check-circle me-1"></i>Loan is On Track
+                        {% if analysis.payment_score >= 80 %}
+                            <span class="badge attention-badge excellent">
+                                <i class="fas fa-star me-1"></i>Excellent Performance
+                            </span>
+                        {% elif analysis.payment_score >= 60 %}
+                            <span class="badge attention-badge good" style="background: #17a2b8 !important; color: white !important; background-image: none !important;">
+                                <i class="fas fa-check-circle me-1"></i>Good Performance
+                            </span>
+                        {% elif analysis.payment_score >= 40 %}
+                            <span class="badge attention-badge warning">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Needs Monitoring
+                            </span>
+                        {% elif analysis.payment_score >= 20 %}
+                            <span class="badge attention-badge danger" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">
+                                <i class="fas fa-exclamation-circle me-1"></i>Poor Performance
                             </span>
                         {% else %}
-                            <span class="badge bg-danger">
-                                <i class="fas fa-exclamation-triangle me-1"></i>Requires Attention
+                            <span class="badge attention-badge danger">
+                                <i class="fas fa-times-circle me-1"></i>Critical - Immediate Action
                             </span>
                         {% endif %}
                     </div>
@@ -521,20 +1249,38 @@
                 </div>
                 <div class="card-body">
                     <div class="payment-timeline">
-                        {% for payment in actual_payments|slice:":5" %}
+                        {% for payment in actual_payments|dictsortreversed:"payment_date"|slice:":5" %}
                         <div class="timeline-item paid">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <h6 class="mb-1">${{ payment.amount|floatformat:2|intcomma }}</h6>
-                                    <p class="mb-1">{{ payment.payment_date|date:"M d, Y" }} - {{ payment.method|title }}</p>
+                                    <h6 class="mb-1 text-dark">
+                                        <i class="fas fa-dollar-sign me-1"></i>
+                                        ${{ payment.amount|floatformat:2|intcomma }}
+                                    </h6>
+                                    <p class="mb-1">
+                                        <strong class="text-dark">
+                                            <i class="fas fa-calendar-day me-1"></i>
+                                            {{ payment.payment_date|date:"l, M d, Y" }}
+                                        </strong>
+                                        <span class="badge bg-secondary ms-2">{{ payment.method|title }}</span>
+                                    </p>
                                     {% if payment.reference %}
-                                        <small class="text-muted">Ref: {{ payment.reference }}</small>
+                                        <small class="text-muted">
+                                            <i class="fas fa-receipt me-1"></i>Reference: {{ payment.reference }}
+                                        </small>
                                     {% endif %}
                                     {% if payment.notes %}
-                                        <br><small class="text-muted">{{ payment.notes }}</small>
+                                        <br><small class="text-muted">
+                                            <i class="fas fa-sticky-note me-1"></i>{{ payment.notes }}
+                                        </small>
                                     {% endif %}
                                 </div>
-                                <span class="badge bg-success">Paid</span>
+                                <div class="text-end">
+                                    <span class="badge bg-secondary mb-1">
+                                        <i class="fas fa-check-circle me-1"></i>Paid
+                                    </span>
+                                    <br><small class="text-muted">{{ payment.payment_date|date:"M d" }}</small>
+                                </div>
                             </div>
                         </div>
                         {% endfor %}
@@ -544,6 +1290,275 @@
         </div>
     </div>
     {% endif %}
+
+    <!-- Whole Loan Approval Section -->
+    {% if application.status == 'approved' %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow border-primary loan-approval-section">
+                <div class="card-header bg-gradient" style="background: linear-gradient(135deg, #007bff 0%, #6610f2 100%); color: white;">
+                    <h6 class="mb-0">
+                        <i class="fas fa-clipboard-check me-2"></i>
+                        Loan Approval Management
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-lg-8">
+                            <h6 class="mb-2">
+                                <i class="fas fa-user-shield me-2 text-primary"></i>
+                                Manager Approval Required
+                            </h6>
+                            <p class="mb-2">
+                                Review all payment allocations and approve the entire loan's payment history.
+                                This will create proper journal entries using the four-tier GL configuration.
+                            </p>
+                            <div class="alert alert-info" role="alert" style="background: rgba(0, 123, 255, 0.1); border-color: rgba(0, 123, 255, 0.2);">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <strong>Total payments requiring approval:</strong> {{ scheduled_payments|length }} transactions
+                                <br><small class="text-muted">This action will create balanced journal entries for Interest, Principal, and Late Fee allocations.</small>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 text-end">
+                            {% if not loan_fully_approved %}
+                                <button type="button" class="btn approve-loan-btn" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#approveLoanModal">
+                                    <i class="fas fa-shield-check me-2"></i>
+                                    Approve Entire Loan
+                                </button>
+                            {% else %}
+                                <span class="loan-approved-badge">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    Loan Fully Approved
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Payment Approval Modal -->
+<div class="modal fade" id="approvePaymentModal" tabindex="-1" aria-labelledby="approvePaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="approvePaymentModalLabel">
+                    <i class="fas fa-shield-check me-2"></i>
+                    Approve Payment Allocation
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-2"></i>Four-Tier Payment Allocation</h6>
+                    <p class="mb-0">Review and approve the payment split according to your GL configuration.</p>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Payment Details</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Payment #:</strong></td>
+                                <td><span id="modal-payment-number"></span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Amount:</strong></td>
+                                <td><strong>$<span id="modal-payment-amount"></span></strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success">Allocation Breakdown</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td>Interest:</td>
+                                <td class="text-end">$<span id="modal-interest-amount"></span></td>
+                            </tr>
+                            <tr>
+                                <td>Principal:</td>
+                                <td class="text-end">$<span id="modal-principal-amount"></span></td>
+                            </tr>
+                            <tr>
+                                <td>Late Fees:</td>
+                                <td class="text-end">$<span id="modal-late-fee-amount"></span></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <small>
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        Approving this payment will create balanced journal entries in your accounting system.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmPaymentApproval">
+                    <i class="fas fa-check me-2"></i>Approve Payment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Payment Allocation Modal -->
+<div class="modal fade" id="editPaymentModal" tabindex="-1" aria-labelledby="editPaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editPaymentModalLabel">
+                    <i class="fas fa-edit me-2"></i>
+                    Edit Payment Allocation
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-2"></i>Manual Split Entry</h6>
+                    <p class="mb-0">Manually adjust the payment allocation before approval.</p>
+                </div>
+                
+                <form id="editPaymentForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit-interest" class="form-label">Interest Amount</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="edit-interest" step="0.01" min="0">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit-principal" class="form-label">Principal Amount</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="edit-principal" step="0.01" min="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit-late-fees" class="form-label">Late Fee Amount</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="edit-late-fees" step="0.01" min="0">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Total Amount</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="text" class="form-control" id="edit-total" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="savePaymentEdit">
+                    <i class="fas fa-save me-2"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Whole Loan Approval Modal -->
+<div class="modal fade" id="approveLoanModal" tabindex="-1" aria-labelledby="approveLoanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="approveLoanModalLabel">
+                    <i class="fas fa-clipboard-check me-2"></i>
+                    Approve Entire Loan - {{ application.application_id }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-exclamation-triangle me-2"></i>Critical Action Required</h6>
+                    <p class="mb-0">
+                        You are about to approve all payment allocations for this loan. This will create comprehensive 
+                        journal entries using your four-tier GL configuration and cannot be easily undone.
+                    </p>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-lg-6">
+                        <h6 class="text-primary">Loan Summary</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Customer:</strong></td>
+                                <td>{{ loan_info.customer_name }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Loan Amount:</strong></td>
+                                <td>${{ loan_info.principal_amount|floatformat:2|intcomma }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Payments:</strong></td>
+                                <td>{{ analysis.payments_made }} payments</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Amount:</strong></td>
+                                <td><strong>${{ analysis.total_paid|floatformat:2|intcomma }}</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-lg-6">
+                        <h6 class="text-success">Allocation Totals</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td>Total Interest:</td>
+                                <td class="text-end">$<span id="total-interest-approval">0.00</span></td>
+                            </tr>
+                            <tr>
+                                <td>Total Principal:</td>
+                                <td class="text-end">$<span id="total-principal-approval">0.00</span></td>
+                            </tr>
+                            <tr>
+                                <td>Total Late Fees:</td>
+                                <td class="text-end">$<span id="total-late-fees-approval">0.00</span></td>
+                            </tr>
+                            <tr class="table-success">
+                                <td><strong>Grand Total:</strong></td>
+                                <td class="text-end"><strong>$<span id="grand-total-approval">0.00</span></strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <small>
+                        <i class="fas fa-info-circle me-1"></i>
+                        This action will integrate with your loan reconciliation bridge four-tier system and create proper accounting entries.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success btn-lg" id="confirmLoanApproval">
+                    <i class="fas fa-shield-check me-2"></i>Approve Entire Loan
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -558,5 +1573,283 @@ setTimeout(function() {
 $(function() {
     $('[data-bs-toggle="tooltip"]').tooltip();
 });
+
+// Payment Approval Modal Population
+$('#approvePaymentModal').on('show.bs.modal', function (event) {
+    var button = $(event.relatedTarget);
+    var paymentId = button.data('payment-id');
+    var paymentNumber = button.data('payment-number');
+    var paymentAmount = button.data('payment-amount');
+    var interestAmount = button.data('interest-amount');
+    var principalAmount = button.data('principal-amount');
+    var lateFeeAmount = button.data('late-fee-amount');
+    
+    $('#modal-payment-number').text(paymentNumber);
+    $('#modal-payment-amount').text(parseFloat(paymentAmount).toFixed(2));
+    $('#modal-interest-amount').text(parseFloat(interestAmount).toFixed(2));
+    $('#modal-principal-amount').text(parseFloat(principalAmount).toFixed(2));
+    $('#modal-late-fee-amount').text(parseFloat(lateFeeAmount).toFixed(2));
+    
+    // Store payment ID for approval action
+    $('#confirmPaymentApproval').data('payment-id', paymentId);
+});
+
+// Edit Payment Modal Population
+$('#editPaymentModal').on('show.bs.modal', function (event) {
+    var button = $(event.relatedTarget);
+    var paymentId = button.data('payment-id');
+    var interestAmount = button.data('interest-amount');
+    var principalAmount = button.data('principal-amount');
+    var lateFeeAmount = button.data('late-fee-amount');
+    
+    $('#edit-interest').val(parseFloat(interestAmount).toFixed(2));
+    $('#edit-principal').val(parseFloat(principalAmount).toFixed(2));
+    $('#edit-late-fees').val(parseFloat(lateFeeAmount).toFixed(2));
+    
+    updateEditTotal();
+    
+    // Store payment ID for save action
+    $('#savePaymentEdit').data('payment-id', paymentId);
+});
+
+// Update total in edit modal when amounts change
+$('#edit-interest, #edit-principal, #edit-late-fees').on('input', function() {
+    updateEditTotal();
+});
+
+function updateEditTotal() {
+    var interest = parseFloat($('#edit-interest').val()) || 0;
+    var principal = parseFloat($('#edit-principal').val()) || 0;
+    var lateFees = parseFloat($('#edit-late-fees').val()) || 0;
+    var total = interest + principal + lateFees;
+    $('#edit-total').val(total.toFixed(2));
+}
+
+// Individual Payment Approval with Enhanced UX
+$('#confirmPaymentApproval').on('click', function() {
+    var paymentId = $(this).data('payment-id');
+    var button = $(this);
+    var originalHtml = button.html();
+    
+    // Add loading class and update text
+    button.addClass('loading').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing Approval...');
+    
+    $.ajax({
+        url: '{% url "loans_core:approve_payment" application.pk %}',
+        method: 'POST',
+        data: {
+            'payment_id': paymentId,
+            'csrfmiddlewaretoken': '{{ csrf_token }}'
+        },
+        success: function(response) {
+            if (response.success) {
+                $('#approvePaymentModal').modal('hide');
+                
+                // Enhanced success message with journal reference
+                let successMessage = `Payment approved successfully!`;
+                if (response.journal_reference) {
+                    successMessage += ` Journal ${response.journal_reference} created.`;
+                }
+                
+                showAlert('success', successMessage);
+                
+                // Update the specific row in the table to show approved status
+                var row = $(`button[data-payment-id="${paymentId}"]`).closest('tr');
+                var actionsCell = row.find('td:last');
+                actionsCell.html(`
+                    <span class="approved-badge">
+                        <i class="fas fa-check-circle badge-icon"></i>
+                        <span>Approved</span>
+                    </span>
+                `);
+                
+            } else {
+                // Handle specific error cases
+                if (response.already_approved) {
+                    showAlert('warning', response.error);
+                    // Update UI to show it's already approved
+                    var row = $(`button[data-payment-id="${paymentId}"]`).closest('tr');
+                    var actionsCell = row.find('td:last');
+                    actionsCell.html(`
+                        <span class="approved-badge">
+                            <i class="fas fa-check-circle badge-icon"></i>
+                            <span>Already Approved</span>
+                        </span>
+                    `);
+                } else {
+                    showAlert('error', response.error || 'Failed to approve payment');
+                }
+                button.removeClass('loading').prop('disabled', false).html(originalHtml);
+            }
+        },
+        error: function() {
+            showAlert('error', 'Network error. Please try again.');
+            button.removeClass('loading').prop('disabled', false).html(originalHtml);
+        }
+    });
+});
+
+// Save Payment Edit
+$('#savePaymentEdit').on('click', function() {
+    var paymentId = $(this).data('payment-id');
+    var interest = parseFloat($('#edit-interest').val()) || 0;
+    var principal = parseFloat($('#edit-principal').val()) || 0;
+    var lateFees = parseFloat($('#edit-late-fees').val()) || 0;
+    var button = $(this);
+    
+    button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...');
+    
+    $.ajax({
+        url: '{% url "loans_core:edit_payment_allocation" application.pk %}',
+        method: 'POST',
+        data: {
+            'payment_id': paymentId,
+            'interest_amount': interest,
+            'principal_amount': principal,
+            'late_fee_amount': lateFees,
+            'csrfmiddlewaretoken': '{{ csrf_token }}'
+        },
+        success: function(response) {
+            if (response.success) {
+                $('#editPaymentModal').modal('hide');
+                showAlert('success', 'Payment allocation updated successfully!');
+                setTimeout(function() {
+                    location.reload();
+                }, 1500);
+            } else {
+                showAlert('error', response.error || 'Failed to update payment allocation');
+                button.prop('disabled', false).html('<i class="fas fa-save me-2"></i>Save Changes');
+            }
+        },
+        error: function() {
+            showAlert('error', 'Network error. Please try again.');
+            button.prop('disabled', false).html('<i class="fas fa-save me-2"></i>Save Changes');
+        }
+    });
+});
+
+// Whole Loan Approval
+$('#approveLoanModal').on('show.bs.modal', function (event) {
+    // Calculate totals for display
+    var totalInterest = 0;
+    var totalPrincipal = 0;
+    var totalLateFees = 0;
+    
+    // Sum up all actual payments (this would need to be populated by the backend)
+    {% for scheduled in scheduled_payments %}
+        {% if scheduled.actual_payment_date %}
+            totalInterest += parseFloat('{{ scheduled.actual_interest_portion|default:"0.00" }}');
+            totalPrincipal += parseFloat('{{ scheduled.actual_principal_portion|default:"0.00" }}');
+            totalLateFees += parseFloat('{{ scheduled.actual_late_fee_portion|default:"0.00" }}');
+        {% endif %}
+    {% endfor %}
+    
+    var grandTotal = totalInterest + totalPrincipal + totalLateFees;
+    
+    $('#total-interest-approval').text(totalInterest.toFixed(2));
+    $('#total-principal-approval').text(totalPrincipal.toFixed(2));
+    $('#total-late-fees-approval').text(totalLateFees.toFixed(2));
+    $('#grand-total-approval').text(grandTotal.toFixed(2));
+});
+
+// Confirm Whole Loan Approval with Enhanced UX
+$('#confirmLoanApproval').on('click', function() {
+    var button = $(this);
+    var originalHtml = button.html();
+    
+    button.addClass('loading').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing Loan Approval...');
+    
+    $.ajax({
+        url: '{% url "loans_core:approve_entire_loan" application.pk %}',
+        method: 'POST',
+        data: {
+            'csrfmiddlewaretoken': '{{ csrf_token }}'
+        },
+        success: function(response) {
+            if (response.success) {
+                $('#approveLoanModal').modal('hide');
+                
+                // Enhanced success message
+                let successMessage = `Entire loan approved successfully!`;
+                if (response.approved_count) {
+                    successMessage += ` ${response.approved_count} payments processed.`;
+                }
+                if (response.journal_references && response.journal_references.length > 0) {
+                    successMessage += ` Journal entries: ${response.journal_references.join(', ')}`;
+                }
+                
+                showAlert('success', successMessage);
+                
+                // Update the loan approval section UI
+                $('.loan-approval-section .col-lg-4').html(`
+                    <span class="loan-approved-badge">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Loan Fully Approved
+                    </span>
+                `);
+                
+                // Update all payment rows to show approved status
+                $('.approval-actions').each(function() {
+                    $(this).replaceWith(`
+                        <span class="approved-badge">
+                            <i class="fas fa-check-circle badge-icon"></i>
+                            <span>Approved</span>
+                        </span>
+                    `);
+                });
+                
+            } else {
+                // Handle specific error cases
+                if (response.error.includes('already been approved')) {
+                    showAlert('warning', response.error);
+                } else {
+                    showAlert('error', response.error || 'Failed to approve loan');
+                }
+                button.removeClass('loading').prop('disabled', false).html(originalHtml);
+            }
+        },
+        error: function() {
+            showAlert('error', 'Network error. Please try again.');
+            button.removeClass('loading').prop('disabled', false).html(originalHtml);
+        }
+    });
+});
+
+// Enhanced Alert display function with warning support
+function showAlert(type, message) {
+    var alertClass, iconClass;
+    
+    switch(type) {
+        case 'success':
+            alertClass = 'alert-success';
+            iconClass = 'check-circle';
+            break;
+        case 'warning':
+            alertClass = 'alert-warning';
+            iconClass = 'exclamation-triangle';
+            break;
+        case 'error':
+        default:
+            alertClass = 'alert-danger';
+            iconClass = 'exclamation-triangle';
+            break;
+    }
+    
+    var alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            <i class="fas fa-${iconClass} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    $('.container-fluid').prepend(alertHtml);
+    
+    // Auto-dismiss after 8 seconds for success, 10 seconds for warnings/errors
+    var dismissTime = type === 'success' ? 8000 : 10000;
+    setTimeout(function() {
+        $('.alert').alert('close');
+    }, dismissTime);
+}
 </script>
 {% endblock %}

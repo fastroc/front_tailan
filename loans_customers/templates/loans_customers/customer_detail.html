@@ -45,13 +45,13 @@
                             {% if customer.phone_secondary %}
                                 <p><strong>Secondary Phone:</strong> {{ customer.phone_secondary }}</p>
                             {% endif %}
-                            {% if customer.address %}
-                                <p><strong>Address:</strong><br>{{ customer.address|linebreaks }}</p>
+                            {% if customer.street_address %}
+                                <p><strong>Address:</strong><br>{{ customer.street_address|linebreaks }}</p>
                             {% endif %}
                         </div>
                         <div class="col-md-6">
                             <h6 class="font-weight-bold">Identity & Status</h6>
-                            <p><strong>ID Number:</strong> {{ customer.id_number }}</p>
+                            <p><strong>ID Number:</strong> {{ customer.national_id }}</p>
                             <p><strong>Customer Type:</strong> 
                                 <span class="badge bg-info">{{ customer.customer_type|title }}</span>
                             </p>
@@ -82,11 +82,11 @@
                             {% else %}
                                 <p><strong>Monthly Income:</strong> <span class="text-muted">Not provided</span></p>
                             {% endif %}
-                            {% if customer.employment_status %}
-                                <p><strong>Employment Status:</strong> {{ customer.employment_status|title }}</p>
+                            {% if customer.employment_type %}
+                                <p><strong>Employment Status:</strong> {{ customer.employment_type|title }}</p>
                             {% endif %}
-                            {% if customer.employer %}
-                                <p><strong>Employer:</strong> {{ customer.employer }}</p>
+                            {% if customer.employer_name %}
+                                <p><strong>Employer:</strong> {{ customer.employer_name }}</p>
                             {% endif %}
                         </div>
                         <div class="col-md-6">
@@ -134,7 +134,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for application in customer.loan_applications.all %}
+                                {% for application in recent_applications %}
                                 <tr>
                                     <td>{{ application.application_number }}</td>
                                     <td>{{ application.loan_product.name }}</td>
@@ -193,12 +193,12 @@
                     <hr>
                     <div class="row text-center">
                         <div class="col-6">
-                            <h6 class="text-primary">{{ customer.loan_applications.count }}</h6>
+                            <h6 class="text-primary">{{ stats.total_applications }}</h6>
                             <small class="text-muted">Applications</small>
                         </div>
                         <div class="col-6">
-                            <h6 class="text-success">{{ customer.loan_applications.filter.approved.count|default:0 }}</h6>
-                            <small class="text-muted">Approved</small>
+                            <h6 class="text-success">{{ stats.active_loans }}</h6>
+                            <small class="text-muted">Active Loans</small>
                         </div>
                     </div>
                 </div>

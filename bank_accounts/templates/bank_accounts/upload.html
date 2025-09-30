@@ -58,7 +58,7 @@
         <i class="fas fa-upload me-2 text-primary"></i>Upload bank statement
       </h6>
       <p class="text-muted small mb-3">
-        Upload your bank statement as CSV file. Expected format: <strong>Date, Amount, Payee, Description, Reference</strong>
+        Upload your bank statement as CSV (.csv) or Excel (.xlsx, .xls) file. Expected format: <strong>Date, Amount, Payee, Description, Reference</strong>
       </p>
       
       <!-- Format Example -->
@@ -79,7 +79,7 @@
         <div class="dropzone mb-3" id="dropzone">
           <div id="dropzoneContent">
             <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
-            <div class="mb-2">Drag and drop your CSV file here</div>
+            <div class="mb-2">Drag and drop your CSV or Excel file here</div>
             <div class="text-muted small mb-3">or</div>
             <button class="btn btn-outline-primary" type="button" id="selectFileBtn">
               <i class="fas fa-folder-open me-1"></i>Select File
@@ -87,9 +87,9 @@
           </div>
         </div>
         
-        <input type="file" id="fileInput" name="statement_file" class="d-none" accept=".csv"/>
+        <input type="file" id="fileInput" name="statement_file" class="d-none" accept=".csv,.xlsx,.xls"/>
         
-        <div class="small text-muted mb-3">File should be CSV format, maximum 10MB</div>
+        <div class="small text-muted mb-3">File should be CSV (.csv) or Excel (.xlsx, .xls) format, maximum 10MB</div>
 
         <!-- Action Buttons -->
         <div class="d-flex justify-content-between align-items-center">
@@ -122,7 +122,7 @@
           <thead class="table-light">
             <tr>
               <th class="ps-3">
-                <i class="fas fa-file-csv me-1 text-success"></i>File Name
+                <i class="fas fa-file me-1 text-success"></i>File Name
               </th>
               <th>
                 <i class="fas fa-calendar me-1 text-info"></i>Upload Date
@@ -142,7 +142,11 @@
               <td class="ps-3">
                 <div class="d-flex align-items-center">
                   <div class="bg-success bg-opacity-10 rounded p-2 me-3">
-                    <i class="fas fa-file-csv text-success"></i>
+                    {% if '.xlsx' in upload.original_filename or '.xls' in upload.original_filename %}
+                      <i class="fas fa-file-excel text-success"></i>
+                    {% else %}
+                      <i class="fas fa-file-csv text-success"></i>
+                    {% endif %}
                   </div>
                   <div>
                     <div class="fw-semibold text-primary">{{ upload.original_filename }}</div>
@@ -227,7 +231,7 @@
       <i class="fas fa-upload fa-3x text-muted mb-3"></i>
       <h6 class="text-muted">No Files Uploaded Yet</h6>
       <p class="text-muted small mb-0">
-        Upload your first CSV file to see it listed here with processing results and management options.
+        Upload your first CSV or Excel file to see it listed here with processing results and management options.
       </p>
     </div>
   </div>
@@ -276,9 +280,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     const file = fileInput.files[0];
-    if (!file.name.toLowerCase().endsWith('.csv')) {
+    if (!file.name.toLowerCase().match(/\.(csv|xlsx|xls)$/)) {
       e.preventDefault();
-      alert('Please select a CSV file.');
+      alert('Please select a CSV (.csv) or Excel (.xlsx, .xls) file.');
       return false;
     }
     
@@ -328,11 +332,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
-      if (file.name.toLowerCase().endsWith('.csv')) {
+      if (file.name.toLowerCase().match(/\.(csv|xlsx|xls)$/)) {
         fileInput.files = e.dataTransfer.files; 
         handleFileSelection();
       } else {
-        alert('Please drop a CSV file.');
+        alert('Please drop a CSV (.csv) or Excel (.xlsx, .xls) file.');
       }
     }
   });
@@ -344,8 +348,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const file = fileInput.files[0];
     
     // Validate file type
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      alert('Please select a CSV file.');
+    if (!file.name.toLowerCase().match(/\.(csv|xlsx|xls)$/)) {
+      alert('Please select a CSV (.csv) or Excel (.xlsx, .xls) file.');
       fileInput.value = '';
       return;
     }
@@ -364,9 +368,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Show file preparation progress first
     dropzone.classList.add('file-selected');
+    const fileIcon = file.name.toLowerCase().match(/\.(xlsx|xls)$/) ? 'file-excel' : 'file-csv';
     dropzoneContent.innerHTML = `
       <div class="text-info">
-        <i class="fas fa-file-csv fa-3x mb-3 text-info"></i>
+        <i class="fas fa-${fileIcon} fa-3x mb-3 text-info"></i>
         <div class="fw-bold fs-6 mb-2">${file.name}</div>
         <div class="alert alert-info py-2 mb-3">
           <div class="d-flex align-items-center mb-2">
@@ -400,16 +405,18 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Show file ready state
   function showFileReady(file, fileSize) {
+    const fileIcon = file.name.toLowerCase().match(/\.(xlsx|xls)$/) ? 'file-excel' : 'file-csv';
+    const fileType = file.name.toLowerCase().match(/\.(xlsx|xls)$/) ? 'Excel File' : 'CSV File';
     dropzoneContent.innerHTML = `
       <div class="text-success">
-        <i class="fas fa-file-csv fa-3x mb-3 text-success"></i>
+        <i class="fas fa-${fileIcon} fa-3x mb-3 text-success"></i>
         <div class="fw-bold fs-6 mb-2">${file.name}</div>
         <div class="small text-muted mb-3">
           <span class="badge bg-light text-dark me-2">
             <i class="fas fa-weight me-1"></i>${fileSize}
           </span>
           <span class="badge bg-light text-dark">
-            <i class="fas fa-file-alt me-1"></i>CSV File
+            <i class="fas fa-file-alt me-1"></i>${fileType}
           </span>
         </div>
         <div class="alert alert-success py-2 mb-3">

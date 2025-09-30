@@ -355,12 +355,26 @@
     <div class="page-header">
         <div class="container">
             <div class="row">
-                <div class="col-12">
+                <div class="col-md-8">
                     <h1 class="mb-2">
                         <i class="bi bi-check-circle me-3"></i>
                         Bank Reconciliation
                     </h1>
                     <p class="mb-0 opacity-90">Match and reconcile bank transactions with your accounting records</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="mt-3">
+                        <button class="btn btn-primary dropdown-toggle" type="button" 
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-tools me-1"></i>
+                            Tools
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="refreshAllAccounts()">
+                                <i class="fas fa-sync me-2"></i>Refresh All Accounts
+                            </a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
@@ -441,11 +455,8 @@
                                                         <i class="bi bi-upload me-1"></i>{{ account_data.action_text }}
                                                     </button>
                                                 {% else %}
-                                                    <button class="btn btn-reconcile me-2" onclick="openAccountReconciliation('{{ account_data.account.id }}')">
-                                                        <i class="bi bi-play-fill me-1"></i>{{ account_data.action_text }}
-                                                    </button>
-                                                    <button class="btn btn-outline-primary me-2" onclick="openAccountReconciliationSimple('{{ account_data.account.id }}')">
-                                                        <i class="bi bi-lightning me-1"></i>Simple Mode
+                                                    <button class="btn btn-primary" onclick="openAccountReconciliationSimple('{{ account_data.account.id }}')">
+                                                        <i class="bi bi-lightning me-1"></i>Start Reconciliation
                                                     </button>
                                                     {% if account_data.reconciled_count > 0 %}
                                                     <button class="btn btn-outline-warning btn-sm" 
@@ -542,37 +553,17 @@ let restartAccountId = '';
 let restartAccountName = '';
 let restartMatchesCount = 0;
 
-// Open specific account reconciliation
-function openAccountReconciliation(accountId) {
-    // Show progress/loading state
-    const button = document.querySelector(`[data-account="${accountId}"] .btn-reconcile`);
-    if (button) {
-        const originalContent = button.innerHTML;
-        
-        button.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Loading...';
-        button.disabled = true;
-        
-        showToast('Starting Process', `Opening reconciliation for account ${accountId}`, 'info');
-        
-        // Simulate real process delay
-        setTimeout(() => {
-            // Redirect to the reconciliation process page
-            window.location.href = `/reconciliation/account/${accountId}/`;
-        }, 1500);
-    }
-}
-
 // Open simple reconciliation interface
 function openAccountReconciliationSimple(accountId) {
     // Show progress/loading state
-    const button = document.querySelector(`[data-account="${accountId}"] .btn-outline-primary`);
+    const button = document.querySelector(`[data-account="${accountId}"] .btn-primary`);
     if (button) {
         const originalContent = button.innerHTML;
         
         button.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Loading...';
         button.disabled = true;
         
-        showToast('Starting Simple Mode', `Opening simple reconciliation for account ${accountId}`, 'info');
+        showToast('Starting Reconciliation', `Opening reconciliation for account ${accountId}`, 'info');
         
         // Simulate real process delay
         setTimeout(() => {
@@ -682,8 +673,8 @@ function updateAccountAfterRestart(accountId) {
         const buttonContainer = accountItem.querySelector('.col-md-2.text-end .btn-group');
         if (buttonContainer) {
             buttonContainer.innerHTML = `
-                <button class="btn btn-reconcile me-2" onclick="openAccountReconciliation('${accountId}')">
-                    <i class="bi bi-play-fill me-1"></i>Reconcile
+                <button class="btn btn-primary" onclick="openAccountReconciliationSimple('${accountId}')">
+                    <i class="bi bi-lightning me-1"></i>Start Reconciliation
                 </button>
             `;
         }

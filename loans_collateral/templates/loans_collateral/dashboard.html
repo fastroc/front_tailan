@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Collateral Management - Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .collateral-stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+    }
+    
+    .risk-indicator {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .risk-low { background-color: #d4edda; color: #155724; }
+    .risk-medium { background-color: #fff3cd; color: #856404; }
+    .risk-high { background-color: #f8d7da; color: #721c24; }
+    .risk-very_high { background-color: #d73502; color: white; }
+    
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .status-pending { background-color: #ffc107; color: #000; }
+    .status-verified { background-color: #17a2b8; color: white; }
+    .status-approved { background-color: #28a745; color: white; }
+    .status-rejected { background-color: #dc3545; color: white; }
+    
+    .value-card {
+        border-left: 4px solid;
+    }
+    
+    .value-declared { border-left-color: #007bff; }
+    .value-market { border-left-color: #28a745; }
+    .value-loan { border-left-color: #ffc107; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">
+                <i class="fas fa-shield-alt text-primary me-2"></i>
+                Collateral Management
+            </h1>
+            <p class="text-muted mb-0">Comprehensive collateral tracking and valuation system</p>
+        </div>
+        <div>
+            <a href="{% url 'loans_collateral:collateral_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>
+                Add Collateral
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card collateral-stats-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="card-title mb-1">Total Items</h6>
+                            <h3 class="mb-0">{{ total_collateral|default:0 }}</h3>
+                            <small class="opacity-75">Active collateral items</small>
+                        </div>
+                        <div class="text-end">
+                            <i class="fas fa-boxes fa-2x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card value-card value-declared h-100">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-1">Declared Value</h6>
+                    <h4 class="mb-0 text-primary">${{ total_values.declared|default:0|floatformat:0|intcomma }}</h4>
+                    <small class="text-muted">Customer declared values</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card value-card value-market h-100">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-1">Market Value</h6>
+                    <h4 class="mb-0 text-success">${{ total_values.market|default:0|floatformat:0|intcomma }}</h4>
+                    <small class="text-muted">Professional assessments</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card value-card value-loan h-100">
+                <div class="card-body">
+                    <h6 class="card-title text-muted mb-1">Loan Value</h6>
+                    <h4 class="mb-0 text-warning">${{ total_values.loan|default:0|floatformat:0|intcomma }}</h4>
+                    <small class="text-muted">After LTV adjustments</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions & Status Overview -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <!-- Recent Collateral -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-clock me-2 text-muted"></i>
+                        Recent Collateral Items
+                    </h6>
+                    <a href="{% url 'loans_collateral:collateral_list' %}" class="btn btn-sm btn-outline-primary">
+                        View All
+                        <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_collateral %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Collateral ID</th>
+                                        <th>Title</th>
+                                        <th>Customer</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Value</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in recent_collateral %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'loans_collateral:collateral_detail' item.pk %}" class="text-decoration-none">
+                                                <strong>{{ item.collateral_id }}</strong>
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-shield-alt text-muted me-2"></i>
+                                                {{ item.title|truncatechars:30 }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if item.loan_application.customer %}
+                                                {{ item.loan_application.customer.full_name }}
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">
+                                                {{ item.collateral_type.name }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge status-{{ item.status }}">
+                                                {{ item.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="small">
+                                                <div>Declared: ${{ item.declared_value|floatformat:0|intcomma }}</div>
+                                                {% if item.market_value %}
+                                                <div class="text-success">Market: ${{ item.market_value|floatformat:0|intcomma }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{% url 'loans_collateral:collateral_detail' item.pk %}" 
+                                                   class="btn btn-outline-primary" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                {% if item.status == 'pending' %}
+                                                <a href="{% url 'loans_collateral:verify' item.pk %}" 
+                                                   class="btn btn-outline-success" title="Verify">
+                                                    <i class="fas fa-check"></i>
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-shield-alt fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">No collateral items yet</h6>
+                            <p class="text-muted">Start by adding your first collateral item.</p>
+                            <a href="{% url 'loans_collateral:collateral_create' %}" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>
+                                Add First Collateral
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <!-- Status Distribution -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-chart-pie me-2 text-muted"></i>
+                        Status Distribution
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if status_breakdown %}
+                        {% for status in status_breakdown %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="status-badge status-{{ status.status }}">
+                                    {{ status.status|capfirst }}
+                                </span>
+                                <span class="badge bg-light text-dark">{{ status.count }}</span>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-0">No data available</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Risk Analysis -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-exclamation-triangle me-2 text-warning"></i>
+                        Risk Analysis
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if risk_breakdown %}
+                        {% for risk in risk_breakdown %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="risk-indicator risk-{{ risk.risk_level }}">
+                                    {{ risk.risk_level|capfirst }} Risk
+                                </span>
+                                <div class="text-end small">
+                                    <div>{{ risk.count }} items</div>
+                                    <div class="text-success">${{ risk.total_value|default:0|floatformat:0|intcomma }}</div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted mb-0">No risk data available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Collateral Types -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-list me-2 text-muted"></i>
+                        Top Collateral Types
+                    </h6>
+                    <a href="{% url 'loans_collateral:type_list' %}" class="btn btn-sm btn-outline-secondary">
+                        Manage Types
+                        <i class="fas fa-cog ms-1"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if type_stats %}
+                        <div class="row">
+                            {% for type in type_stats %}
+                                <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                                    <div class="card border">
+                                        <div class="card-body text-center">
+                                            <div class="mb-2">
+                                                {% if type.category == 'real_estate' %}
+                                                    <i class="fas fa-home fa-2x text-primary"></i>
+                                                {% elif type.category == 'vehicle' %}
+                                                    <i class="fas fa-car fa-2x text-success"></i>
+                                                {% elif type.category == 'equipment' %}
+                                                    <i class="fas fa-cogs fa-2x text-warning"></i>
+                                                {% elif type.category == 'securities' %}
+                                                    <i class="fas fa-chart-line fa-2x text-info"></i>
+                                                {% else %}
+                                                    <i class="fas fa-cube fa-2x text-secondary"></i>
+                                                {% endif %}
+                                            </div>
+                                            <h6 class="card-title mb-1">{{ type.name }}</h6>
+                                            <p class="card-text small text-muted mb-2">{{ type.get_category_display }}</p>
+                                            <span class="badge bg-primary">{{ type.item_count }} items</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-tags fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No collateral types configured yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Simple dashboard functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

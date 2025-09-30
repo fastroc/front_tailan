@@ -248,9 +248,26 @@
 
 <!-- Additional Simple JavaScript -->
 <script>
-// Get CSRF token for AJAX requests
+// Get CSRF token for AJAX requests - Use cookie method like base template
 function getCsrfToken() {
-    return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    // Use same cookie method as base template
+    return getCookie('csrftoken');
+}
+
+// Helper function to get cookie (same as base template)
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 // Apply quick match values to all empty fields

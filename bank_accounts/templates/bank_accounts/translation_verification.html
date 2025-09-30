@@ -1,0 +1,642 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Translation Verification - {{ processing.source_document.original_filename }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .verification-container {
+    max-width: 1400px;
+  }
+  
+  .side-by-side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  
+  .original-panel {
+    background: rgba(59, 130, 246, 0.05);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-left: 4px solid #3b82f6;
+    border-radius: 0.5rem;
+    padding: 1rem;
+  }
+  
+  .translated-panel {
+    background: rgba(16, 185, 129, 0.05);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-left: 4px solid #10b981;
+    border-radius: 0.5rem;
+    padding: 1rem;
+  }
+  
+  .confidence-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .confidence-meter {
+    width: 80px;
+    height: 10px;
+    background: #e5e7eb;
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  
+  .confidence-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+  
+  .confidence-high { background: #10b981; }
+  .confidence-medium { background: #f59e0b; }
+  .confidence-low { background: #ef4444; }
+  .confidence-very-low { background: #991b1b; }
+  
+  .transaction-row {
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    margin: 0.5rem 0;
+    background: white;
+    transition: all 0.2s ease;
+  }
+  
+  .transaction-row:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  
+  .transaction-row.needs-attention {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.05);
+  }
+  
+  .transaction-row.verified {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.05);
+  }
+  
+  .verification-controls {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+  
+  .stats-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    text-align: center;
+  }
+  
+  .editable-field {
+    border: none;
+    background: transparent;
+    width: 100%;
+    font-family: inherit;
+  }
+  
+  .editable-field:focus {
+    outline: 2px solid #3b82f6;
+    background: white;
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+  }
+  
+  .original-cyrillic {
+    font-family: "Times New Roman", serif;
+    font-size: 1.1em;
+    color: #1e40af;
+  }
+  
+  .sticky-header {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 100;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 1rem 0;
+  }
+  
+  .batch-actions {
+    background: #fffbeb;
+    border: 1px solid #fbbf24;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid verification-container py-4">
+  <!-- Header -->
+  <div class="sticky-header">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h5 class="mb-1">Translation Verification</h5>
+        <div class="text-muted">
+          <i class="fas fa-file me-1"></i>{{ processing.source_document.original_filename }}
+          <span class="mx-2">•</span>
+          <i class="fas fa-language me-1"></i>{{ processing.get_detected_language_display }}
+          <span class="mx-2">•</span>
+          <i class="fas fa-clock me-1"></i>{{ processing.processing_timestamp|date:"M j, Y g:i A" }}
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-info" id="showGuide">
+          <i class="fas fa-question-circle me-1"></i>Verification Guide
+        </button>
+        <button class="btn btn-success" id="approveAll" disabled>
+          <i class="fas fa-check-double me-1"></i>Approve All
+        </button>
+        <a href="{% url 'bank_accounts:dashboard' %}" class="btn btn-outline-secondary">
+          <i class="fas fa-arrow-left me-1"></i>Back
+        </a>
+      </div>
+    </div>
+    
+    <!-- Progress Stats -->
+    <div class="row g-3">
+      <div class="col-md-2">
+        <div class="stats-card">
+          <div class="h4 mb-1 text-primary">{{ processing.total_transactions }}</div>
+          <small class="text-muted">Total Transactions</small>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="stats-card">
+          <div class="h4 mb-1 text-success" id="verifiedCount">0</div>
+          <small class="text-muted">Verified</small>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="stats-card">
+          <div class="h4 mb-1 text-warning" id="pendingCount">{{ processing.total_transactions }}</div>
+          <small class="text-muted">Pending</small>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stats-card">
+          <div class="h6 mb-1">Overall Confidence</div>
+          <div class="confidence-meter mx-auto mb-1">
+            <div class="confidence-fill confidence-{{ overall_confidence_class }}" 
+                 style="width: {{ overall_confidence_percent }}%"></div>
+          </div>
+          <small class="text-muted">{{ overall_confidence_percent }}%</small>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stats-card">
+          <div class="h6 mb-1">Progress</div>
+          <div class="progress mb-1" style="height: 10px;">
+            <div class="progress-bar bg-success" role="progressbar" style="width: 0%" id="progressBar">
+              <span class="visually-hidden">0% Complete</span>
+            </div>
+          </div>
+          <small class="text-muted" id="progressText">0% Complete</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Document Header Information -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h6 class="mb-0">
+        <i class="fas fa-file-alt me-2"></i>Document Header Information
+      </h6>
+    </div>
+    <div class="card-body">
+      <div class="side-by-side">
+        <div class="original-panel">
+          <h6 class="mb-3">
+            <i class="fas fa-scroll me-2 text-primary"></i>Original (Cyrillic)
+          </h6>
+          <div class="original-cyrillic">
+            <div class="mb-2"><strong>Хэрэглэгч:</strong> {{ processing.system_account_holder|default:"[Not detected]" }}</div>
+            <div class="mb-2"><strong>Дансны дугаар:</strong> {{ processing.system_account_number|default:"[Not detected]" }}</div>
+            <div class="mb-2"><strong>Төрөл:</strong> ХАРИЛЦАХ/БАЙГУУЛЛАГА</div>
+            <div class="mb-2"><strong>Интервал:</strong> 
+              {% if processing.system_date_range_start %}
+                {{ processing.system_date_range_start }} - {{ processing.system_date_range_end }}
+              {% else %}
+                [Not detected]
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        
+        <div class="translated-panel">
+          <h6 class="mb-3">
+            <i class="fas fa-language me-2 text-success"></i>System Translation (English)
+          </h6>
+          <div>
+            <div class="mb-2"><strong>Account Holder:</strong> {{ processing.system_account_holder|default:"[Not detected]" }}</div>
+            <div class="mb-2"><strong>Account Number:</strong> {{ processing.system_account_number|default:"[Not detected]" }}</div>
+            <div class="mb-2"><strong>Account Type:</strong> {{ processing.system_account_type|default:"CURRENT/ORGANIZATION" }}</div>
+            <div class="mb-2"><strong>Date Range:</strong> 
+              {% if processing.system_date_range_start %}
+                {{ processing.system_date_range_start|date:"M j, Y" }} - {{ processing.system_date_range_end|date:"M j, Y" }}
+              {% else %}
+                [Not detected]
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="verification-controls">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="verifyHeaderInfo">
+          <label class="form-check-label" for="verifyHeaderInfo">
+            <strong>I verify the header information translation is accurate</strong>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Batch Actions -->
+  <div class="batch-actions d-none" id="batchActions">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <strong>Batch Actions:</strong>
+        <span id="selectedCount" class="text-muted ms-2">0 transactions selected</span>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-success btn-sm" id="approveSelected">
+          <i class="fas fa-check me-1"></i>Approve Selected
+        </button>
+        <button class="btn btn-outline-warning btn-sm" id="flagSelected">
+          <i class="fas fa-flag me-1"></i>Flag for Review
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" id="clearSelection">
+          <i class="fas fa-times me-1"></i>Clear Selection
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Transactions List -->
+  <div class="card">
+    <div class="card-header bg-light">
+      <div class="d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+          <i class="fas fa-list me-2"></i>Transaction Translations
+        </h6>
+        <div class="d-flex gap-2">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="showOnlyLowConfidence">
+            <label class="form-check-label" for="showOnlyLowConfidence">
+              Show only low confidence
+            </label>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="autoScroll">
+            <label class="form-check-label" for="autoScroll">
+              Auto-scroll to next
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div id="transactionsList">
+        {% for record in transaction_records %}
+        <div class="transaction-row {% if record.overall_confidence < 0.5 %}needs-attention{% endif %}" 
+             data-id="{{ record.id }}" data-confidence="{{ record.overall_confidence }}">
+          <div class="p-3">
+            <!-- Transaction Header -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="d-flex align-items-center gap-2">
+                <input type="checkbox" class="form-check-input transaction-select" value="{{ record.id }}">
+                <strong>Row {{ record.row_number }}</strong>
+                <span class="badge bg-light text-dark">{{ record.system_date|default:record.original_date_text }}</span>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <div class="confidence-indicator">
+                  <small class="text-muted">Confidence:</small>
+                  <div class="confidence-meter">
+                    <div class="confidence-fill confidence-{{ record.get_confidence_level|lower }}" 
+                         style="width: {{ record.overall_confidence|floatformat:0|add:0 }}%"></div>
+                  </div>
+                  <small class="text-muted">{{ record.overall_confidence|floatformat:1 }}%</small>
+                  <span class="badge badge-{{ record.get_confidence_level|lower }}">{{ record.get_confidence_level }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Side-by-side Translation -->
+            <div class="side-by-side">
+              <div class="original-panel">
+                <h6 class="mb-2 text-primary">
+                  <i class="fas fa-scroll me-1"></i>Original Data
+                </h6>
+                <div class="original-cyrillic">
+                  <div class="mb-2">
+                    <small class="text-muted">Date:</small>
+                    <div>{{ record.original_date_text }}</div>
+                  </div>
+                  <div class="mb-2">
+                    <small class="text-muted">Amount:</small>
+                    <div>{{ record.original_amount_text }}</div>
+                  </div>
+                  <div class="mb-2">
+                    <small class="text-muted">Description:</small>
+                    <div>{{ record.original_description }}</div>
+                  </div>
+                  {% if record.original_payee %}
+                  <div class="mb-2">
+                    <small class="text-muted">Payee:</small>
+                    <div>{{ record.original_payee }}</div>
+                  </div>
+                  {% endif %}
+                  {% if record.original_reference %}
+                  <div class="mb-2">
+                    <small class="text-muted">Reference:</small>
+                    <div>{{ record.original_reference }}</div>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <div class="translated-panel">
+                <h6 class="mb-2 text-success">
+                  <i class="fas fa-language me-1"></i>System Translation
+                  <button class="btn btn-outline-success btn-sm ms-2" onclick="editTranslation({{ record.id }})">
+                    <i class="fas fa-edit"></i> Edit
+                  </button>
+                </h6>
+                <div id="translation-{{ record.id }}">
+                  <div class="mb-2">
+                    <small class="text-muted">Date:</small>
+                    <div>
+                      {{ record.system_date|date:"M j, Y"|default:"[Parse failed]" }}
+                      {% if record.date_parse_confidence < 0.8 %}
+                        <small class="text-warning">
+                          <i class="fas fa-exclamation-triangle"></i> 
+                          {{ record.date_parse_confidence|floatformat:1 }}% confidence
+                        </small>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div class="mb-2">
+                    <small class="text-muted">Amount:</small>
+                    <div>
+                      ${{ record.system_amount|default:"[Parse failed]" }}
+                      {% if record.amount_parse_confidence < 0.8 %}
+                        <small class="text-warning">
+                          <i class="fas fa-exclamation-triangle"></i> 
+                          {{ record.amount_parse_confidence|floatformat:1 }}% confidence
+                        </small>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div class="mb-2">
+                    <small class="text-muted">Description:</small>
+                    <div class="editable-field" contenteditable="false" id="desc-{{ record.id }}">
+                      {{ record.system_description_english|default:"[Translation failed]" }}
+                    </div>
+                    {% if record.description_translation_confidence < 0.8 %}
+                      <small class="text-warning">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        {{ record.description_translation_confidence|floatformat:1 }}% confidence
+                      </small>
+                    {% endif %}
+                  </div>
+                  {% if record.system_payee_english %}
+                  <div class="mb-2">
+                    <small class="text-muted">Payee:</small>
+                    <div class="editable-field" contenteditable="false" id="payee-{{ record.id }}">
+                      {{ record.system_payee_english }}
+                    </div>
+                  </div>
+                  {% endif %}
+                  {% if record.original_reference %}
+                  <div class="mb-2">
+                    <small class="text-muted">Reference:</small>
+                    <div>{{ record.original_reference }}</div>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            
+            <!-- Verification Controls -->
+            <div class="verification-controls mt-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex gap-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" 
+                           name="verification_{{ record.id }}" 
+                           id="approve_{{ record.id }}" 
+                           value="approve"
+                           onchange="updateVerification({{ record.id }}, 'approve')">
+                    <label class="form-check-label text-success" for="approve_{{ record.id }}">
+                      <i class="fas fa-check me-1"></i>Approve Translation
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" 
+                           name="verification_{{ record.id }}" 
+                           id="needs_review_{{ record.id }}" 
+                           value="needs_review"
+                           onchange="updateVerification({{ record.id }}, 'needs_review')">
+                    <label class="form-check-label text-warning" for="needs_review_{{ record.id }}">
+                      <i class="fas fa-exclamation-triangle me-1"></i>Needs Manual Review
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" 
+                           name="verification_{{ record.id }}" 
+                           id="reject_{{ record.id }}" 
+                           value="reject"
+                           onchange="updateVerification({{ record.id }}, 'reject')">
+                    <label class="form-check-label text-danger" for="reject_{{ record.id }}">
+                      <i class="fas fa-times me-1"></i>Reject Translation
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <textarea class="form-control form-control-sm d-none" 
+                            id="notes_{{ record.id }}" 
+                            placeholder="Add verification notes..."
+                            rows="2" style="width: 250px;"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  
+  <!-- Final Actions -->
+  <div class="card mt-4">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h6 class="mb-1">Complete Verification</h6>
+          <p class="text-muted small mb-0">
+            Review all translations and approve to proceed with import.
+          </p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary" onclick="saveProgress()">
+            <i class="fas fa-save me-1"></i>Save Progress
+          </button>
+          <button class="btn btn-success" id="completeVerification" disabled>
+            <i class="fas fa-check-double me-1"></i>Complete Verification & Import
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  let verificationProgress = {
+    approved: 0,
+    needsReview: 0,
+    rejected: 0,
+    total: {{ processing.total_transactions }}
+  };
+  
+  // Update verification status
+  window.updateVerification = function(recordId, status) {
+    const transactionRow = document.querySelector(`[data-id="${recordId}"]`);
+    
+    // Update visual state
+    transactionRow.classList.remove('needs-attention', 'verified');
+    
+    if (status === 'approve') {
+      transactionRow.classList.add('verified');
+      verificationProgress.approved++;
+    } else if (status === 'needs_review') {
+      transactionRow.classList.add('needs-attention');
+      verificationProgress.needsReview++;
+    } else if (status === 'reject') {
+      verificationProgress.rejected++;
+      // Show notes field for rejected items
+      const notesField = document.getElementById(`notes_${recordId}`);
+      notesField.classList.remove('d-none');
+    }
+    
+    updateProgressDisplay();
+    checkCompleteButton();
+  };
+  
+  // Update progress display
+  function updateProgressDisplay() {
+    const verified = verificationProgress.approved + verificationProgress.needsReview + verificationProgress.rejected;
+    const percentage = Math.round((verified / verificationProgress.total) * 100);
+    
+    document.getElementById('verifiedCount').textContent = verified;
+    document.getElementById('pendingCount').textContent = verificationProgress.total - verified;
+    document.getElementById('progressBar').style.width = percentage + '%';
+    document.getElementById('progressText').textContent = percentage + '% Complete';
+    
+    // Enable approve all if significant progress
+    document.getElementById('approveAll').disabled = verified < (verificationProgress.total * 0.5);
+  }
+  
+  // Check if complete button should be enabled
+  function checkCompleteButton() {
+    const verified = verificationProgress.approved + verificationProgress.needsReview + verificationProgress.rejected;
+    const headerVerified = document.getElementById('verifyHeaderInfo').checked;
+    
+    document.getElementById('completeVerification').disabled = !(verified === verificationProgress.total && headerVerified);
+  }
+  
+  // Header verification checkbox
+  document.getElementById('verifyHeaderInfo').addEventListener('change', checkCompleteButton);
+  
+  // Edit translation functionality
+  window.editTranslation = function(recordId) {
+    const descField = document.getElementById(`desc_${recordId}`);
+    const payeeField = document.getElementById(`payee_${recordId}`);
+    
+    if (descField) {
+      descField.contentEditable = true;
+      descField.focus();
+      descField.style.border = '1px solid #3b82f6';
+    }
+    
+    if (payeeField) {
+      payeeField.contentEditable = true;
+    }
+  };
+  
+  // Save progress functionality
+  window.saveProgress = function() {
+    // Collect verification data and save via AJAX
+    alert('Progress saved! You can continue verification later.');
+  };
+  
+  // Batch selection handlers
+  document.querySelectorAll('.transaction-select').forEach(checkbox => {
+    checkbox.addEventListener('change', updateBatchActions);
+  });
+  
+  function updateBatchActions() {
+    const selected = document.querySelectorAll('.transaction-select:checked');
+    const batchActions = document.getElementById('batchActions');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    if (selected.length > 0) {
+      batchActions.classList.remove('d-none');
+      selectedCount.textContent = `${selected.length} transaction${selected.length !== 1 ? 's' : ''} selected`;
+    } else {
+      batchActions.classList.add('d-none');
+    }
+  }
+  
+  // Batch approve selected
+  document.getElementById('approveSelected').addEventListener('click', function() {
+    const selected = document.querySelectorAll('.transaction-select:checked');
+    selected.forEach(checkbox => {
+      const recordId = checkbox.value;
+      document.getElementById(`approve_${recordId}`).checked = true;
+      updateVerification(recordId, 'approve');
+      checkbox.checked = false;
+    });
+    updateBatchActions();
+  });
+  
+  // Show only low confidence filter
+  document.getElementById('showOnlyLowConfidence').addEventListener('change', function() {
+    const transactions = document.querySelectorAll('.transaction-row');
+    transactions.forEach(row => {
+      const confidence = parseFloat(row.dataset.confidence);
+      if (this.checked && confidence >= 0.5) {
+        row.style.display = 'none';
+      } else {
+        row.style.display = 'block';
+      }
+    });
+  });
+  
+  // Complete verification
+  document.getElementById('completeVerification').addEventListener('click', function() {
+    if (confirm('Are you sure you want to complete verification and import all transactions?')) {
+      this.disabled = true;
+      this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Importing...';
+      
+      // Submit verification results
+      setTimeout(() => {
+        window.location.href = '{% url "bank_accounts:dashboard" %}';
+      }, 2000);
+    }
+  });
+});
+</script>
+{% endblock %}

@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
-from .base_models import BaseLoanModel, CompanyAwareLoanModel
+from .base_models import BaseLoanModel
 
 class LoanProduct(BaseLoanModel):
     """Defines loan product types and their characteristics - Company separated"""
@@ -229,6 +229,137 @@ class LoanApplication(BaseLoanModel):
                 random_num = random.randint(1000, 9999)
                 self.application_id = f"APP{year}{random_num}"
         super().save(*args, **kwargs)
+    
+    def get_approval_progress(self):
+        """Calculate approval progress for payments with intelligent caching"""
+        # Try to get from cache first
+        try:
+            from core.cache_system import loan_cache
+            cached_progress = loan_cache.get_cached_approval_progress(self.id)
+            if cached_progress:
+                return cached_progress
+        except ImportError:
+            pass  # Cache system not available
+        
+        if self.status != 'approved':
+            result = {
+                'total_payments': 0,
+                'approved_payments': 0,
+                'percentage': 0,
+                'status': 'not_started',
+                'status_display': 'Not Started'
+            }
+            
+            # Cache the result
+            try:
+                from core.cache_system import loan_cache
+                loan_cache.cache_approval_progress(self.id, result)
+            except ImportError:
+                pass
+            
+            return result
+        
+        try:
+            # Get the associated loan
+            loan = self.loan
+            
+            # Optimized: Get payments with prefetched related data
+            from loans_payments.models import Payment
+            from django.db.models import Exists, OuterRef
+            from journal.models import Journal
+            
+            # Single query to get payments with approval status
+            payments_with_approval = Payment.objects.filter(
+                loan=loan
+            ).annotate(
+                is_approved=Exists(
+                    Journal.objects.filter(
+                        company=self.company,
+                        reference=models.Concat(
+                            models.Value('SPLIT-'), 
+                            OuterRef('payment_id')
+                        )
+                    )
+                )
+            )
+            
+            total_payments = payments_with_approval.count()
+            
+            if total_payments == 0:
+                result = {
+                    'total_payments': 0,
+                    'approved_payments': 0,
+                    'percentage': 0,
+                    'status': 'not_started',
+                    'status_display': 'No Payments'
+                }
+            else:
+                # Count approved payments in single query
+                approved_payments = payments_with_approval.filter(is_approved=True).count()
+                
+                # Calculate percentage
+                percentage = round((approved_payments / total_payments) * 100)
+                
+                # Determine status
+                if approved_payments == 0:
+                    status = 'not_started'
+                    status_display = 'Not Started'
+                elif approved_payments == total_payments:
+                    status = 'completed'
+                    status_display = 'All Approved'
+                else:
+                    status = 'partial'
+                    status_display = 'Partially Approved'
+                
+                result = {
+                    'total_payments': total_payments,
+                    'approved_payments': approved_payments,
+                    'percentage': percentage,
+                    'status': status,
+                    'status_display': status_display
+                }
+            
+            # Cache the result for 10 minutes
+            try:
+                from core.cache_system import loan_cache
+                loan_cache.cache_approval_progress(self.id, result)
+            except ImportError:
+                pass
+            
+            return result
+            
+        except Exception:
+            # If no loan exists yet (approved but not disbursed)
+            result = {
+                'total_payments': 0,
+                'approved_payments': 0,
+                'percentage': 0,
+                'status': 'pending_disbursement',
+                'status_display': 'Pending Disbursement'
+            }
+            
+            # Cache the result
+            try:
+                from core.cache_system import loan_cache
+                loan_cache.cache_approval_progress(self.id, result)
+            except ImportError:
+                pass
+                
+            return result
+    
+    def get_progress_badge_class(self):
+        """Get CSS class for progress badge"""
+        progress = self.get_approval_progress()
+        status = progress['status']
+        
+        badge_classes = {
+            'not_started': 'badge-secondary',
+            'pending_disbursement': 'badge-info',
+            'partial': 'badge-warning',
+            'completed': 'badge-success'
+        }
+        
+        return badge_classes.get(status, 'badge-secondary')
 
 
 class Loan(BaseLoanModel):

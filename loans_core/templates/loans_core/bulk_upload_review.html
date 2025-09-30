@@ -1,0 +1,446 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - Loans{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/loans-common.css' %}" rel="stylesheet">
+<style>
+.review-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+
+.review-stats {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: -1rem 0 2rem 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.application-card {
+    border: 1px solid #e3e6f0;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.application-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+.application-header {
+    background: #f8f9fc;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e3e6f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.application-body {
+    padding: 1.5rem;
+}
+
+.application-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+
+.detail-value {
+    font-weight: 600;
+}
+
+.bulk-actions {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 20px;
+    z-index: 100;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.status-under-review {
+    background: #ffeaa7;
+    color: #2d3436;
+}
+
+.amount-display {
+    color: #2d63aa;
+    font-weight: bold;
+}
+
+.customer-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.customer-avatar {
+    width: 32px;
+    height: 32px;
+    background: #667eea;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="review-header text-center">
+    <div class="container">
+        <h1><i class="fas fa-clipboard-check me-3"></i>{{ title }}</h1>
+        <p class="lead mb-0">Review and approve bulk uploaded loan applications</p>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <div class="review-stats">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="text-center">
+                    <h3 class="text-primary mb-1">{{ total_count }}</h3>
+                    <small class="text-muted">Applications Under Review</small>
+                </div>
+            </div>
+            <div class="col-md-9 text-end">
+                <a href="{% url 'loans_core:application_bulk_upload' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-upload me-1"></i>Upload More
+                </a>
+                <a href="{% url 'loans_core:application_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-list me-1"></i>All Applications
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if applications %}
+    <form method="post" id="bulk-review-form">
+        {% csrf_token %}
+        
+        <!-- Bulk Actions Panel -->
+        <div class="bulk-actions">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="select-all">
+                        <label class="form-check-label fw-bold" for="select-all">
+                            Select All Applications
+                        </label>
+                    </div>
+                    <small class="text-muted" id="selected-count">0 selected</small>
+                </div>
+                <div class="col-md-8">
+                    <div class="action-buttons">
+                        <button type="submit" name="action" value="bulk_approve" class="btn btn-success" id="bulk-approve-btn" disabled>
+                            <i class="fas fa-check me-1"></i>Bulk Approve
+                        </button>
+                        <button type="submit" name="action" value="bulk_reject" class="btn btn-danger" id="bulk-reject-btn" disabled>
+                            <i class="fas fa-times me-1"></i>Bulk Reject
+                        </button>
+                        <button type="submit" name="action" value="bulk_draft" class="btn btn-warning" id="bulk-draft-btn" disabled>
+                            <i class="fas fa-edit me-1"></i>Move to Draft
+                        </button>
+                        
+                        <!-- Rejection reason input (hidden by default) -->
+                        <div id="rejection-reason-group" style="display: none;" class="ms-3">
+                            <input type="text" name="rejection_reason" class="form-control form-control-sm" 
+                                   placeholder="Rejection reason (optional)" maxlength="255">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Applications List -->
+        {% for application in applications %}
+        <div class="application-card">
+            <div class="application-header">
+                <div class="d-flex align-items-center">
+                    <div class="form-check me-3">
+                        <input class="form-check-input application-checkbox" type="checkbox" 
+                               name="application_ids" value="{{ application.id }}" id="app-{{ application.id }}">
+                        <label class="form-check-label" for="app-{{ application.id }}"></label>
+                    </div>
+                    
+                    <div class="customer-info">
+                        <div class="customer-avatar">
+                            {{ application.customer.first_name|first }}{{ application.customer.last_name|first }}
+                        </div>
+                        <div>
+                            <strong>{{ application.customer.first_name }} {{ application.customer.last_name }}</strong>
+                            <br><small class="text-muted">ID: {{ application.customer.national_id }}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-end">
+                    <span class="badge status-under-review">{{ application.get_status_display }}</span>
+                    <br><small class="text-muted">{{ application.created_at|date:"M d, Y H:i" }}</small>
+                </div>
+            </div>
+            
+            <div class="application-body">
+                <div class="application-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Application ID</span>
+                        <span class="detail-value">{{ application.application_id }}</span>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <span class="detail-label">Loan Product</span>
+                        <span class="detail-value">
+                            {{ application.loan_product.name }} ({{ application.loan_product.code }})
+                        </span>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <span class="detail-label">Requested Amount</span>
+                        <span class="detail-value amount-display">
+                            ₮{{ application.requested_amount|floatformat:0 }}
+                        </span>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <span class="detail-label">Term</span>
+                        <span class="detail-value">{{ application.term_months }} months</span>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <span class="detail-label">Interest Rate</span>
+                        <span class="detail-value">{{ application.interest_rate }}%</span>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <span class="detail-label">Purpose</span>
+                        <span class="detail-value">{{ application.purpose|truncatechars:50 }}</span>
+                    </div>
+                    
+                    {% if application.disbursement_date %}
+                    <div class="detail-item">
+                        <span class="detail-label">Disbursement Date</span>
+                        <span class="detail-value">{{ application.disbursement_date|date:"M d, Y" }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if application.first_payment_date %}
+                    <div class="detail-item">
+                        <span class="detail-label">First Payment Date</span>
+                        <span class="detail-value">{{ application.first_payment_date|date:"M d, Y" }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Individual Action Buttons -->
+                <div class="d-flex gap-2 mt-3">
+                    <button type="button" class="btn btn-sm btn-success quick-approve" 
+                            data-id="{{ application.id }}">
+                        <i class="fas fa-check me-1"></i>Approve
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger quick-reject" 
+                            data-id="{{ application.id }}">
+                        <i class="fas fa-times me-1"></i>Reject
+                    </button>
+                    <button type="button" class="btn btn-sm btn-warning quick-draft" 
+                            data-id="{{ application.id }}">
+                        <i class="fas fa-edit me-1"></i>Move to Draft
+                    </button>
+                    <a href="{% url 'loans_core:application_detail' application.id %}" 
+                       class="btn btn-sm btn-outline-info">
+                        <i class="fas fa-eye me-1"></i>View Details
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </form>
+    
+    {% else %}
+    <div class="text-center py-5">
+        <div class="mb-4">
+            <i class="fas fa-clipboard-check text-muted" style="font-size: 4rem;"></i>
+        </div>
+        <h4 class="text-muted">No Applications Under Review</h4>
+        <p class="text-muted">All bulk uploaded applications have been processed.</p>
+        <a href="{% url 'loans_core:application_bulk_upload' %}" class="btn btn-primary">
+            <i class="fas fa-upload me-1"></i>Upload New Applications
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all');
+    const applicationCheckboxes = document.querySelectorAll('.application-checkbox');
+    const selectedCountElement = document.getElementById('selected-count');
+    const bulkButtons = document.querySelectorAll('#bulk-approve-btn, #bulk-reject-btn, #bulk-draft-btn');
+    const bulkRejectBtn = document.getElementById('bulk-reject-btn');
+    const rejectionReasonGroup = document.getElementById('rejection-reason-group');
+
+    function updateSelectedCount() {
+        const selectedCount = document.querySelectorAll('.application-checkbox:checked').length;
+        selectedCountElement.textContent = `${selectedCount} selected`;
+        
+        // Enable/disable bulk buttons
+        bulkButtons.forEach(btn => {
+            btn.disabled = selectedCount === 0;
+        });
+        
+        // Update select all checkbox state
+        if (selectedCount === 0) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = false;
+        } else if (selectedCount === applicationCheckboxes.length) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = true;
+        } else {
+            selectAllCheckbox.indeterminate = true;
+        }
+    }
+
+    // Select/deselect all functionality
+    selectAllCheckbox.addEventListener('change', function() {
+        applicationCheckboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+        updateSelectedCount();
+    });
+
+    // Individual checkbox change
+    applicationCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedCount);
+    });
+
+    // Show/hide rejection reason input
+    bulkRejectBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        rejectionReasonGroup.style.display = 'block';
+        setTimeout(() => {
+            document.querySelector('input[name="rejection_reason"]').focus();
+        }, 100);
+    });
+
+    // Quick action buttons
+    document.querySelectorAll('.quick-approve, .quick-reject, .quick-draft').forEach(button => {
+        button.addEventListener('click', function() {
+            const applicationId = this.dataset.id;
+            const action = this.classList.contains('quick-approve') ? 'approve' :
+                          this.classList.contains('quick-reject') ? 'reject' : 'draft';
+            
+            let reason = '';
+            if (action === 'reject') {
+                reason = prompt('Rejection reason (optional):') || 'Rejected during review';
+            }
+            
+            // Confirm action
+            const actionText = action === 'approve' ? 'approve' :
+                              action === 'reject' ? 'reject' : 'move to draft';
+            
+            if (confirm(`Are you sure you want to ${actionText} this application?`)) {
+                quickAction(applicationId, action, reason);
+            }
+        });
+    });
+
+    function quickAction(applicationId, action, reason = '') {
+        const formData = new FormData();
+        formData.append('action', action);
+        formData.append('rejection_reason', reason);
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+        fetch(`/loans/applications/${applicationId}/quick-action/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message and remove the card
+                showMessage(data.message, 'success');
+                document.querySelector(`#app-${applicationId}`).closest('.application-card').remove();
+                updateSelectedCount();
+                
+                // Update stats
+                const currentCount = parseInt(document.querySelector('.review-stats h3').textContent);
+                document.querySelector('.review-stats h3').textContent = currentCount - 1;
+            } else {
+                showMessage(data.error || 'An error occurred', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('An error occurred while processing the request', 'danger');
+        });
+    }
+
+    function showMessage(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.review-stats').nextSibling);
+        
+        // Auto dismiss after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+
+    // Form submission confirmation
+    document.getElementById('bulk-review-form').addEventListener('submit', function(e) {
+        const selectedCount = document.querySelectorAll('.application-checkbox:checked').length;
+        const action = e.submitter.value;
+        
+        if (selectedCount === 0) {
+            e.preventDefault();
+            alert('Please select at least one application.');
+            return;
+        }
+        
+        const actionText = action.replace('bulk_', '').replace('_', ' ');
+        if (!confirm(`Are you sure you want to ${actionText} ${selectedCount} selected application(s)?`)) {
+            e.preventDefault();
+        }
+    });
+
+    // Initialize
+    updateSelectedCount();
+});
+</script>
+{% endblock %}

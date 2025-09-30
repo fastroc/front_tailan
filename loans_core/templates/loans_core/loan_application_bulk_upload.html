@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Bulk Upload Loan Applications{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Cyrillic-friendly font stack */
+body, .form-control, .table, .alert, .btn, input, textarea, select {
+    font-family: 'Segoe UI', 'DejaVu Sans', 'Liberation Sans', 'Arial Unicode MS', 'Tahoma', Arial, sans-serif !important;
+}
+
+/* Special styling for Cyrillic text display */
+.cyrillic-text, .table td, .table th {
+    font-family: 'Times New Roman', 'DejaVu Serif', 'Liberation Serif', 'Arial Unicode MS', 'Tahoma', serif;
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+/* Make sample data more readable */
+.table-bordered td, .table-bordered th {
+    font-size: 0.9rem;
+    padding: 0.5rem;
+    line-height: 1.4;
+}
+
+/* Better font rendering for form fields */
+.form-control, .form-select {
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* Improve readability of instructions */
+.alert {
+    line-height: 1.6;
+}
+
+/* Special styling for Cyrillic examples */
+.cyrillic-example {
+    background-color: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+    color: #495057;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Bulk Upload Loan Applications</h3>
+                <div class="card-tools">
+                    <a href="{% url 'loans_core:application_list' %}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-arrow-left"></i> Back to Applications
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{% if message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show" role="alert">
+                            {{ message|safe }}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="row">
+                    <!-- Upload Form -->
+                    <div class="col-md-6">
+                        <h4>Upload File</h4>
+                        <form method="post" enctype="multipart/form-data" id="uploadForm">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                {{ form.file.label_tag }}
+                                {{ form.file }}
+                                {% if form.file.errors %}
+                                    <div class="text-danger">{{ form.file.errors }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Upload an Excel (.xlsx) or CSV file. Maximum file size: 10MB.
+                                </small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Upload and Process
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Instructions -->
+                    <div class="col-md-6">
+                        <h4>Instructions</h4>
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> File Format Requirements:</h6>
+                            <ul class="mb-0">
+                                <li>File must be in Excel (.xlsx) or CSV format</li>
+                                <li>First row must contain column headers</li>
+                                <li>Maximum file size: 10MB</li>
+                                <li>Customers must already exist in the system</li>
+                                <li>Loan products must be active</li>
+                            </ul>
+                        </div>
+
+                        <h6>Required Columns:</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>national_id:</strong> <span class="cyrillic-example">УБ12345678</span> National ID (Cyrillic supported)</li>
+                            <li><strong>first_name:</strong> <span class="cyrillic-example">Батбаяр</span> Customer's first name (Cyrillic supported)</li>
+                            <li><strong>loan_product_code:</strong> Loan Product Code (e.g., PL001)</li>
+                            <li><strong>requested_amount:</strong> Loan amount requested</li>
+                            <li><strong>term_months:</strong> Loan term in months</li>
+                            <li><strong>interest_rate:</strong> Annual interest rate (%)</li>
+                            <li><strong>purpose:</strong> <span class="cyrillic-example">Бизнес өргөтгөл</span> Purpose (Cyrillic supported)</li>
+                        </ul>
+
+                        <h6>Optional Columns:</h6>
+                        <div class="row">
+                            <div class="col-12">
+                                <ul class="small">
+                                    <li>repayment_method (equal_payment, equal_principal, interest_only, custom)</li>
+                                    <li>payment_frequency (weekly, bi_weekly, monthly, quarterly)</li>
+                                    <li>grace_period_months</li>
+                                    <li>first_payment_date (YYYY-MM-DD)</li>
+                                    <li>collateral_description</li>
+                                    <li>notes</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-success mt-3">
+                            <h6><i class="fas fa-list"></i> Available Loan Product Codes:</h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <ul class="mb-0 small">
+                                        <li><strong>PL001</strong> - Personal Loan</li>
+                                        <li><strong>BL001</strong> - Business Loan</li>
+                                        <li><strong>AL001</strong> - Auto Loan</li>
+                                        <li><strong>ML001</strong> - Mortgage Loan</li>
+                                    </ul>
+                                </div>
+                                <div class="col-6">
+                                    <ul class="mb-0 small">
+                                        <li><strong>SL001</strong> - Student Loan</li>
+                                        <li><strong>EL001</strong> - Emergency Loan</li>
+                                        <li><strong>CL001</strong> - Custom Loan <span class="badge badge-info">1-50% | 1-180mo</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sample Data Section -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h4>Sample Data Format</h4>
+                        <div class="alert alert-secondary">
+                            <h6>Excel/CSV Sample:</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th class="cyrillic-text">national_id</th>
+                                            <th class="cyrillic-text">first_name</th>
+                                            <th>loan_product_code</th>
+                                            <th>requested_amount</th>
+                                            <th>term_months</th>
+                                            <th>interest_rate</th>
+                                            <th>purpose</th>
+                                            <th>payment_frequency</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="cyrillic-text">УБ12345678</td>
+                                            <td class="cyrillic-text">Батбаяр</td>
+                                            <td>PL001</td>
+                                            <td>50000</td>
+                                            <td>24</td>
+                                            <td>12.5</td>
+                                            <td class="cyrillic-text">Бизнес өргөтгөл</td>
+                                            <td>monthly</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="cyrillic-text">МН87654321</td>
+                                            <td class="cyrillic-text">Цэцэгмаа</td>
+                                            <td>AL001</td>
+                                            <td>25000</td>
+                                            <td>60</td>
+                                            <td>8.75</td>
+                                            <td class="cyrillic-text">Машин худалдан авах</td>
+                                            <td>monthly</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Download Template Button -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <a href="{% url 'loans_core:application_template_download' %}" class="btn btn-outline-success">
+                            <i class="fas fa-download"></i> Download Excel Template (UTF-8)
+                        </a>
+                        <button type="button" class="btn btn-outline-info ms-2" id="downloadTemplateJS">
+                            <i class="fas fa-download"></i> Download Template (JavaScript)
+                        </button>
+                        <small class="text-muted d-block mt-1">
+                            <i class="fas fa-info-circle"></i> Use the first button for proper Cyrillic encoding in Excel
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Prerequisites Section -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Prerequisites:</h6>
+                            <ul class="mb-0">
+                                <li><strong>Customers:</strong> All customers must already exist in the system. Create customers first using <a href="{% url 'loans_customers:customer_bulk_upload' %}" target="_blank">Customer Bulk Upload</a>.</li>
+                                <li><strong>Matching Logic:</strong> System matches by <span class="cyrillic-example">National ID + First Name</span> combination for accuracy</li>
+                                <li><strong>Cyrillic Support:</strong> Full support for Mongolian Cyrillic characters in names and purpose fields</li>
+                                <li><strong>Loan Products:</strong> Loan products must be created and active. Check <a href="{% url 'loans_core:product_list' %}" target="_blank">Loan Products</a>.</li>
+                                <li><strong>Permissions:</strong> Ensure you have proper permissions to create loan applications.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Download template functionality (JavaScript version as backup)
+    document.getElementById('downloadTemplateJS').addEventListener('click', function() {
+        // Create a sample CSV template for loan applications with Cyrillic support
+        const csvContent = `national_id,first_name,loan_product_code,requested_amount,term_months,interest_rate,purpose,repayment_method,payment_frequency,grace_period_months,first_payment_date,collateral_description,notes
+УБ12345678,Батбаяр,PL001,50000,24,12.5,"Бизнес өргөтгөл",equal_payment,monthly,0,2025-05-01,Business equipment,Good credit history
+МН87654321,Цэцэгмаа,AL001,25000,60,8.75,"Машин худалдан авах",equal_principal,monthly,1,2025-04-15,"Honda Civic 2023",Existing customer
+АА98765432,Ганболд,ML001,80000,120,15.25,"Гэр засвар",equal_payment,monthly,0,2025-06-01,Property deed,First time borrower
+БГ11223344,Сайнбаяр,PL002,15000,18,10.0,"Хувийн хэрэг",equal_payment,bi_weekly,0,2025-04-20,,Salary verification provided`;
+        
+        // Add BOM (Byte Order Mark) for UTF-8 to ensure proper encoding
+        const BOM = '\uFEFF';
+        const csvWithBOM = BOM + csvContent;
+        
+        // Create blob with explicit UTF-8 encoding
+        const blob = new Blob([csvWithBOM], { 
+            type: 'text/csv;charset=utf-8;' 
+        });
+        
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'loan_application_upload_template.csv';
+        a.setAttribute('charset', 'utf-8');
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    });
+
+    // Form validation
+    const form = document.getElementById('uploadForm');
+    form.addEventListener('submit', function(e) {
+        const fileInput = document.getElementById('id_file');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            e.preventDefault();
+            alert('Please select a file to upload.');
+            return;
+        }
+        
+        const allowedTypes = [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'text/csv',
+            'application/csv'
+        ];
+        
+        if (!allowedTypes.includes(file.type)) {
+            e.preventDefault();
+            alert('Please upload an Excel (.xlsx) or CSV file.');
+            return;
+        }
+        
+        if (file.size > 10 * 1024 * 1024) { // 10MB
+            e.preventDefault();
+            alert('File size must be less than 10MB.');
+            return;
+        }
+        
+        // Show loading state
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    });
+});
+</script>
+{% endblock %}

@@ -219,3 +219,29 @@ class CustomerDocumentReviewForm(forms.ModelForm):
             'status': forms.Select(attrs={'class': 'form-select'}),
             'review_notes': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
         }
+
+
+class CustomerBulkUploadForm(forms.Form):
+    """Form for bulk customer upload"""
+    
+    file = forms.FileField(
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.xlsx,.csv'
+        }),
+        help_text='Upload Excel (.xlsx) or CSV file with customer data. Maximum file size: 10MB'
+    )
+    
+    def clean_file(self):
+        file = self.cleaned_data['file']
+        
+        # Check file size (10MB limit)
+        if file.size > 10 * 1024 * 1024:
+            raise forms.ValidationError('File size cannot exceed 10MB')
+        
+        # Check file extension
+        valid_extensions = ['.xlsx', '.csv']
+        if not any(file.name.lower().endswith(ext) for ext in valid_extensions):
+            raise forms.ValidationError('Only Excel (.xlsx) and CSV files are allowed')
+        
+        return file

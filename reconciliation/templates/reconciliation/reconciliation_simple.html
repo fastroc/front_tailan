@@ -2,9 +2,7 @@
 {% load static humanize %}
 
 {% block extra_head %}
-<!-- CSRF Token for AJAX requests -->
-{% csrf_token %}
-<meta name="csrf-token" content="{{ csrf_token }}">
+<!-- No extra head content needed - CSRF handled via cookies -->
 {% endblock %}
 
 {% block title %}{{ title|default:"Bank Reconciliation" }} - Simple Mode{% endblock %}
@@ -20,7 +18,27 @@
   .x-tabs .nav-link { font-weight:600; }
   .x-tabs .nav-link.active { border-bottom:3px solid #2563eb; color:#111827; }
 
-  .transaction-item { transition: background .15s ease, border-color .15s ease; }
+  .transaction-item { 
+    transition: all 0.5s ease-out, background .15s ease, border-color .15s ease;
+    transform: translateY(0);
+    opacity: 1;
+    max-height: 1000px;
+    overflow: visible;
+  }
+  .transaction-item.saving {
+    transition: all 0.3s ease-out;
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
+  .transaction-item.completed {
+    transition: all 0.5s ease-out;
+    transform: translateY(-50px);
+    opacity: 0;
+    max-height: 0;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden;
+  }
   .transaction-item:hover { background:#f8fafc; }
   .border-credit { border-left:4px solid #16a34a !important; }
   .border-debit  { border-left:4px solid #ef4444 !important; }
@@ -64,6 +82,57 @@
   .progress-text { font-size:.85rem; color:#6b7280; }
   .btn-reconcile { background: #059669; border-color: #059669; color: white; }
   .btn-reconcile:hover { background: #047857; border-color: #047857; }
+
+  /* Loan Customers Section Styling */
+  .border-left-primary { border-left: 4px solid #2563eb !important; }
+  .card.shadow-sm { box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important; }
+  .card.shadow-sm:hover { box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1) !important; transition: box-shadow 0.15s ease-in-out; }
+
+  /* Enhanced Reconciliation Progress Styles */
+  .reconciliation-progress {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+  }
+  
+  .progress-info .fw-semibold {
+    font-size: 0.95rem;
+  }
+  
+  .progress-stats .badge {
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+  }
+  
+  .progress {
+    background-color: #f1f5f9;
+    border-radius: 0.5rem;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+  
+  .progress-bar-animated {
+    animation: progress-bar-stripes 1s linear infinite;
+  }
+  
+  @keyframes progress-bar-stripes {
+    0% { background-position: 1rem 0; }
+    100% { background-position: 0 0; }
+  }
+  
+  /* Real-time progress update styles */
+  .progress-counter {
+    transition: all 0.3s ease;
+  }
+  
+  .progress-counter.updated, .balance-metric .value.updated {
+    transform: scale(1.1);
+    color: #059669 !important;
+  }
+  
+  .balance-metric .value.updated {
+    transition: all 0.3s ease;
+  }
 </style>
 {% endblock %}
 
@@ -93,7 +162,7 @@
     </div>
   </div>
 
-  <!-- Balance Summary - Same style as original -->
+  <!-- Balance Summary - Enhanced with progress tracking -->
   <div class="row mb-4">
     <div class="col-12">
       <div class="balance-banner p-4">
@@ -125,6 +194,51 @@
             </div>
           </div>
         </div>
+        
+        <!-- Reconciliation Progress Section -->
+        <div class="row mt-4">
+          <div class="col-12">
+            <div class="reconciliation-progress">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="progress-info">
+                  <span class="fw-semibold text-dark">Reconciliation Progress</span>
+                  <span class="text-muted ms-2">{{ progress.matched_transactions }} of {{ progress.total_transactions }} transactions</span>
+                </div>
+                <div class="progress-stats">
+                  <span class="badge bg-success me-1">{{ progress.matched_transactions }} Completed</span>
+                  <span class="badge bg-warning">{{ progress.unmatched_transactions }} Remaining</span>
+                </div>
+              </div>
+              
+              <!-- Progress Bar -->
+              <div class="progress" style="height: 8px;">
+                <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
+                     role="progressbar" 
+                     style="width: {{ progress.percentage|floatformat:1 }}%"
+                     aria-valuenow="{{ progress.percentage|floatformat:1 }}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                </div>
+              </div>
+              
+              <!-- Detailed Progress Statistics -->
+              <div class="row mt-3 text-center">
+                <div class="col-4">
+                  <div class="small text-muted">Total Transactions</div>
+                  <div class="fw-bold text-primary">{{ progress.total_transactions|intcomma }}</div>
+                </div>
+                <div class="col-4">
+                  <div class="small text-muted">Reconciled</div>
+                  <div class="fw-bold text-success">{{ progress.matched_transactions|intcomma }}</div>
+                </div>
+                <div class="col-4">
+                  <div class="small text-muted">Remaining</div>
+                  <div class="fw-bold text-warning">{{ progress.unmatched_transactions|intcomma }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -136,7 +250,7 @@
         <div class="card-header">
           <h5 class="card-title mb-0">
             <i class="fas fa-list"></i>
-            Unmatched Transactions ({{ transactions|length }})
+            <span class="transaction-list-title">Unmatched Transactions (<span class="transaction-count">{{ transactions|length }}</span>)</span>
           </h5>
         </div>
         <div class="card-body p-0">
@@ -156,12 +270,21 @@
                   <div class="col-md-4">
                     <div class="d-flex align-items-start justify-content-between">
                       <div class="flex-grow-1" style="min-width:0;">
-                        <div class="small text-primary fw-semibold txn-date"><i class="bi bi-calendar me-1"></i>{{ t.date|date:"d M Y" }}</div>
+                        <div class="small text-primary fw-semibold txn-date">
+                          <i class="bi bi-calendar me-1"></i>Гүйлгээний огноо: 
+                          {% if t.transaction_datetime %}
+                            {{ t.transaction_datetime|date:"Y-m-d H:i:s" }}
+                          {% else %}
+                            {{ t.date|date:"Y-m-d" }} 00:00:00
+                          {% endif %}
+                        </div>
                         <div class="txn-title fw-semibold">{{ t.description|default:"(no description)" }}</div>
-                        <div class="txn-meta text-muted small">Ref: {{ t.reference|default:"—" }}</div>
+                        <div class="txn-meta text-muted small">
+                            Ref: {{ t.reference|default:"—" }} | Харьцсан данс: {{ t.related_account|default:"—" }}
+                        </div>
                       </div>
                       <div class="text-end ms-3">
-                        <div class="{% if t.amount > 0 %}amount-pos{% else %}amount-neg{% endif %}">{% if t.amount > 0 %}+{% endif %}${{ t.amount|floatformat:2 }}</div>
+                        <div class="{% if t.amount > 0 %}amount-pos{% else %}amount-neg{% endif %}">{% if t.amount > 0 %}+{% endif %}${{ t.amount|floatformat:2|intcomma }}</div>
                         <div class="small text-muted">{% if t.amount > 0 %}Received{% else %}Spent{% endif %}</div>
                       </div>
                     </div>
@@ -169,7 +292,7 @@
                   
                   <!-- Middle: Save Button -->
                   <div class="col-md-2 d-flex justify-content-center align-items-center">
-                    <button type="button" class="btn btn-primary btn-lg ok-btn" id="save{{ t.id }}" onclick="saveTransaction({{ t.id }})">
+                    <button type="button" class="btn btn-primary btn-lg ok-btn" id="save{{ t.id }}" onclick="saveTransaction({{ t.id }})" style="display: none;">
                       OK
                     </button>
                   </div>
@@ -293,9 +416,26 @@ console.log('📊 COA Data loaded:', window.coaData.length, 'accounts');
 
 <!-- Additional Simple JavaScript - Matching original UX exactly -->
 <script>
-// Get CSRF token for AJAX requests
+// Get CSRF token for AJAX requests - Use cookie method like base template
 function getCsrfToken() {
-    return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    // Use same cookie method as base template
+    return getCookie('csrftoken');
+}
+
+// Helper function to get cookie (same as base template)
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 // WHO Dropdown function - Exact same as original
@@ -310,36 +450,47 @@ window.showWhoDropdown = function(button, transactionId) {
     dropdown.className = 'temp-who-dropdown position-absolute bg-white border rounded shadow';
     dropdown.style.cssText = 'z-index: 9999; top: 100%; left: 0; min-width: 250px; max-height: 300px; overflow-y: auto; margin-top: 2px;';
     
-    // Dynamic loan customers from approved applications
+    // Dynamic active loans for current company only
     {% if loan_customers %}
-    const customers = [
-        {% for customer_info in loan_customers %}
+    const loans = [
+        {% for loan_info in loan_customers %}
         {
-            name: '{{ customer_info.customer.first_name }} {{ customer_info.customer.last_name }}',
-            email: '{{ customer_info.customer.email }}',
-            company: '{{ customer_info.company.name }}',
-            isSameCompany: {{ customer_info.is_same_company|yesno:"true,false" }}
+            loan_id: {{ loan_info.loan_id }},
+            loan_number: '{{ loan_info.loan_number|escapejs }}',
+            customer_name: '{{ loan_info.customer_name|escapejs }}',
+            customer_id: {{ loan_info.customer_id }},
+            loan_amount: {{ loan_info.loan_amount|default:0 }},
+            loan_type: '{{ loan_info.loan_type|default:""|escapejs }}',
+            display_text: '{{ loan_info.display_text|escapejs }}',
+            display_detail: '{{ loan_info.display_detail|escapejs }}',
+            phone: '{{ loan_info.phone|default:""|escapejs }}',
+            national_id: '{{ loan_info.national_id|default:""|escapejs }}',
+            vehicle_plates: {{ loan_info.vehicle_plates|safe }},
+            vehicle_info: {{ loan_info.vehicle_info|safe }}
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
     
     dropdown.innerHTML = `
-        <div class="p-2 border-bottom bg-light fw-bold">Approved Loan Customers</div>
-        ${customers.map(customer => `
+        <div class="p-2 border-bottom bg-light fw-bold">{{ company.name }} - Active Loans</div>
+        ${loans.map(loan => `
             <div class="p-2" style="cursor: pointer;" 
                  onmouseover="this.style.background='#f8f9fa'" 
                  onmouseout="this.style.background='white'"
-                 onclick="selectWhoCustomer_simple('${customer.name}', ${transactionId})">
-                <div class="fw-bold ${customer.isSameCompany ? '' : 'text-muted'}">${customer.name}</div>
-                <small class="text-muted">${customer.email}</small>
-                ${!customer.isSameCompany ? `<small class="d-block text-warning">📍 ${customer.company}</small>` : ''}
+                 onclick="selectWhoLoan_simple('${loan.display_text}', ${transactionId}, ${loan.loan_id})">
+                <div class="fw-bold">${loan.display_text}</div>
+                <small class="text-muted">${loan.display_detail}</small>
+                <small class="text-muted d-block">
+                    ID: ${loan.national_id} | Phone: ${loan.phone}
+                    ${loan.vehicle_plates.length > 0 ? ' | Plates: ' + loan.vehicle_plates.join(', ') : ''}
+                </small>
             </div>
         `).join('')}
     `;
     {% else %}
     dropdown.innerHTML = `
-        <div class="p-2 border-bottom bg-light fw-bold">Approved Loan Customers</div>
-        <div class="p-2 text-muted">No approved loan customers found</div>
+        <div class="p-2 border-bottom bg-light fw-bold">{{ company.name }} - Active Loans</div>
+        <div class="p-2 text-muted">No active loans found for {{ company.name }}</div>
     `;
     {% endif %}
     
@@ -359,6 +510,24 @@ window.showWhoDropdown = function(button, transactionId) {
     }, 100); // Small delay to prevent immediate closure
     
     return false;
+};
+
+window.selectWhoLoan_simple = function(loanDisplayText, transactionId, loanId) {
+    console.log('✅ Selected loan:', loanDisplayText, 'for transaction:', transactionId, 'loan ID:', loanId);
+    
+    // Find and populate WHO input
+    const whoInput = document.querySelector(`[data-transaction-id="${transactionId}"] .who-input`);
+    if (whoInput) {
+        whoInput.value = loanDisplayText;
+        whoInput.setAttribute('data-loan-id', loanId); // Store loan ID for reconciliation
+        console.log('✅ Set WHO input to:', loanDisplayText);
+    }
+    
+    // Remove all dropdowns
+    document.querySelectorAll('.temp-who-dropdown, .temp-dropdown, .temp-what-dropdown').forEach(d => d.remove());
+    
+    // Check if successful match and show OK button
+    checkForSuccessfulMatch(transactionId);
 };
 
 window.selectWhoCustomer_simple = function(customerName, transactionId) {
@@ -463,6 +632,13 @@ function saveTransaction(transactionId) {
         alert('Please fill in WHO and WHAT fields');
         return;
     }
+
+    // Get CSRF token with error handling
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+        alert('❌ CSRF token not found. Please refresh the page.');
+        return;
+    }
     
     const saveButton = document.getElementById('save' + transactionId);
     saveButton.disabled = true;
@@ -473,7 +649,7 @@ function saveTransaction(transactionId) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken()
+            'X-CSRFToken': csrfToken
         },
         body: JSON.stringify({
             transaction_id: transactionId,
@@ -485,15 +661,27 @@ function saveTransaction(transactionId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Mark as completed
+            // Smooth transition: fade out and slide up using CSS classes
             const transactionItem = document.querySelector(`[data-transaction-id="${transactionId}"]`);
-            transactionItem.style.backgroundColor = '#f0fdf4';
-            transactionItem.style.opacity = '0.7';
             
-            saveButton.innerHTML = '<i class="bi bi-check-circle me-1"></i>Saved';
-            saveButton.className = 'btn btn-success btn-lg ok-btn';
+            // Step 1: Add saving effect briefly
+            transactionItem.classList.add('saving');
             
-            alert('✅ Transaction saved successfully!');
+            // Step 2: After a brief moment, start completion animation
+            setTimeout(() => {
+                transactionItem.classList.remove('saving');
+                transactionItem.classList.add('completed');
+                
+                // ✅ UPDATE PROGRESS TRACKING
+                updateReconciliationProgress(transactionItem);
+                
+                // Completely remove from DOM after CSS transition completes
+                setTimeout(() => {
+                    transactionItem.remove();
+                }, 600); // Match CSS transition duration
+            }, 200);
+            
+            console.log('✅ Transaction successfully saved and hidden:', transactionId);
         } else {
             alert('❌ Error: ' + data.error);
             saveButton.disabled = false;
@@ -530,6 +718,148 @@ function checkForSuccessfulMatch(transactionId) {
             // No match yet - hide button
             okButton.style.display = 'none';
             console.log('⏳ Waiting for complete match for transaction:', transactionId);
+        }
+    }
+}
+
+// Update reconciliation progress tracking in real-time
+function updateReconciliationProgress(transactionItem = null) {
+    // Extract transaction amount if transaction item is provided
+    let transactionAmount = 0;
+    if (transactionItem) {
+        const amountElement = transactionItem.querySelector('.amount-pos, .amount-neg');
+        if (amountElement) {
+            const amountText = amountElement.textContent.replace(/[+\-$,]/g, '').trim();
+            transactionAmount = parseFloat(amountText) || 0;
+            // Keep the original sign from the CSS class
+            if (amountElement.classList.contains('amount-neg')) {
+                transactionAmount = -Math.abs(transactionAmount);
+            } else {
+                transactionAmount = Math.abs(transactionAmount);
+            }
+        }
+    }
+    
+    // Get current progress elements
+    const currentCompletedElement = document.querySelector('.reconciliation-progress .fw-bold.text-success');
+    const currentRemainingElement = document.querySelector('.reconciliation-progress .fw-bold.text-warning');
+    const progressInfoSpan = document.querySelector('.progress-info .text-muted');
+    const progressBar = document.querySelector('.progress-bar');
+    const completedBadge = document.querySelector('.badge.bg-success');
+    const remainingBadge = document.querySelector('.badge.bg-warning');
+    const reconciliationPercentage = document.querySelector('.balance-metric .value.text-success');
+    const reconciledBalanceElement = document.querySelector('.balance-metric .value.text-info');
+    const differenceElement = document.querySelector('.balance-metric .value.text-warning, .balance-metric .value.text-success');
+    const transactionCountSpan = document.querySelector('.transaction-count');
+    const transactionListTitle = document.querySelector('.transaction-list-title');
+    
+    if (currentCompletedElement && currentRemainingElement) {
+        // Get current values
+        const currentCompleted = parseInt(currentCompletedElement.textContent.replace(/,/g, '')) || 0;
+        const currentRemaining = parseInt(currentRemainingElement.textContent.replace(/,/g, '')) || 0;
+        
+        // Calculate new values (increment completed by 1, decrement remaining by 1)
+        const newCompleted = currentCompleted + 1;
+        const newRemaining = Math.max(0, currentRemaining - 1);
+        const total = newCompleted + newRemaining;
+        const percentage = total > 0 ? Math.min(100, (newCompleted / total) * 100) : 0;
+        
+        console.log(`🔄 Progress Update: ${newCompleted}/${total} (${percentage.toFixed(1)}%) | Transaction Amount: $${transactionAmount}`);
+        
+        // Update progress bar with animation
+        if (progressBar) {
+            progressBar.style.width = `${percentage.toFixed(1)}%`;
+            progressBar.setAttribute('aria-valuenow', percentage.toFixed(1));
+        }
+        
+        // Update badges
+        if (completedBadge) {
+            completedBadge.textContent = `${newCompleted.toLocaleString()} Completed`;
+        }
+        if (remainingBadge) {
+            remainingBadge.textContent = `${newRemaining.toLocaleString()} Remaining`;
+        }
+        
+        // Update detailed progress statistics with animation
+        currentCompletedElement.textContent = newCompleted.toLocaleString();
+        currentCompletedElement.classList.add('updated');
+        setTimeout(() => currentCompletedElement.classList.remove('updated'), 600);
+        
+        currentRemainingElement.textContent = newRemaining.toLocaleString();
+        currentRemainingElement.classList.add('updated');
+        setTimeout(() => currentRemainingElement.classList.remove('updated'), 600);
+        
+        // Update progress info text
+        if (progressInfoSpan) {
+            progressInfoSpan.textContent = `${newCompleted.toLocaleString()} of ${total.toLocaleString()} transactions`;
+        }
+        
+        // Update main reconciliation percentage in balance banner
+        if (reconciliationPercentage) {
+            reconciliationPercentage.textContent = `${percentage.toFixed(0)}%`;
+        }
+        
+        // Update reconciled balance
+        if (reconciledBalanceElement && transactionAmount !== 0) {
+            const currentBalanceText = reconciledBalanceElement.textContent.replace(/[$,]/g, '');
+            const currentBalance = parseFloat(currentBalanceText) || 0;
+            const newBalance = currentBalance + transactionAmount;
+            
+            // Format with commas and update
+            reconciledBalanceElement.textContent = '$' + newBalance.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            
+            // Update difference (Statement Balance - Reconciled Balance)
+            if (differenceElement && differenceElement.parentElement.querySelector('.label').textContent === 'Difference') {
+                const statementBalanceElement = document.querySelector('.balance-metric .value.text-primary');
+                if (statementBalanceElement) {
+                    const statementBalanceText = statementBalanceElement.textContent.replace(/[$,]/g, '');
+                    const statementBalance = parseFloat(statementBalanceText) || 0;
+                    const difference = statementBalance - newBalance;
+                    
+                    differenceElement.textContent = '$' + difference.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                    
+                    // Update difference color class
+                    differenceElement.className = difference === 0 ? 'value text-success' : 'value text-warning';
+                }
+            }
+            
+            // Add update animation to balance
+            reconciledBalanceElement.classList.add('updated');
+            setTimeout(() => reconciledBalanceElement.classList.remove('updated'), 600);
+        }
+        
+        // Update transaction count in header
+        if (transactionCountSpan) {
+            const currentCount = parseInt(transactionCountSpan.textContent) || 0;
+            const newCount = Math.max(0, currentCount - 1);
+            transactionCountSpan.textContent = newCount;
+            
+            // Update header title when complete
+            if (newCount === 0 && transactionListTitle) {
+                transactionListTitle.innerHTML = '<i class="fas fa-check-circle text-success me-2"></i>All Transactions Reconciled!';
+            }
+        }
+        
+        // Show completion celebration if all transactions are reconciled
+        if (newRemaining === 0 && total > 0) {
+            setTimeout(() => {
+                const progressContainer = document.querySelector('.reconciliation-progress');
+                if (progressContainer) {
+                    progressContainer.innerHTML = `
+                        <div class="text-center py-3">
+                            <i class="fas fa-check-circle text-success mb-2" style="font-size: 2rem;"></i>
+                            <div class="fw-bold text-success">🎉 All Transactions Reconciled!</div>
+                            <div class="text-muted small mt-1">Great job! You've completed the reconciliation process.</div>
+                        </div>
+                    `;
+                }
+            }, 1000);
         }
     }
 }
@@ -578,22 +908,36 @@ function showWhoAutoSuggestions(input, transactionId) {
     
     if (value.length < 2) return; // Only show suggestions after 2 characters
     
-    // Filter customers based on input
+    // Filter loans based on input - current company only
     {% if loan_customers %}
-    const customers = [
-        {% for customer_info in loan_customers %}
+    const loans = [
+        {% for loan_info in loan_customers %}
         {
-            name: '{{ customer_info.customer.first_name }} {{ customer_info.customer.last_name }}',
-            email: '{{ customer_info.customer.email }}',
-            company: '{{ customer_info.company.name }}',
-            isSameCompany: {{ customer_info.is_same_company|yesno:"true,false" }}
+            loan_id: {{ loan_info.loan_id }},
+            loan_number: '{{ loan_info.loan_number|escapejs }}',
+            customer_name: '{{ loan_info.customer_name|escapejs }}',
+            customer_id: {{ loan_info.customer_id }},
+            display_text: '{{ loan_info.display_text|escapejs }}',
+            display_detail: '{{ loan_info.display_detail|escapejs }}',
+            phone: '{{ loan_info.phone|default:""|escapejs }}',
+            national_id: '{{ loan_info.national_id|default:""|escapejs }}',
+            vehicle_plates: {{ loan_info.vehicle_plates|safe }},
+            vehicle_info: {{ loan_info.vehicle_info|safe }}
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
     
-    const filtered = customers.filter(customer => 
-        customer.name.toLowerCase().includes(value) || 
-        customer.email.toLowerCase().includes(value)
+    const filtered = loans.filter(loan => 
+        loan.customer_name.toLowerCase().includes(value) || 
+        loan.loan_number.toLowerCase().includes(value) ||
+        loan.phone.toLowerCase().includes(value) ||
+        loan.national_id.toLowerCase().includes(value) ||
+        loan.vehicle_plates.some(plate => {
+            // Flexible plate matching - remove formatting for search
+            const cleanPlate = plate.replace(/[-\s]/g, '').toLowerCase();
+            const cleanValue = value.replace(/[-\s]/g, '').toLowerCase();
+            return cleanPlate.includes(cleanValue);
+        })
     );
     
     if (filtered.length > 0) {
@@ -601,13 +945,16 @@ function showWhoAutoSuggestions(input, transactionId) {
         suggestions.className = 'auto-suggestion-who position-absolute bg-white border rounded shadow';
         suggestions.style.cssText = 'z-index: 9998; top: 100%; left: 0; right: 0; max-height: 200px; overflow-y: auto; margin-top: 2px;';
         
-        suggestions.innerHTML = filtered.slice(0, 5).map(customer => `
+        suggestions.innerHTML = filtered.slice(0, 5).map(loan => `
             <div class="p-2" style="cursor: pointer;" 
                  onmouseover="this.style.background='#f8f9fa'" 
                  onmouseout="this.style.background='white'"
-                 onclick="selectWhoSuggestion('${customer.name}', ${transactionId})">
-                <div class="fw-bold small ${customer.isSameCompany ? '' : 'text-muted'}">${customer.name}</div>
-                <small class="text-muted">${customer.email}</small>
+                 onclick="selectWhoSuggestion('${loan.display_text}', ${transactionId}, ${loan.loan_id})">
+                <div class="fw-bold small">${loan.display_text}</div>
+                <small class="text-muted">${loan.display_detail}</small>
+                ${loan.vehicle_plates.length > 0 ? 
+                    `<small class="text-muted d-block">Plates: ${loan.vehicle_plates.join(', ')}</small>` : ''
+                }
             </div>
         `).join('');
         
@@ -674,10 +1021,13 @@ function showWhatAutoSuggestions(input, transactionId) {
 }
 
 // Selection functions for auto-suggestions
-function selectWhoSuggestion(customerName, transactionId) {
+function selectWhoSuggestion(loanDisplayText, transactionId, loanId) {
     const whoInput = document.querySelector(`[data-transaction-id="${transactionId}"] .who-input`);
     if (whoInput) {
-        whoInput.value = customerName;
+        whoInput.value = loanDisplayText;
+        if (loanId) {
+            whoInput.setAttribute('data-loan-id', loanId); // Store loan ID for reconciliation
+        }
     }
     document.querySelectorAll('.auto-suggestion-who').forEach(d => d.remove());
     checkForSuccessfulMatch(transactionId);

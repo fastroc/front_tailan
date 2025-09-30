@@ -17,6 +17,14 @@
                     <p class="text-muted mb-0">Record incoming loan payments</p>
                 </div>
                 <div>
+                    <a href="{% url 'loans_payments:bulk_payment_upload' %}" class="btn btn-success me-2">
+                        <i class="fas fa-upload me-2"></i>Bulk Upload
+                    </a>
+                    {% if recent_payments %}
+                    <button class="btn btn-danger me-2" onclick="confirmClearAll()">
+                        <i class="fas fa-trash me-2"></i>Clear All
+                    </button>
+                    {% endif %}
                     <span class="badge bg-info">{{ active_loans.count }} Active Loans</span>
                 </div>
             </div>
@@ -215,43 +223,351 @@
     <div class="row">
         <div class="col-12">
             <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Recent Payments</h6>
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Payment History</h6>
+                    <small class="text-muted">All payments</small>
                 </div>
                 <div class="card-body">
                     {% if recent_payments %}
+                        <!-- Search Box -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <input type="text" id="paymentSearch" class="form-control" 
+                                           placeholder="Search payments by loan number, customer name, or amount...">
+                                    <div class="input-group-append">
+                                        <span class="input-group-text">
+                                            <i class="fas fa-search"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-right">
+                                <button class="btn btn-outline-secondary btn-sm" onclick="clearSearch()">
+                                    <i class="fas fa-times"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Payment Source Summary -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <div class="alert alert-light">
+                                    <div class="row text-center">
+                                        <div class="col-md-3">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <i class="fas fa-hand-paper text-primary me-2"></i>
+                                                <div>
+                                                    <div class="font-weight-bold text-primary">
+                                                        {{ payment_source_stats.manual_count|default:0 }}
+                                                    </div>
+                                                    <small class="text-muted">Manual Entries</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <i class="fas fa-balance-scale text-info me-2"></i>
+                                                <div>
+                                                    <div class="font-weight-bold text-info">
+                                                        {{ payment_source_stats.reconciliation_count|default:0 }}
+                                                    </div>
+                                                    <small class="text-muted">Reconciliation</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <i class="fas fa-upload text-warning me-2"></i>
+                                                <div>
+                                                    <div class="font-weight-bold text-warning">
+                                                        {{ payment_source_stats.bulk_upload_count|default:0 }}
+                                                    </div>
+                                                    <small class="text-muted">Bulk Upload</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <i class="fas fa-check-circle text-success me-2"></i>
+                                                <div>
+                                                    <div class="font-weight-bold text-success">
+                                                        {{ payment_source_stats.bank_verified_count|default:0 }}
+                                                    </div>
+                                                    <small class="text-muted">Bank Verified</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="table-responsive">
-                            <table class="table table-striped">
+                            <table class="table table-striped" id="paymentsTable">
                                 <thead>
                                     <tr>
                                         <th>Date</th>
+                                        <th>Payment ID</th>
                                         <th>Loan Number</th>
                                         <th>Customer</th>
                                         <th>Amount</th>
                                         <th>Method</th>
+                                        <th>Reconciliation Status</th>
                                         <th>Notes</th>
+                                        <th width="150px">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for payment in recent_payments %}
-                                        <tr>
+                                        <tr class="{% if payment.data_source == 'reconciliation' %}table-info{% elif payment.data_source == 'bulk_upload' %}table-warning{% endif %}">
                                             <td>{{ payment.payment_date|date:"M d, Y" }}</td>
+                                            <td>
+                                                <a href="{% url 'loans_payments:payment_detail' payment.pk %}" class="text-decoration-none">
+                                                    <strong>{{ payment.payment_id }}</strong>
+                                                </a>
+                                                {% if payment.data_source == 'reconciliation' %}
+                                                    <span class="badge bg-info ms-1" title="Created from Bank Reconciliation">
+                                                        <i class="fas fa-balance-scale"></i> Reconciled
+                                                    </span>
+                                                {% elif payment.data_source == 'bulk_upload' %}
+                                                    <span class="badge bg-warning ms-1" title="Created from Bulk Upload">
+                                                        <i class="fas fa-upload"></i> Bulk
+                                                    </span>
+                                                {% elif payment.data_source == 'manual' %}
+                                                    <span class="badge bg-primary ms-1" title="Manual Entry">
+                                                        <i class="fas fa-hand-paper"></i> Manual
+                                                    </span>
+                                                {% endif %}
+                                            </td>
                                             <td>{{ payment.loan.loan_number }}</td>
                                             <td>{{ payment.loan.customer.first_name }} {{ payment.loan.customer.last_name }}</td>
-                                            <td>${{ payment.payment_amount|floatformat:2|intcomma }}</td>
+                                            <td>
+                                                ${{ payment.payment_amount|floatformat:2|intcomma }}
+                                                {% if payment.is_bank_verified %}
+                                                    <small class="text-success ms-1" title="Bank Verified">
+                                                        <i class="fas fa-check-circle"></i>
+                                                    </small>
+                                                {% endif %}
+                                            </td>
                                             <td>
                                                 <span class="badge bg-secondary">{{ payment.payment_method|title }}</span>
+                                                {% if payment.data_source == 'reconciliation' %}
+                                                    <small class="text-info d-block mt-1">Bank Verified</small>
+                                                {% endif %}
                                             </td>
-                                            <td>{{ payment.notes|default:"-"|truncatewords:5 }}</td>
+                                            <td>
+                                                {% with match_status=payment.reconciliation_match_status %}
+                                                    {% if match_status.status == 'perfect_match' %}
+                                                        <span class="badge bg-success" title="Perfect match found">
+                                                            <i class="fas fa-check-double"></i> Perfect Match
+                                                        </span>
+                                                        <br><small class="text-muted">{{ match_status.match.payment_id }}</small>
+                                                    {% elif match_status.status == 'close_match' %}
+                                                        <span class="badge bg-warning" title="Close match found with minor differences">
+                                                            <i class="fas fa-check"></i> Close Match
+                                                        </span>
+                                                        <br><small class="text-muted">
+                                                            ±${{ match_status.amount_diff|default:0 }}, ±{{ match_status.date_diff|default:0 }}d
+                                                        </small>
+                                                    {% elif match_status.status == 'loose_match' %}
+                                                        <span class="badge bg-orange" title="Loose match found with significant differences">
+                                                            <i class="fas fa-question"></i> Loose Match
+                                                        </span>
+                                                        <br><small class="text-muted">
+                                                            ±${{ match_status.amount_diff|default:0 }}, ±{{ match_status.date_diff|default:0 }}d
+                                                        </small>
+                                                    {% elif match_status.status == 'no_match' %}
+                                                        <span class="badge bg-secondary" title="No matching entry found">
+                                                            <i class="fas fa-times"></i> No Match
+                                                        </span>
+                                                    {% elif match_status.status == 'pending_reconciliation' %}
+                                                        <span class="badge bg-primary" title="Waiting for bank reconciliation">
+                                                            <i class="fas fa-clock"></i> Pending Recon
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-light text-dark" title="Not applicable for this payment type">
+                                                            <i class="fas fa-minus"></i> N/A
+                                                        </span>
+                                                    {% endif %}
+                                                {% endwith %}
+                                            </td>
+                                            <td>
+                                                {{ payment.notes|default:"-"|truncatewords:3 }}
+                                                {% if payment.data_source == 'reconciliation' and payment.notes %}
+                                                    <button class="btn btn-sm btn-outline-info ms-1" 
+                                                            data-bs-toggle="tooltip" 
+                                                            title="{{ payment.notes|truncatewords:15 }}">
+                                                        <i class="fas fa-info-circle"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <a href="{% url 'loans_payments:payment_detail' payment.pk %}" 
+                                                       class="btn btn-outline-primary btn-sm" 
+                                                       title="View Details">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    <a href="{% url 'loans_payments:payment_edit' payment.pk %}" 
+                                                       class="btn btn-outline-secondary btn-sm" 
+                                                       title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <button onclick="confirmDelete({{ payment.pk }}, '{{ payment.payment_id }}', '{{ payment.payment_amount }}', '{{ payment.loan.loan_number }}')" 
+                                                            class="btn btn-outline-danger btn-sm" 
+                                                            title="Delete">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
+                        
+                        <!-- Pagination -->
+                        {% if recent_payments.has_other_pages %}
+                        <div class="d-flex justify-content-between align-items-center mt-4">
+                            <div>
+                                <small class="text-muted">
+                                    Showing {{ recent_payments.start_index }} to {{ recent_payments.end_index }} 
+                                    of {{ recent_payments.paginator.count }} payments
+                                </small>
+                            </div>
+                            <nav aria-label="Payment pagination">
+                                <ul class="pagination pagination-sm mb-0">
+                                    {% if recent_payments.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=1">&laquo; First</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ recent_payments.previous_page_number }}">Previous</a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for num in recent_payments.paginator.page_range %}
+                                        {% if num == recent_payments.number %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% elif num > recent_payments.number|add:'-3' and num < recent_payments.number|add:'3' %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if recent_payments.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ recent_payments.next_page_number }}">Next</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ recent_payments.paginator.num_pages }}">Last &raquo;</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+                        
+                        {% if recent_payments %}
+                        <div class="mt-3 text-center">
+                            <small class="text-muted">
+                                Total: {{ payment_source_stats.total_count }} payment{{ payment_source_stats.total_count|pluralize }}
+                                (Page {{ recent_payments.number }} of {{ recent_payments.paginator.num_pages }})
+                            </small>
+                        </div>
+                        {% endif %}
                     {% else %}
                         <p class="text-muted">No payments recorded yet.</p>
                     {% endif %}
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete Payment
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this payment?</p>
+                <div class="alert alert-warning">
+                    <strong>Payment Details:</strong><br>
+                    Payment ID: <strong id="delete-payment-id"></strong><br>
+                    Amount: <strong id="delete-amount"></strong><br>
+                    Loan: <strong id="delete-loan"></strong>
+                </div>
+                <p class="text-danger"><strong>This action cannot be undone!</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <form method="post" id="delete-form" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Delete Payment
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Clear All Confirmation Modal -->
+<div class="modal fade" id="clearAllModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Clear All Payments
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to clear <strong>ALL</strong> payments?</p>
+                <div class="alert alert-danger">
+                    <h6>This will permanently delete:</h6>
+                    <ul>
+                        <li><strong>{{ recent_payments|length }}</strong> payment{{ recent_payments|length|pluralize }}</li>
+                        <li>All payment history records</li>
+                        <li>All payment allocations</li>
+                    </ul>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Backup:</strong> A backup will be automatically created before deletion.
+                </div>
+                <p class="text-danger"><strong>This action cannot be undone!</strong></p>
+                
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" id="confirmClear" required>
+                    <label class="form-check-label text-danger" for="confirmClear">
+                        <strong>I understand this will delete all payments permanently</strong>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </button>
+                <form method="post" action="{% url 'loans_payments:payments_clear_all' %}" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="confirm_clear" value="yes">
+                    <button type="submit" class="btn btn-danger" id="clearAllBtn" disabled>
+                        <i class="fas fa-trash me-2"></i>Clear All Payments
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -430,12 +746,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return true;
     });
-        } else {
-            e.preventDefault();
-            alert('Please select a loan account');
-            return false;
-        }
-    });
 
     // Auto-refresh statistics every 30 seconds
     setInterval(function() {
@@ -470,6 +780,85 @@ function clearForm() {
     document.getElementById('loan-account').value = '';
     document.getElementById('loan-search').value = '';
 }
+
+// Payment search functionality
+function setupPaymentSearch() {
+    const searchInput = document.getElementById('paymentSearch');
+    const table = document.getElementById('paymentsTable');
+    
+    if (!searchInput || !table) return;
+    
+    searchInput.addEventListener('keyup', function() {
+        const filter = this.value.toLowerCase();
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const text = row.textContent || row.innerText;
+            
+            if (text.toLowerCase().indexOf(filter) > -1) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    });
+}
+
+function clearSearch() {
+    const searchInput = document.getElementById('paymentSearch');
+    const table = document.getElementById('paymentsTable');
+    
+    if (searchInput) {
+        searchInput.value = '';
+        
+        if (table) {
+            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].style.display = '';
+            }
+        }
+    }
+}
+
+// Initialize search when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    setupPaymentSearch();
+});
+
+// Confirmation functions
+function confirmDelete(paymentPk, paymentId, amount, loanNumber) {
+    document.getElementById('delete-payment-id').textContent = paymentId;
+    document.getElementById('delete-amount').textContent = '$' + amount;
+    document.getElementById('delete-loan').textContent = loanNumber;
+    document.getElementById('delete-form').action = '/loans/payments/' + paymentPk + '/delete/';
+    
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+
+function confirmClearAll() {
+    const clearModal = new bootstrap.Modal(document.getElementById('clearAllModal'));
+    clearModal.show();
+}
+
+// Handle clear all confirmation checkbox
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmClearCheck = document.getElementById('confirmClear');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    
+    if (confirmClearCheck && clearAllBtn) {
+        confirmClearCheck.addEventListener('change', function() {
+            clearAllBtn.disabled = !this.checked;
+        });
+    }
+    
+    // Initialize tooltips for reconciliation payment info
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
 </script>
 
 <style>
@@ -500,6 +889,16 @@ function clearForm() {
 
 #dropdown-toggle {
     padding: 0.375rem 0.75rem;
+}
+
+/* Custom reconciliation status badges */
+.badge.bg-orange {
+    background-color: #fd7e14 !important;
+    color: white;
+}
+
+.badge.bg-orange:hover {
+    background-color: #e96500 !important;
 }
 
 #dropdown-toggle:hover {

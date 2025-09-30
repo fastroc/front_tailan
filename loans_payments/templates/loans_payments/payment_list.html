@@ -200,6 +200,7 @@
                                     <th>Amount</th>
                                     <th>Method</th>
                                     <th>Reference</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -208,7 +209,7 @@
                                     <td>{{ payment.payment_date|date:"M d, Y" }}</td>
                                     <td>{{ payment.loan.loan_number }}</td>
                                     <td>{{ payment.loan.customer.full_name }}</td>
-                                    <td>${{ payment.amount|floatformat:2 }}</td>
+                                    <td>${{ payment.payment_amount|floatformat:2 }}</td>
                                     <td>
                                         <span class="badge bg-info">
                                             {{ payment.get_payment_method_display }}
@@ -220,6 +221,13 @@
                                         {% else %}
                                             <span class="text-muted">-</span>
                                         {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{% url 'loans_payments:payment_detail' payment.id %}" class="btn btn-outline-primary btn-sm" title="View Details">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}

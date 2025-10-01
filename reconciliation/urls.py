@@ -55,10 +55,11 @@ urlpatterns = [
         ajax_views.restart_reconciliation,
         name="restart_reconciliation",
     ),
+    # 🆕 Real-time progress endpoint (UPDATED - moved here to take priority)
     path(
         "ajax/progress/<int:account_id>/",
-        ajax_views.reconciliation_progress,
-        name="reconciliation_progress",
+        ajax_views.get_reconciliation_progress,
+        name="get_reconciliation_progress",
     ),
     path(
         "ajax/unmatched/<int:account_id>/",

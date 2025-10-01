@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "coa",
     "bank_accounts",
     "reconciliation",
+    "bank_rules",  # 🎯 NEW: Rule-based transaction matching (modular, can be disabled)
     "journal",
     "assets",  # Fixed Assets management
     "reports",  # New modular reports app

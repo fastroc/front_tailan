@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from datetime import datetime
 
 from coa.models import Account
@@ -731,12 +731,157 @@ def account_reconciliation_simple(request, account_id):
     # Import reconciliation service
     from .reconciliation_service import ReconciliationService
 
-    # Get unmatched transactions for this account
-    unmatched_transactions = ReconciliationService.get_unmatched_transactions(account)
+    # 🚀 PERFORMANCE OPTIMIZATION #3: Add pagination (load 100 transactions at a time)
+    # Get page number from request (default to 1)
+    page = request.GET.get('page', 1)
+    try:
+        page = int(page)
+    except (ValueError, TypeError):
+        page = 1
+    
+    transactions_per_page = 100
+    offset = (page - 1) * transactions_per_page
+    
+    # Get unmatched transactions with limit for pagination
+    all_unmatched = ReconciliationService.get_unmatched_transactions(account)
+    total_transactions = all_unmatched.count()
+    
+    # Apply pagination
+    unmatched_transactions = all_unmatched[offset:offset + transactions_per_page]
+    
+    # Calculate pagination info
+    total_pages = (total_transactions + transactions_per_page - 1) // transactions_per_page
+    has_next = page < total_pages
+    has_previous = page > 1
 
-    # Convert to list
+    # 🚀 PERFORMANCE OPTIMIZATION #1: Initialize services once (not per transaction)
+    from reconciliation.smart_suggestion_service import SmartSuggestionService
+    smart_service = SmartSuggestionService()
+    
+    # 🚀 PERFORMANCE OPTIMIZATION #2: Pre-fetch COA accounts (avoid N+1 queries)
+    coa_cache = {
+        '121000': Account.objects.filter(company=company, code='121000').first(),
+        '122000': Account.objects.filter(company=company, code='122000').first(),
+    }
+    
+    # Fallback lookups if standard codes not found
+    if not coa_cache['121000']:
+        coa_cache['121000'] = Account.objects.filter(
+            company=company,
+            name__icontains="disbursement"
+        ).filter(
+            Q(name__icontains="loan") | Q(code__startswith="121")
+        ).first()
+    
+    if not coa_cache['122000']:
+        coa_cache['122000'] = Account.objects.filter(
+            company=company,
+            name__icontains="receivable"
+        ).filter(
+            Q(name__icontains="loan") | Q(code__startswith="122")
+        ).first()
+    
+    # Disbursement keywords for quick lookup
+    disbursement_keywords = [
+        'зээл олгов', 'олгосон', 'зээл олго', 'disburs', 'диsburse',
+        'loan disburs', 'олгосон зээл', 'eb-', 'зээл-'
+    ]
+
+    # Convert to list and add smart suggestions for each transaction
     transactions_list = []
     for txn in unmatched_transactions:
+        # Get smart suggestions for this transaction (using cached service)
+        suggestions = []
+        try:
+            suggestions = smart_service.get_suggestions(
+                bank_description=txn.description or "", amount=float(txn.amount)
+            )
+            
+            # Enhance suggestions with COA account recommendations
+            for suggestion in suggestions:
+                # Determine if this is a loan payment or loan disbursement
+                description_lower = (txn.description or "").lower()
+                amount = float(txn.amount)
+                
+                # Check for loan disbursement patterns (negative amounts, disbursement keywords)
+                is_disbursement = (
+                    amount < 0 and 
+                    any(keyword in description_lower for keyword in disbursement_keywords)
+                )
+                
+                # Use pre-fetched accounts from cache (use different variable name to avoid overwriting 'account')
+                if is_disbursement and coa_cache['121000']:
+                    coa_account = coa_cache['121000']
+                    suggestion["suggested_coa"] = {
+                        "account_id": coa_account.id,
+                        "account_code": coa_account.code,
+                        "account_name": coa_account.name,
+                        "account_display": f"{coa_account.code} - {coa_account.name}"
+                    }
+                    suggestion["coa_reason"] = "🚀 Auto-match for loan disbursement"
+                elif not is_disbursement and coa_cache['122000']:
+                    coa_account = coa_cache['122000']
+                    suggestion["suggested_coa"] = {
+                        "account_id": coa_account.id,
+                        "account_code": coa_account.code,
+                        "account_name": coa_account.name,
+                        "account_display": f"{coa_account.code} - {coa_account.name}"
+                    }
+                    suggestion["coa_reason"] = "🔥 Main engine for loan payments"
+                else:
+                    suggestion["suggested_coa"] = None
+                    suggestion["coa_reason"] = ""
+                
+        except Exception as e:
+            print(f"Error getting suggestions for transaction {txn.id}: {e}")
+            suggestions = []
+
+        # 🎯 NEW: Add Bank Rules suggestions (modular - safe if disabled)
+        try:
+            from bank_rules import get_rules_enabled, get_rule_suggestions
+            
+            if get_rules_enabled():
+                trans_dict = {
+                    'id': txn.id,
+                    'description': txn.description or '',
+                    'amount': float(txn.amount),
+                    'correspondent_account': txn.related_account or '',
+                    'transaction_date': txn.date,
+                    'reference_number': txn.reference or '',
+                    'debit_credit': 'debit' if float(txn.amount) < 0 else 'credit',
+                }
+                
+                # DEBUG: Print transaction details for matching
+                if 'Интернэт' in (txn.description or ''):
+                    print(f"\n🔍 DEBUG - Transaction for matching:")
+                    print(f"  ID: {txn.id}")
+                    print(f"  Description: {repr(txn.description)}")
+                    print(f"  Amount: {txn.amount} (type: {type(txn.amount)})")
+                    print(f"  Amount (float): {float(txn.amount)}")
+                    print(f"  Debit/Credit: {trans_dict['debit_credit']}")
+                    print(f"  Trans dict: {trans_dict}")
+                
+                rule_suggestions = get_rule_suggestions(trans_dict, company)
+                
+                # DEBUG: Print suggestions result
+                if 'Интернэт' in (txn.description or ''):
+                    print(f"  Rule suggestions count: {len(rule_suggestions)}")
+                    if rule_suggestions:
+                        print(f"  Suggestions: {rule_suggestions}")
+                    else:
+                        print(f"  No rules matched!")
+                
+                # Merge rule suggestions with smart suggestions (rules appear first)
+                suggestions = rule_suggestions + suggestions
+        except ImportError:
+            # bank_rules app not installed - continue normally
+            pass
+        except Exception as e:
+            # Rule engine error - log and continue
+            print(f"⚠️ Bank rules error for transaction {txn.id}: {e}")
+            import traceback
+            traceback.print_exc()
+
         # Create enhanced transaction dict
         enhanced_txn = {
             "id": txn.id,
@@ -744,14 +889,23 @@ def account_reconciliation_simple(request, account_id):
             "amount": txn.amount,
             "description": txn.description,
             "reference": txn.reference,
-            "related_account": txn.related_account,  # Add missing related_account field
+            "related_account": txn.related_account,
             "transaction_hash": txn.transaction_hash,
             "coa_account": txn.coa_account,
+            "smart_suggestions": suggestions[:5],  # Limit to top 5 suggestions
         }
         transactions_list.append(enhanced_txn)
 
-    # Get reconciliation progress
+    # Get reconciliation progress (across ALL pages, not just current page)
     progress = ReconciliationService.get_reconciliation_progress(account)
+    
+    # 🚀 FIX: Use the CORRECT remaining count from progress (not pagination count)
+    # progress['unmatched_transactions'] = total_transactions - matched_transactions (CORRECT)
+    # total_transactions = count at page load (STALE after reconciliation)
+    progress['total_unmatched_all_pages'] = progress['unmatched_transactions']  # Use backend count
+    progress['unmatched_current_page'] = len(transactions_list)  # Current page only
+    progress['showing_from'] = offset + 1
+    progress['showing_to'] = min(offset + transactions_per_page, total_transactions)
 
     # Get Chart of Accounts for dropdown - exclude only cash/bank accounts, include loans receivable
     coa_accounts = (
@@ -810,25 +964,45 @@ def account_reconciliation_simple(request, account_id):
                 if not customer_name:
                     customer_name = app.customer.email or f"Customer #{app.customer.id}"
 
+                # Get vehicle information from collateral if available
+                vehicle_plates = []
+                vehicle_info = {}
+                try:
+                    from loans_collateral.models import Collateral
+
+                    # Get collateral items for this loan application
+                    collateral_items = Collateral.objects.filter(loan_application=app)
+                    for collateral in collateral_items:
+                        if collateral.vehicle_license_plate:
+                            vehicle_plates.append(collateral.vehicle_license_plate)
+                            vehicle_info[collateral.vehicle_license_plate] = {
+                                "make": getattr(collateral, "vehicle_make", ""),
+                                "model": getattr(collateral, "vehicle_model", ""),
+                                "year": getattr(collateral, "vehicle_year", ""),
+                            }
+                except ImportError:
+                    # Fallback: try the original method
+                    if (
+                        hasattr(app.customer, "vehicles")
+                        and app.customer.vehicles.exists()
+                    ):
+                        for vehicle in app.customer.vehicles.all():
+                            if vehicle.license_plate:
+                                vehicle_plates.append(vehicle.license_plate)
+                                vehicle_info[vehicle.license_plate] = {
+                                    "make": getattr(vehicle, "make", ""),
+                                    "model": getattr(vehicle, "model", ""),
+                                    "year": getattr(vehicle, "year", ""),
+                                }
+
                 # Create detailed display for dropdown
                 display_detail = f"Loan #{app.application_id}"
                 if app.customer.phone_primary:
                     display_detail += f" | Phone: {app.customer.phone_primary}"
                 if app.customer.national_id:
                     display_detail += f" | ID: {app.customer.national_id}"
-
-                # Get vehicle information if available
-                vehicle_plates = []
-                vehicle_info = {}
-                if hasattr(app.customer, "vehicles") and app.customer.vehicles.exists():
-                    for vehicle in app.customer.vehicles.all():
-                        if vehicle.license_plate:
-                            vehicle_plates.append(vehicle.license_plate)
-                            vehicle_info[vehicle.license_plate] = {
-                                "make": getattr(vehicle, "make", ""),
-                                "model": getattr(vehicle, "model", ""),
-                                "year": getattr(vehicle, "year", ""),
-                            }
+                if vehicle_plates:
+                    display_detail += f" | Plates: {', '.join(vehicle_plates)}"
 
                 # Create loan customer data structure matching template expectations
                 loan_customer_data = {
@@ -873,6 +1047,16 @@ def account_reconciliation_simple(request, account_id):
         "coa_groups": coa_groups,
         "loan_customers": loan_customers,
         "title": f"Bank Reconciliation - {account.name} (Simple)",
+        # Pagination data
+        "current_page": page,
+        "total_pages": total_pages,
+        "total_transactions": total_transactions,
+        "has_next": has_next,
+        "has_previous": has_previous,
+        "next_page": page + 1 if has_next else None,
+        "previous_page": page - 1 if has_previous else None,
+        "showing_from": offset + 1,
+        "showing_to": min(offset + transactions_per_page, total_transactions),
     }
 
     return render(request, "reconciliation/reconciliation_simple.html", context)

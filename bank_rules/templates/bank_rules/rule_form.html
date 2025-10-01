@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if rule %}Edit{% else %}Create{% endif %} Bank Rule{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <h2>{% if rule %}Edit{% else %}Create{% endif %} Bank Rule</h2>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'bank_rules:list' %}">Bank Rules</a></li>
+          <li class="breadcrumb-item active">{% if rule %}Edit{% else %}Create{% endif %}</li>
+        </ol>
+      </nav>
+    </div>
+  </div>
+
+  <form method="post" id="rule-form">
+    {% csrf_token %}
+    
+    <!-- Basic Info -->
+    <div class="row">
+      <div class="col-lg-8">
+        <div class="card mb-3">
+          <div class="card-header">
+            <h5 class="mb-0">Rule Information</h5>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Rule Name *</label>
+              <input type="text" name="name" class="form-control" 
+                     value="{{ rule.name|default:'' }}" required
+                     placeholder="E.g., Monthly Rent Payment, Salary Deposits">
+              <small class="text-muted">Give this rule a descriptive name</small>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control" rows="2"
+                        placeholder="Optional: Explain when this rule applies">{{ rule.description|default:'' }}</textarea>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Priority</label>
+                <input type="number" name="priority" class="form-control" 
+                       value="{{ rule.priority|default:0 }}" min="0" max="100">
+                <small class="text-muted">Higher = checked first (0-100)</small>
+              </div>
+              
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Status</label>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="is_active" 
+                         id="is_active" {% if not rule or rule.is_active %}checked{% endif %}>
+                  <label class="form-check-label" for="is_active">
+                    Active (rule will run)
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Conditions -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <h5 class="mb-0">WHEN (Conditions)</h5>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Match Type:</label>
+              <div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="match_logic" 
+                         id="match_all" value="ALL" 
+                         {% if not rule or rule.match_logic == 'ALL' %}checked{% endif %}>
+                  <label class="form-check-label" for="match_all">
+                    <strong>All</strong> Conditions (AND)
+                  </label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="match_logic" 
+                         id="match_any" value="ANY"
+                         {% if rule and rule.match_logic == 'ANY' %}checked{% endif %}>
+                  <label class="form-check-label" for="match_any">
+                    <strong>Any</strong> Condition (OR)
+                  </label>
+                </div>
+              </div>
+              <small class="text-muted">How to combine multiple conditions</small>
+            </div>
+
+            <div id="conditions-container">
+              {% if rule %}
+                {% for condition in rule.conditions.all %}
+                <div class="condition-row row g-2 mb-2">
+                  <div class="col-md-3">
+                    <select name="field[]" class="form-select form-select-sm" required>
+                      <option value="">Select Field...</option>
+                      {% for field_val, field_label in field_choices %}
+                      <option value="{{ field_val }}" {% if condition.field == field_val %}selected{% endif %}>
+                        {{ field_label }}
+                      </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  
+                  <div class="col-md-3">
+                    <select name="operator[]" class="form-select form-select-sm" required>
+                      <option value="">Select Operator...</option>
+                      {% for op_val, op_label in operator_choices %}
+                      <option value="{{ op_val }}" {% if condition.operator == op_val %}selected{% endif %}>
+                        {{ op_label }}
+                      </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  
+                  <div class="col-md-5">
+                    <input type="text" name="value[]" class="form-control form-control-sm" 
+                           value="{{ condition.value }}"
+                           placeholder="Value to match">
+                  </div>
+                  
+                  <div class="col-md-1">
+                    <button type="button" class="btn btn-danger btn-sm w-100 remove-condition">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
+                <!-- Default empty condition -->
+                <div class="condition-row row g-2 mb-2">
+                  <div class="col-md-3">
+                    <select name="field[]" class="form-select form-select-sm" required>
+                      <option value="">Select Field...</option>
+                      {% for field_val, field_label in field_choices %}
+                      <option value="{{ field_val }}">{{ field_label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  
+                  <div class="col-md-3">
+                    <select name="operator[]" class="form-select form-select-sm" required>
+                      <option value="">Select Operator...</option>
+                      {% for op_val, op_label in operator_choices %}
+                      <option value="{{ op_val }}">{{ op_label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  
+                  <div class="col-md-5">
+                    <input type="text" name="value[]" class="form-control form-control-sm" 
+                           placeholder="Value to match">
+                  </div>
+                  
+                  <div class="col-md-1">
+                    <button type="button" class="btn btn-danger btn-sm w-100 remove-condition">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+            
+            <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="add-condition">
+              <i class="fas fa-plus"></i> Add Condition
+            </button>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <h5 class="mb-0">THEN (Suggested Actions)</h5>
+          </div>
+          <div class="card-body">
+            <p class="text-muted small">When this rule matches, suggest these values:</p>
+            
+            <div class="mb-3">
+              <label class="form-label">WHO (Correspondent)</label>
+              <input type="text" name="suggested_who_text" class="form-control"
+                     value="{{ rule.suggested_who_text|default:'' }}"
+                     placeholder="E.g., ABC Company, John Doe, Landlord">
+              <small class="text-muted">Can be any name - not limited to loan customers</small>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">WHAT (Chart of Account)</label>
+              <select name="suggested_coa" class="form-select">
+                <option value="">-- Leave empty --</option>
+                {% for account in coa_accounts %}
+                <option value="{{ account.id }}"
+                        {% if rule and rule.suggested_coa_id == account.id %}selected{% endif %}>
+                  {{ account.code }} - {{ account.name }}
+                </option>
+                {% endfor %}
+              </select>
+              <small class="text-muted">The account that describes what this transaction is about</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Save Rule
+          </button>
+          {% if rule %}
+          <a href="{% url 'bank_rules:test' rule.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-flask"></i> Test Rule
+          </a>
+          {% endif %}
+          <a href="{% url 'bank_rules:list' %}" class="btn btn-outline-secondary">
+            Cancel
+          </a>
+        </div>
+      </div>
+
+      <!-- Help Sidebar -->
+      <div class="col-lg-4">
+        <div class="card bg-light sticky-top" style="top: 20px;">
+          <div class="card-header">
+            <h6 class="mb-0"><i class="fas fa-lightbulb"></i> Quick Guide</h6>
+          </div>
+          <div class="card-body">
+            <h6>Field Value Guide:</h6>
+            
+            <div class="mb-3">
+              <strong>Debit or Credit:</strong>
+              <ul class="small">
+                <li><code>debit</code> = Money OUT (expenses, fees) ❌</li>
+                <li><code>credit</code> = Money IN (income, deposits) ✅</li>
+                <li>💡 For -100.00 fee, use: equals "debit"</li>
+              </ul>
+            </div>
+            
+            <div class="mb-3">
+              <strong>Amount Fields:</strong>
+              <ul class="small">
+                <li><strong>Amount (Exact)</strong> = With sign (-100 or +100)</li>
+                <li><strong>Amount (Absolute)</strong> = Without sign (100)</li>
+                <li>💡 For fees, use Absolute: equals "100"</li>
+              </ul>
+            </div>
+            
+            <h6 class="mt-3">Example Rules:</h6>
+            
+            <div class="mb-3">
+              <strong>Bank Fee (Your Case):</strong>
+              <ul class="small">
+                <li>Description contains "хураамж"</li>
+                <li>Debit/Credit equals "debit"</li>
+                <li>Amount (Absolute) equals "100"</li>
+                <li>→ Suggest: Bank + Fee Expense</li>
+              </ul>
+            </div>
+            
+            <div class="mb-3">
+              <strong>Monthly Rent:</strong>
+              <ul class="small">
+                <li>Description contains "RENT"</li>
+                <li>Amount (Absolute) equals "500000"</li>
+                <li>Debit/Credit equals "debit"</li>
+                <li>→ Suggest: Landlord + Rent Expense</li>
+              </ul>
+            </div>
+            
+            <div class="mb-3">
+              <strong>Salary Deposits:</strong>
+              <ul class="small">
+                <li>Amount greater than 1000000</li>
+                <li>Description contains "SALARY"</li>
+                <li>Debit/Credit equals "credit"</li>
+                <li>→ Suggest: Salary Income COA</li>
+              </ul>
+            </div>
+            
+            <hr>
+            
+            <h6>Field Types:</h6>
+            <ul class="small">
+              <li><strong>Description</strong>: Transaction text</li>
+              <li><strong>Amount</strong>: Exact amount value</li>
+              <li><strong>Debit/Credit</strong>: Use "debit" or "credit"</li>
+              <li><strong>Correspondent Account</strong>: Other party account</li>
+            </ul>
+            
+            <hr>
+            
+            <h6>Operators:</h6>
+            <ul class="small">
+              <li><strong>Contains</strong>: Text anywhere in field</li>
+              <li><strong>Starts With</strong>: Text at beginning</li>
+              <li><strong>Equals</strong>: Exact match</li>
+              <li><strong>Greater/Less Than</strong>: For numbers</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+// Template for new condition row
+const conditionTemplate = `
+<div class="condition-row row g-2 mb-2">
+  <div class="col-md-3">
+    <select name="field[]" class="form-select form-select-sm" required>
+      <option value="">Select Field...</option>
+      {% for field_val, field_label in field_choices %}
+      <option value="{{ field_val }}">{{ field_label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  
+  <div class="col-md-3">
+    <select name="operator[]" class="form-select form-select-sm" required>
+      <option value="">Select Operator...</option>
+      {% for op_val, op_label in operator_choices %}
+      <option value="{{ op_val }}">{{ op_label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  
+  <div class="col-md-5">
+    <input type="text" name="value[]" class="form-control form-control-sm" 
+           placeholder="Value to match">
+  </div>
+  
+  <div class="col-md-1">
+    <button type="button" class="btn btn-danger btn-sm w-100 remove-condition">
+      <i class="fas fa-trash"></i>
+    </button>
+  </div>
+</div>
+`;
+
+// Add new condition
+document.getElementById('add-condition').addEventListener('click', function() {
+  const container = document.getElementById('conditions-container');
+  container.insertAdjacentHTML('beforeend', conditionTemplate);
+});
+
+// Remove condition
+document.addEventListener('click', function(e) {
+  if (e.target.closest('.remove-condition')) {
+    const conditionRow = e.target.closest('.condition-row');
+    const container = document.getElementById('conditions-container');
+    
+    // Keep at least one condition
+    if (container.querySelectorAll('.condition-row').length > 1) {
+      conditionRow.remove();
+    } else {
+      alert('At least one condition is required!');
+    }
+  }
+});
+
+// Form validation
+document.getElementById('rule-form').addEventListener('submit', function(e) {
+  const conditions = document.querySelectorAll('.condition-row');
+  let hasValidCondition = false;
+  
+  conditions.forEach(row => {
+    const field = row.querySelector('[name="field[]"]').value;
+    const operator = row.querySelector('[name="operator[]"]').value;
+    
+    if (field && operator) {
+      hasValidCondition = true;
+    }
+  });
+  
+  if (!hasValidCondition) {
+    e.preventDefault();
+    alert('Please add at least one valid condition!');
+  }
+});
+</script>
+{% endblock %}

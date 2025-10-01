@@ -57,17 +57,31 @@ class ReconciliationService:
         return session
     
     @classmethod 
-    def get_unmatched_transactions(cls, account):
-        """Get all unmatched transactions for an account"""
+    def get_unmatched_transactions(cls, account, limit=None):
+        """
+        Get unmatched transactions for an account with optimized query
+        
+        Args:
+            account: Account instance
+            limit: Maximum number of transactions to return (None = all)
+        """
         matched_transaction_ids = TransactionMatch.objects.filter(
             bank_transaction__coa_account=account
         ).values_list('bank_transaction_id', flat=True)
         
-        return BankTransaction.objects.filter(
+        # 🚀 OPTIMIZATION: Use select_related to avoid N+1 queries
+        # Note: Only include ForeignKey fields (coa_account, company, processed_by, uploaded_by)
+        queryset = BankTransaction.objects.filter(
             coa_account=account
         ).exclude(
             id__in=matched_transaction_ids
-        ).order_by('date', 'id')  # Changed to ascending order - oldest first
+        ).select_related('coa_account', 'company', 'processed_by', 'uploaded_by').order_by('-date', '-id')
+        
+        # Apply limit if specified (for pagination)
+        if limit:
+            queryset = queryset[:limit]
+        
+        return queryset
     
     @classmethod
     @transaction.atomic

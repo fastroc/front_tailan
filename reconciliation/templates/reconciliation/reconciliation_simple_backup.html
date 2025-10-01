@@ -101,17 +101,10 @@
   }
   
   /* Smart Suggestions Showcase Styles */
-  .suggestions-section {
-    background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
-    border-radius: 8px;
-    padding: 1rem;
-    border: 2px solid #e0e7ff;
-  }
-  
   .badge-soft {
-    background-color: #dbeafe;
-    color: #1e40af;
-    border: 1px solid #93c5fd;
+    background-color: #f0f4ff;
+    color: #2563eb;
+    border: 1px solid #c7d7fe;
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
   }
@@ -119,13 +112,11 @@
   .suggestion-card {
     transition: all 0.2s ease;
     border: 1px solid #e5e7eb !important;
-    background-color: white !important;
   }
   
   .suggestion-card:hover {
     border-color: #2563eb !important;
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
-    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
   }
   
   .suggestion-engine {
@@ -185,8 +176,6 @@
 {% endblock %}
 
 {% block content %}
-{% csrf_token %}
-<input type="hidden" name="csrfmiddlewaretoken" value="{% csrf_token %}" id="csrf-token-input">
 <div class="container-fluid py-4">
   <!-- Header Section - Same style as original -->
   <div class="row mb-4">
@@ -203,9 +192,6 @@
         <div>
           <a href="{% url 'reconciliation:dashboard' %}" class="btn btn-outline-secondary">
             <i class="fas fa-arrow-left"></i> Back to Dashboard
-          </a>
-          <a href="{% url 'bank_rules:list' %}" class="btn btn-outline-info ms-2" title="Manage Bank Rules">
-            <i class="fas fa-bullseye"></i> Bank Rules
           </a>
           <a href="{% url 'reconciliation:account_reconciliation' account.id %}" class="btn btn-outline-primary ms-2">
             <i class="fas fa-cogs"></i> Advanced Mode
@@ -303,11 +289,7 @@
         <div class="card-header">
           <h5 class="card-title mb-0">
             <i class="fas fa-list"></i>
-            <span class="transaction-list-title">Unmatched Transactions (<span class="transaction-count">{{ total_transactions }}</span>)</span>
-            {% if total_pages > 1 %}
-            <span class="badge bg-secondary ms-2">Page {{ current_page }} of {{ total_pages }}</span>
-            <small class="text-muted ms-2">(Showing {{ showing_from }}-{{ showing_to }})</small>
-            {% endif %}
+            <span class="transaction-list-title">Unmatched Transactions (<span class="transaction-count">{{ transactions|length }}</span>)</span>
           </h5>
         </div>
         <div class="card-body p-0">
@@ -425,205 +407,96 @@
                 
                 <!-- Smart Suggestions Showcase -->
                 {% if t.smart_suggestions %}
-                  {% if t.smart_suggestions|length == 1 %}
-                    {# Single suggestion: Auto-populate fields and show compact notification #}
-                    {% with suggestion=t.smart_suggestions.0 %}
-                    <div class="mt-2 alert alert-success alert-dismissible fade show py-2" role="alert">
-                      <div class="d-flex align-items-center">
-                        <i class="fas fa-magic me-2"></i>
-                        <small>
-                          <strong>Auto-filled:</strong> {{ suggestion.customer_name }}
-                          {% if suggestion.suggested_coa %}→ {{ suggestion.suggested_coa.account_display }}{% endif %}
-                          <span class="badge bg-success ms-2">{{ suggestion.match_percentage }}%</span>
-                        </small>
-                        <button type="button" class="btn-close btn-close-sm ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
-                      </div>
-                    </div>
-                    
-                    {# Hidden script to auto-populate fields on page load #}
-                    <script>
-                      document.addEventListener('DOMContentLoaded', function() {
-                        const transactionId = {{ t.id }};
-                        const whoInput = document.querySelector(`input[name="who_text_${transactionId}"]`);
-                        const whatInput = document.querySelector(`input[name="what_text_${transactionId}"]`);
-                        
-                        // Auto-fill WHO field
-                        if (whoInput && !whoInput.value) {
-                          whoInput.value = '{{ suggestion.customer_name|escapejs }}';
-                          whoInput.setAttribute('data-loan-id', '{{ suggestion.loan_id }}');
-                          whoInput.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                        
-                        // Auto-fill WHAT field if available
-                        {% if suggestion.suggested_coa %}
-                        if (whatInput && !whatInput.value) {
-                          whatInput.value = '{{ suggestion.suggested_coa.account_display|escapejs }}';
-                          whatInput.setAttribute('data-account-id', '{{ suggestion.suggested_coa.account_id }}');
-                          whatInput.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                        {% endif %}
-                        
-                        console.log('✅ Auto-populated transaction {{ t.id }} with single suggestion');
-                      });
-                    </script>
-                    {% endwith %}
-                    
-                  {% else %}
-                    {# Multiple suggestions: Show dropdown selector #}
-                    <div class="mt-3 suggestions-section">
-                      <div class="d-flex align-items-center justify-content-between mb-2">
-                        <h6 class="mb-0 text-primary">
-                          <i class="fas fa-brain me-2"></i>
-                          Smart Suggestions ({{ t.smart_suggestions|length }})
-                          <a href="{% url 'bank_rules:list' %}" 
-                             class="badge bg-info text-white ms-2" 
-                             title="Create rules to automate suggestions"
-                             style="text-decoration: none; font-size: 0.7rem;">
-                            🎯 Manage Rules
-                          </a>
-                        </h6>
-                        <button class="btn btn-link btn-sm text-muted" type="button" data-bs-toggle="collapse" data-bs-target="#suggestions-{{ t.id }}" aria-expanded="true">
-                          <i class="fas fa-chevron-up"></i> Hide
-                        </button>
-                      </div>
-                      
-                      <div class="collapse show" id="suggestions-{{ t.id }}">
-                        <div class="row g-2">
-                          {% for suggestion in t.smart_suggestions %}
-                          <div class="col-12">
-                            <div class="card suggestion-card">
-                              <div class="card-body p-3">
-                                <div class="d-flex align-items-center justify-content-between">
-                                  <div class="flex-grow-1">
-                                    <div class="d-flex align-items-center mb-2">
-                                      <span class="badge badge-soft me-2">
-                                        {% if suggestion.match_percentage >= 80 %}
-                                          <i class="fas fa-check-circle text-success"></i>
-                                        {% elif suggestion.match_percentage >= 60 %}
-                                          <i class="fas fa-info-circle text-warning"></i>
-                                        {% else %}
-                                          <i class="fas fa-question-circle text-muted"></i>
-                                        {% endif %}
-                                        {{ suggestion.match_percentage }}%
-                                      </span>
-                                      <strong class="me-2">{{ suggestion.customer_name }}</strong>
-                                      <small class="text-muted">{{ suggestion.engine_display_name }}</small>
-                                    </div>
-                                    <div class="small">
-                                      <div class="text-muted">
-                                        <i class="fas fa-search me-1"></i>
-                                        <strong>Detected:</strong> {{ suggestion.matched_data }}
-                                      </div>
-                                      <div class="text-muted">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        <strong>Reason:</strong> {{ suggestion.match_reason }}
-                                      </div>
-                                      {% if suggestion.loan_number %}
-                                      <div class="text-muted">
-                                        <i class="fas fa-id-card me-1"></i>
-                                        <strong>Loan:</strong> {{ suggestion.loan_number }} 
-                                        ({{ suggestion.loan_amount|floatformat:2 }} {{ suggestion.loan_type }})
-                                      </div>
-                                      {% endif %}
-                                      {% if suggestion.suggested_coa %}
-                                      <div class="text-muted">
-                                        <i class="fas fa-chart-line me-1"></i>
-                                        <strong>Suggested Account:</strong> {{ suggestion.suggested_coa.account_display }}
-                                      </div>
-                                      {% endif %}
-                                    </div>
-                                  </div>
-                                  <div class="text-end">
-                                    <button class="btn btn-outline-primary btn-sm" 
-                                            onclick="applySuggestion({{ t.id }}, {{ suggestion.loan_id }}, '{{ suggestion.customer_name|escapejs }}', {% if suggestion.suggested_coa %}'{{ suggestion.suggested_coa.account_id }}', '{{ suggestion.suggested_coa.account_display|escapejs }}'{% else %}null, null{% endif %}, {{ t.smart_suggestions|length }})">
-                                      <i class="fas fa-plus"></i> Apply
-                                    </button>
-                                  </div>
+                <div class="mt-3 border-top pt-3">
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <h6 class="mb-0 text-primary">
+                      <i class="fas fa-brain me-2"></i>
+                      Smart Suggestions ({{ t.smart_suggestions|length }})
+                    </h6>
+                    <button class="btn btn-link btn-sm text-muted" type="button" data-bs-toggle="collapse" data-bs-target="#suggestions-{{ t.id }}" aria-expanded="true">
+                      <i class="fas fa-chevron-up"></i> Hide
+                    </button>
+                  </div>
+                  
+                  <div class="collapse show" id="suggestions-{{ t.id }}">
+                    <div class="row g-2">
+                      {% for suggestion in t.smart_suggestions %}
+                      <div class="col-12">
+                        <div class="card border-0 bg-light">
+                          <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                              <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-2">
+                                  <span class="badge badge-soft me-2">
+                                    {% if suggestion.match_percentage >= 80 %}
+                                      <i class="fas fa-check-circle text-success"></i>
+                                    {% elif suggestion.match_percentage >= 60 %}
+                                      <i class="fas fa-info-circle text-warning"></i>
+                                    {% else %}
+                                      <i class="fas fa-question-circle text-muted"></i>
+                                    {% endif %}
+                                    {{ suggestion.match_percentage }}%
+                                  </span>
+                                  <strong class="me-2">{{ suggestion.customer_name }}</strong>
+                                  <small class="text-muted">{{ suggestion.engine_display_name }}</small>
                                 </div>
+                                <div class="small">
+                                  <div class="text-muted">
+                                    <i class="fas fa-search me-1"></i>
+                                    <strong>Detected:</strong> {{ suggestion.matched_data }}
+                                  </div>
+                                  <div class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    <strong>Reason:</strong> {{ suggestion.match_reason }}
+                                  </div>
+                                  {% if suggestion.loan_number %}
+                                  <div class="text-muted">
+                                    <i class="fas fa-id-card me-1"></i>
+                                    <strong>Loan:</strong> {{ suggestion.loan_number }} 
+                                    ({{ suggestion.loan_amount|floatformat:2 }} {{ suggestion.loan_type }})
+                                  </div>
+                                  {% endif %}
+                                  {% if suggestion.suggested_coa %}
+                                  <div class="text-muted">
+                                    <i class="fas fa-chart-line me-1"></i>
+                                    <strong>Suggested Account:</strong> {{ suggestion.suggested_coa.account_display }}
+                                  </div>
+                                  {% endif %}
+                                </div>
+                              </div>
+                              <div class="text-end">
+                                <button class="btn btn-outline-primary btn-sm" 
+                                        onclick="applySuggestion({{ t.id }}, {{ suggestion.loan_id }}, '{{ suggestion.customer_name|escapejs }}', {% if suggestion.suggested_coa %}'{{ suggestion.suggested_coa.account_id }}', '{{ suggestion.suggested_coa.account_display|escapejs }}'{% else %}null, null{% endif %})">
+                                  <i class="fas fa-plus"></i> Apply
+                                </button>
                               </div>
                             </div>
                           </div>
-                          {% endfor %}
                         </div>
                       </div>
+                      {% endfor %}
                     </div>
-                  {% endif %}
+                    
+                    {% if not t.smart_suggestions %}
+                    <div class="text-center text-muted py-3">
+                      <i class="fas fa-search mb-2" style="font-size: 2rem; opacity: 0.3;"></i>
+                      <div>No smart suggestions found for this transaction</div>
+                      <small>Try checking the description for customer names, phone numbers, ID numbers, or license plates</small>
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
                 {% endif %}
                 <!-- End Smart Suggestions Showcase -->
               </div>
               {% endfor %}
             </div>
-            
-            <!-- 🚀 Pagination Controls -->
-            {% if total_pages > 1 %}
-            <div class="border-top p-3">
-              <nav aria-label="Transaction pagination">
-                <ul class="pagination mb-0 justify-content-center">
-                  <!-- Previous Button -->
-                  <li class="page-item {% if not has_previous %}disabled{% endif %}">
-                    {% if has_previous %}
-                    <a class="page-link" href="?page={{ previous_page }}">
-                      <i class="fas fa-chevron-left"></i> Previous
-                    </a>
-                    {% else %}
-                    <span class="page-link" tabindex="-1">
-                      <i class="fas fa-chevron-left"></i> Previous
-                    </span>
-                    {% endif %}
-                  </li>
-                  
-                  <!-- Simple page indicator -->
-                  <li class="page-item active">
-                    <span class="page-link">Page {{ current_page }} of {{ total_pages }}</span>
-                  </li>
-                  
-                  <!-- Next Button -->
-                  <li class="page-item {% if not has_next %}disabled{% endif %}">
-                    {% if has_next %}
-                    <a class="page-link" href="?page={{ next_page }}">
-                      Next <i class="fas fa-chevron-right"></i>
-                    </a>
-                    {% else %}
-                    <span class="page-link" tabindex="-1">
-                      Next <i class="fas fa-chevron-right"></i>
-                    </span>
-                    {% endif %}
-                  </li>
-                </ul>
-              </nav>
-              
-              <!-- Quick Page Jump -->
-              <div class="text-center mt-3">
-                <form method="get" class="d-inline-flex align-items-center gap-2">
-                  <label for="page-jump" class="mb-0 small text-muted">Jump to page:</label>
-                  <input type="number" id="page-jump" name="page" class="form-control form-control-sm" style="width: 80px;" min="1" max="{{ total_pages }}" value="{{ current_page }}" placeholder="{{ current_page }}">
-                  <button type="submit" class="btn btn-sm btn-outline-primary">Go</button>
-                </form>
-              </div>
-            </div>
-            {% endif %}
-            
           {% else %}
-            <!-- 🚀 FIX: Check total unmatched across ALL pages, not just current page -->
-            {% if progress.total_unmatched_all_pages > 0 %}
-            <div class="text-center py-5">
-              <i class="fas fa-arrow-right text-primary mb-3" style="font-size: 3rem;"></i>
-              <h4>Current Page Complete!</h4>
-              <p class="text-muted">
-                All transactions on this page have been reconciled.<br>
-                <strong>{{ progress.total_unmatched_all_pages }} transactions remaining</strong> on other pages.
-              </p>
-              <a href="?page={{ next_page|default:1 }}" class="btn btn-primary">
-                <i class="fas fa-arrow-right"></i> Go to Next Page
-              </a>
-            </div>
-            {% else %}
             <div class="text-center py-5">
               <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
               <h4>All Transactions Reconciled!</h4>
-              <p class="text-muted">Great job! You've completed the reconciliation process.</p>
+              <p class="text-muted">Great job! All transactions have been matched.</p>
             </div>
-            {% endif %}
           {% endif %}
         </div>
       </div>
@@ -668,37 +541,8 @@ console.log('📊 COA Data loaded:', window.coaData.length, 'accounts');
 <script>
 // Get CSRF token for AJAX requests - Use cookie method like base template
 function getCsrfToken() {
-    // Try cookie first
-    let token = getCookie('csrftoken');
-    
-    // Fallback: Try to get from DOM (meta tag or hidden input)
-    if (!token) {
-        const metaTag = document.querySelector('meta[name="csrf-token"]');
-        if (metaTag) {
-            token = metaTag.getAttribute('content');
-        }
-    }
-    
-    // Fallback: Try hidden input
-    if (!token) {
-        const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
-        if (input) {
-            token = input.value;
-        }
-    }
-    
-    // Last resort: Try from form
-    if (!token) {
-        const form = document.querySelector('form');
-        if (form) {
-            const formToken = form.querySelector('[name="csrfmiddlewaretoken"]');
-            if (formToken) {
-                token = formToken.value;
-            }
-        }
-    }
-    
-    return token;
+    // Use same cookie method as base template
+    return getCookie('csrftoken');
 }
 
 // Helper function to get cookie (same as base template)
@@ -951,8 +795,8 @@ function saveTransaction(transactionId) {
                 transactionItem.classList.remove('saving');
                 transactionItem.classList.add('completed');
                 
-                // ✅ NEW: Fetch real-time progress from server (single source of truth)
-                updateProgressFromServer();
+                // ✅ UPDATE PROGRESS TRACKING
+                updateReconciliationProgress(transactionItem);
                 
                 // Completely remove from DOM after CSS transition completes
                 setTimeout(() => {
@@ -1018,144 +862,6 @@ function updateReconciliationProgress(transactionItem = null) {
             }
         }
     }
-}
-    
-// 🆕 NEW APPROACH: Fetch real-time progress from server after each save
-function updateProgressFromServer() {
-    const accountId = parseInt('{{ account.id }}') || 0;
-    console.log('🔍 DEBUG: accountId from template =', accountId, '| Template value: {{ account.id }}');
-    if (!accountId) {
-        console.error('Account ID not found');
-        return;
-    }
-    
-    fetch(`/reconciliation/ajax/progress/${accountId}/`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const progress = data.progress;
-                const status = data.status;
-                
-                // Update all progress elements with SERVER data (single source of truth)
-                const newCompleted = progress.matched_transactions;
-                const newRemaining = progress.unmatched_transactions;
-                const total = progress.total_transactions;
-                const percentage = progress.percentage;
-                
-                console.log(`🔄 Server Progress: ${newCompleted}/${total} (${percentage}%) | Remaining: ${newRemaining}`);
-                
-                // Update progress bar
-                const progressBar = document.querySelector('.progress-bar');
-                if (progressBar) {
-                    progressBar.style.width = `${percentage}%`;
-                    progressBar.setAttribute('aria-valuenow', percentage);
-                }
-                
-                // Update badges
-                const completedBadge = document.querySelector('.badge.bg-success');
-                const remainingBadge = document.querySelector('.badge.bg-warning');
-                if (completedBadge) {
-                    completedBadge.textContent = `${newCompleted.toLocaleString()} Completed`;
-                }
-                if (remainingBadge) {
-                    remainingBadge.textContent = `${newRemaining.toLocaleString()} Remaining`;
-                }
-                
-                // Update transaction count in header
-                const transactionCountSpan = document.querySelector('.transaction-count');
-                const transactionListTitle = document.querySelector('.transaction-list-title');
-                if (transactionCountSpan) {
-                    transactionCountSpan.textContent = newRemaining;
-                }
-                
-                // Check completion status
-                if (status.is_complete) {
-                    // ALL transactions reconciled across ALL pages
-                    if (transactionListTitle) {
-                        transactionListTitle.innerHTML = '<i class="fas fa-check-circle text-success me-2"></i>All Transactions Reconciled!';
-                    }
-                    
-                    // Show celebration
-                    setTimeout(() => {
-                        const progressContainer = document.querySelector('.reconciliation-progress');
-                        if (progressContainer) {
-                            progressContainer.innerHTML = `
-                                <div class="text-center py-3">
-                                    <i class="fas fa-check-circle text-success mb-2" style="font-size: 2rem;"></i>
-                                    <div class="fw-bold text-success">🎉 All Transactions Reconciled!</div>
-                                    <div class="text-muted small mt-1">Great job! You've completed the reconciliation process.</div>
-                                </div>
-                            `;
-                        }
-                    }, 1000);
-                } else if (newRemaining > 0) {
-                    // Still have work remaining
-                    const visibleTransactions = document.querySelectorAll('.transaction-item').length;
-                    
-                    if (visibleTransactions === 0 && newRemaining > 0) {
-                        // Current page complete, but more on other pages
-                        if (transactionListTitle) {
-                            transactionListTitle.innerHTML = '<i class="fas fa-arrow-right text-primary me-2"></i>Page Complete - Move to Next Page';
-                        }
-                        
-                        // Show next page button
-                        setTimeout(() => {
-                            const progressContainer = document.querySelector('.reconciliation-progress');
-                            if (progressContainer) {
-                                const nextPage = parseInt('{{ next_page|default:1 }}') || 1;
-                                progressContainer.innerHTML = `
-                                    <div class="text-center py-3">
-                                        <i class="fas fa-arrow-right text-primary mb-2" style="font-size: 2rem;"></i>
-                                        <div class="fw-bold text-primary">✅ Page Complete!</div>
-                                        <div class="text-muted small mt-1">${newRemaining} transactions remaining on other pages.</div>
-                                        <a href="?page=${nextPage}" class="btn btn-sm btn-primary mt-2">
-                                            <i class="fas fa-arrow-right"></i> Continue to Next Page
-                                        </a>
-                                    </div>
-                                `;
-                            }
-                        }, 1000);
-                    }
-                }
-                
-                // Update balances
-                updateBalanceDisplay(progress);
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching progress:', error);
-        });
-}
-
-function updateBalanceDisplay(progress) {
-    const reconciledBalanceElement = document.querySelector('.balance-metric .value.text-info');
-    const differenceElement = document.querySelector('.balance-metric .value.text-warning, .balance-metric .value.text-success');
-    
-    if (reconciledBalanceElement) {
-        reconciledBalanceElement.textContent = '$' + progress.reconciled_balance.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-        
-        // Update difference
-        if (differenceElement) {
-            differenceElement.textContent = '$' + Math.abs(progress.difference).toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-            differenceElement.className = progress.difference === 0 ? 'value text-success' : 'value text-warning';
-        }
-        
-        // Add animation
-        reconciledBalanceElement.classList.add('updated');
-        setTimeout(() => reconciledBalanceElement.classList.remove('updated'), 600);
-    }
-}
-
-// OLD MANUAL CALCULATION (DEPRECATED - keeping for reference)
-function updateProgressManually_OLD_DEPRECATED(transactionAmount) {
-    // This function is NO LONGER USED - replaced by updateProgressFromServer()
-    // Kept here for reference only
     
     // Get current progress elements
     const currentCompletedElement = document.querySelector('.reconciliation-progress .fw-bold.text-success');
@@ -1257,28 +963,14 @@ function updateProgressManually_OLD_DEPRECATED(transactionAmount) {
             const newCount = Math.max(0, currentCount - 1);
             transactionCountSpan.textContent = newCount;
             
-            // 🚀 FIX: Only show "All Complete" if we're on the last page with 0 remaining
-            // Don't show it if there are other pages with transactions
-            const totalUnmatchedAllPages = parseInt('{{ progress.total_unmatched_all_pages|default:0 }}') || 0;
-            const currentPage = parseInt('{{ current_page|default:1 }}') || 1;
-            const totalPages = parseInt('{{ total_pages|default:1 }}') || 1;
-            const isLastPage = currentPage === totalPages;
-            
-            // Update header title when current page is complete
+            // Update header title when complete
             if (newCount === 0 && transactionListTitle) {
-                if (totalUnmatchedAllPages > 1 && !isLastPage) {
-                    // Still have transactions on other pages
-                    transactionListTitle.innerHTML = '<i class="fas fa-arrow-right text-primary me-2"></i>Page Complete - Move to Next Page';
-                } else if (newCount === 0) {
-                    // Truly all done
-                    transactionListTitle.innerHTML = '<i class="fas fa-check-circle text-success me-2"></i>All Transactions Reconciled!';
-                }
+                transactionListTitle.innerHTML = '<i class="fas fa-check-circle text-success me-2"></i>All Transactions Reconciled!';
             }
         }
         
-        // Show completion celebration only if ALL transactions across ALL pages are done
-        const totalUnmatchedGlobal = parseInt('{{ progress.total_unmatched_all_pages|default:0 }}') || 0;
-        if (newRemaining === 0 && total > 0 && totalUnmatchedGlobal <= 1) {
+        // Show completion celebration if all transactions are reconciled
+        if (newRemaining === 0 && total > 0) {
             setTimeout(() => {
                 const progressContainer = document.querySelector('.reconciliation-progress');
                 if (progressContainer) {
@@ -1287,24 +979,6 @@ function updateProgressManually_OLD_DEPRECATED(transactionAmount) {
                             <i class="fas fa-check-circle text-success mb-2" style="font-size: 2rem;"></i>
                             <div class="fw-bold text-success">🎉 All Transactions Reconciled!</div>
                             <div class="text-muted small mt-1">Great job! You've completed the reconciliation process.</div>
-                        </div>
-                    `;
-                }
-            }, 1000);
-        } else if (newRemaining === 0 && totalUnmatchedGlobal > 1) {
-            // Show "Page Complete" message with next page link
-            setTimeout(() => {
-                const progressContainer = document.querySelector('.reconciliation-progress');
-                if (progressContainer) {
-                    const nextPage = parseInt('{{ next_page|default:1 }}') || 1;
-                    progressContainer.innerHTML = `
-                        <div class="text-center py-3">
-                            <i class="fas fa-arrow-right text-primary mb-2" style="font-size: 2rem;"></i>
-                            <div class="fw-bold text-primary">✅ Page Complete!</div>
-                            <div class="text-muted small mt-1">${totalUnmatchedGlobal} transactions remaining on other pages.</div>
-                            <a href="?page=${nextPage}" class="btn btn-sm btn-primary mt-2">
-                                <i class="fas fa-arrow-right"></i> Continue to Next Page
-                            </a>
                         </div>
                     `;
                 }
@@ -1939,8 +1613,8 @@ function closeSplitModal() {
 }
 
 // Apply Smart Suggestion
-function applySuggestion(transactionId, loanId, customerName, coaAccountId, coaAccountDisplay, totalSuggestions) {
-    console.log('🎯 Applying suggestion:', { transactionId, loanId, customerName, coaAccountId, coaAccountDisplay, totalSuggestions });
+function applySuggestion(transactionId, loanId, customerName, coaAccountId, coaAccountDisplay) {
+    console.log('🎯 Applying suggestion:', { transactionId, loanId, customerName, coaAccountId, coaAccountDisplay });
     
     // Fill the WHO input field with the suggested customer
     const whoInput = document.querySelector(`input[name="who_text_${transactionId}"]`);
@@ -1968,19 +1642,16 @@ function applySuggestion(transactionId, loanId, customerName, coaAccountId, coaA
         whoButton.setAttribute('data-loan-id', loanId);
     }
     
-    // Check if this transaction has only 1 suggestion using the passed parameter
-    const hasSingleSuggestion = totalSuggestions === 1;
-    
-    console.log('🔍 Auto-save check:', { 
-        totalSuggestions, 
-        hasSingleSuggestion,
-        type: typeof totalSuggestions 
-    });
+    // Show the OK button for this transaction
+    const okButton = document.getElementById(`save${transactionId}`);
+    if (okButton) {
+        okButton.style.display = 'block';
+    }
     
     // Collapse the suggestions
-    const suggestionsContainer = document.getElementById(`suggestions-${transactionId}`);
-    if (suggestionsContainer) {
-        const collapse = new bootstrap.Collapse(suggestionsContainer, { toggle: false });
+    const suggestionsCollapse = document.getElementById(`suggestions-${transactionId}`);
+    if (suggestionsCollapse) {
+        const collapse = new bootstrap.Collapse(suggestionsCollapse, { toggle: false });
         collapse.hide();
     }
     
@@ -1989,27 +1660,11 @@ function applySuggestion(transactionId, loanId, customerName, coaAccountId, coaA
     if (coaAccountDisplay) {
         message += ` → ${coaAccountDisplay}`;
     }
+    showToast(message, 'success');
     
-    // 🚀 AUTO-SAVE LOGIC: If only 1 suggestion, auto-save immediately
-    if (hasSingleSuggestion) {
-        message += ' (Auto-saving...)';
-        showToast(message, 'success');
-        
-        // Auto-save after short delay to show the toast
-        setTimeout(() => {
-            console.log('🚀 Auto-saving transaction with single suggestion');
-            saveTransaction(transactionId);
-        }, 500);
-    } else {
-        // Multiple suggestions: Show OK button for manual confirmation
-        showToast(message, 'success');
-        
-        const okButton = document.getElementById(`save${transactionId}`);
-        if (okButton) {
-            okButton.style.display = 'block';
-            // Auto-focus on the save button for immediate confirmation
-            setTimeout(() => okButton.focus(), 300);
-        }
+    // Optional: Auto-focus on the save button for immediate confirmation
+    if (okButton) {
+        setTimeout(() => okButton.focus(), 300);
     }
 }
 
@@ -2034,6 +1689,96 @@ function showToast(message, type = 'info') {
         }
     }, 3000);
 }
+
+</script>
+{% endblock %}
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ DOM Content Loaded');
+    
+    const debugInfo = document.getElementById('debugInfo');
+    let debugHtml = '<div class="text-success">✅ JavaScript Loaded Successfully</div>';
+    
+    // Check if there are any suggestion buttons
+    const suggestionButtons = document.querySelectorAll('button[onclick*="applySuggestion"]');
+    console.log(`📊 Found ${suggestionButtons.length} suggestion buttons`);
+    debugHtml += `<div>📊 Found <strong>${suggestionButtons.length}</strong> suggestion buttons</div>`;
+    
+    // Check for transactions with smart suggestions
+    const suggestionsContainers = document.querySelectorAll('[id^="suggestions-"]');
+    console.log(`� Found ${suggestionsContainers.length} suggestion containers`);
+    debugHtml += `<div>📦 Found <strong>${suggestionsContainers.length}</strong> suggestion containers</div>`;
+    
+    // Check input fields
+    const whoInputs = document.querySelectorAll('input[name*="who_text_"]');
+    const whatInputs = document.querySelectorAll('input[name*="what_text_"]');
+    console.log(`📝 Found ${whoInputs.length} WHO inputs and ${whatInputs.length} WHAT inputs`);
+    debugHtml += `<div>📝 Found <strong>${whoInputs.length}</strong> WHO inputs and <strong>${whatInputs.length}</strong> WHAT inputs</div>`;
+    
+    // Check for visible suggestion cards
+    const suggestionCards = document.querySelectorAll('.suggestion-card, .list-group-item');
+    const visibleSuggestions = Array.from(suggestionCards).filter(card => 
+        card.style.display !== 'none' && 
+        !card.closest('.collapse') || 
+        card.closest('.collapse.show')
+    );
+    debugHtml += `<div>🎯 Found <strong>${visibleSuggestions.length}</strong> visible suggestions</div>`;
+    
+    // Test button functionality
+    if (suggestionButtons.length > 0) {
+        debugHtml += '<div class="mt-2"><button class="btn btn-sm btn-outline-primary" onclick="window.debugApplySuggestion()">🧪 Test Apply Function</button></div>';
+    } else {
+        debugHtml += '<div class="text-warning">⚠️ No suggestion buttons found - check if smart suggestions are being generated</div>';
+    }
+    
+    if (debugInfo) {
+        debugInfo.innerHTML = debugHtml;
+    }
+    
+    suggestionButtons.forEach((btn, index) => {
+        console.log(`🔘 Button ${index + 1}:`, btn.onclick.toString().substring(0, 100) + '...');
+    });
+});
+
+// Test function accessible from console and debug panel
+window.debugApplySuggestion = function() {
+    console.log('🧪 Testing applySuggestion function...');
+    
+    const debugInfo = document.getElementById('debugInfo');
+    let testHtml = debugInfo.innerHTML;
+    
+    // Find the first transaction ID
+    const firstWhoInput = document.querySelector('input[name*="who_text_"]');
+    if (firstWhoInput) {
+        const nameAttr = firstWhoInput.getAttribute('name');
+        const transactionId = nameAttr.replace('who_text_', '');
+        console.log(`🎯 Testing with transaction ID: ${transactionId}`);
+        
+        testHtml += `<div class="mt-2 p-2 bg-light border">🧪 Testing with Transaction ID: <strong>${transactionId}</strong></div>`;
+        
+        applySuggestion(transactionId, 999, 'TEST Customer Name', '121000', '121000 - TEST Account');
+        
+        testHtml += `<div class="text-success">✅ applySuggestion called successfully</div>`;
+        
+        // Check if fields were populated
+        const whoValue = firstWhoInput.value;
+        const whatInput = document.querySelector(`input[name="what_text_${transactionId}"]`);
+        const whatValue = whatInput ? whatInput.value : 'Input not found';
+        
+        testHtml += `<div>WHO field value: "${whoValue}"</div>`;
+        testHtml += `<div>WHAT field value: "${whatValue}"</div>`;
+        
+    } else {
+        console.log('❌ No WHO input found for testing');
+        testHtml += '<div class="text-danger">❌ No WHO input found for testing</div>';
+    }
+    
+    if (debugInfo) {
+        debugInfo.innerHTML = testHtml;
+    }
+};
+
+console.log('🔧 Added window.debugApplySuggestion() - call it from browser console to test');
 
 </script>
 {% endblock %}

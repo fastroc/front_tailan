@@ -47,6 +47,7 @@ urlpatterns = [
     path("coa/", include("coa.urls")),
     path("bank_accounts/", include("bank_accounts.urls")),
     path("reconciliation/", include("reconciliation.urls")),
+    path("bank-rules/", include("bank_rules.urls")),  # 🎯 NEW: Bank Rules management
     # path('api/smart-suggestions/', include('reconciliation.suggestion_urls')),  # REMOVED - Complex smart suggestions
     path("journal/", include("journal.urls")),
     path("assets/", include("assets.urls")),  # Fixed Assets management

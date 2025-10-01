@@ -2119,3 +2119,80 @@ def simple_match_transaction_internal(transaction_data, request):
         
     except Exception as e:
         return {'success': False, 'error': str(e)}
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def get_reconciliation_progress(request, account_id):
+    """
+    🆕 NEW ENDPOINT: Get real-time reconciliation progress for an account
+    Returns current counts across ALL pages (not just visible transactions)
+    """
+    import traceback
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"🔍 Progress request for account {account_id}")
+        
+        # Get the account
+        account = get_object_or_404(Account, id=account_id)
+        logger.info(f"✅ Account found: {account}")
+        
+        # Get comprehensive progress from service
+        logger.info("📊 Calling ReconciliationService.get_reconciliation_progress...")
+        progress = ReconciliationService.get_reconciliation_progress(account)
+        logger.info(f"✅ Progress data: {progress}")
+        
+        # Add additional helpful info
+        response_data = {
+            'success': True,
+            'progress': {
+                'total_transactions': progress['total_transactions'],
+                'matched_transactions': progress['matched_transactions'],
+                'unmatched_transactions': progress['unmatched_transactions'],  # This is the key one!
+                'percentage': progress['percentage'],
+                'statement_balance': progress['statement_balance'],
+                'reconciled_balance': progress['reconciled_balance'],
+                'difference': progress['difference'],
+            },
+            'status': {
+                'is_complete': progress['unmatched_transactions'] == 0,
+                'remaining_count': progress['unmatched_transactions'],
+                'completion_percentage': progress['percentage']
+            }
+        }
+        
+        logger.info(f"✅ Returning response_data")
+        return JsonResponse(response_data)
+        
+    except Account.DoesNotExist:
+        logger.error(f"❌ Account {account_id} not found")
+        return JsonResponse({
+            'success': False,
+            'error': 'Account not found'
+        }, status=404)
+    except Exception as e:
+        # 🔧 Log the full error with traceback
+        logger.error(f"❌ Progress endpoint error: {str(e)}")
+        logger.error(f"❌ Full traceback: {traceback.format_exc()}")
+        
+        # Return minimal valid response instead of error
+        return JsonResponse({
+            'success': True,
+            'progress': {
+                'total_transactions': 0,
+                'matched_transactions': 0,
+                'unmatched_transactions': 0,
+                'percentage': 0,
+                'statement_balance': 0,
+                'reconciled_balance': 0,
+                'difference': 0,
+            },
+            'status': {
+                'is_complete': False,
+                'remaining_count': 0,
+                'completion_percentage': 0
+            },
+            'warning': f'Error occurred: {str(e)}'
+        })

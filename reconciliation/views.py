@@ -739,11 +739,23 @@ def account_reconciliation_simple(request, account_id):
     except (ValueError, TypeError):
         page = 1
     
+    # Get optional file_id for filtering transactions from specific upload
+    file_id = request.GET.get('file_id', None)
+    filtered_by_file = None
+    uploaded_filename = None
+    if file_id:
+        try:
+            filtered_by_file = UploadedFile.objects.get(id=int(file_id), account=account)
+            uploaded_filename = filtered_by_file.stored_filename  # Get the stored filename for filtering
+        except (UploadedFile.DoesNotExist, ValueError):
+            messages.warning(request, "Upload file not found. Showing all transactions.")
+            file_id = None
+    
     transactions_per_page = 100
     offset = (page - 1) * transactions_per_page
     
-    # Get unmatched transactions with limit for pagination
-    all_unmatched = ReconciliationService.get_unmatched_transactions(account)
+    # Get unmatched transactions with limit for pagination and optional file filter
+    all_unmatched = ReconciliationService.get_unmatched_transactions(account, uploaded_file_id=uploaded_filename)
     total_transactions = all_unmatched.count()
     
     # Apply pagination
@@ -758,14 +770,29 @@ def account_reconciliation_simple(request, account_id):
     from reconciliation.smart_suggestion_service import SmartSuggestionService
     smart_service = SmartSuggestionService()
     
-    # 🚀 PERFORMANCE OPTIMIZATION #2: Pre-fetch COA accounts (avoid N+1 queries)
-    coa_cache = {
-        '121000': Account.objects.filter(company=company, code='121000').first(),
-        '122000': Account.objects.filter(company=company, code='122000').first(),
-    }
+    # 🚀 PERFORMANCE OPTIMIZATION #2: Pre-fetch COA accounts from loan-bridge configuration
+    # Get configured accounts from loan-bridge setup (http://localhost:8000/loan-bridge/setup/)
+    from loan_reconciliation_bridge.models import LoanGLConfiguration
     
-    # Fallback lookups if standard codes not found
-    if not coa_cache['121000']:
+    coa_cache = {}
+    try:
+        loan_config = LoanGLConfiguration.objects.filter(company=company, is_active=True).first()
+        if loan_config:
+            # Use configured accounts from loan-bridge setup
+            coa_cache['121000'] = loan_config.general_loan_disbursements_account
+            coa_cache['122000'] = loan_config.general_loans_receivable_account
+        else:
+            # Fallback to hardcoded codes if no configuration exists
+            coa_cache['121000'] = Account.objects.filter(company=company, code='121000').first()
+            coa_cache['122000'] = Account.objects.filter(company=company, code='122000').first()
+    except Exception as e:
+        print(f"⚠️ Error loading loan-bridge configuration: {e}")
+        # Fallback to hardcoded codes
+        coa_cache['121000'] = Account.objects.filter(company=company, code='121000').first()
+        coa_cache['122000'] = Account.objects.filter(company=company, code='122000').first()
+    
+    # Additional fallback lookups if accounts still not found
+    if not coa_cache.get('121000'):
         coa_cache['121000'] = Account.objects.filter(
             company=company,
             name__icontains="disbursement"
@@ -773,7 +800,7 @@ def account_reconciliation_simple(request, account_id):
             Q(name__icontains="loan") | Q(code__startswith="121")
         ).first()
     
-    if not coa_cache['122000']:
+    if not coa_cache.get('122000'):
         coa_cache['122000'] = Account.objects.filter(
             company=company,
             name__icontains="receivable"
@@ -818,7 +845,7 @@ def account_reconciliation_simple(request, account_id):
                         "account_name": coa_account.name,
                         "account_display": f"{coa_account.code} - {coa_account.name}"
                     }
-                    suggestion["coa_reason"] = "🚀 Auto-match for loan disbursement"
+                    suggestion["coa_reason"] = "🚀 Auto-match for loan disbursement (Configured at /loan-bridge/setup/)"
                 elif not is_disbursement and coa_cache['122000']:
                     coa_account = coa_cache['122000']
                     suggestion["suggested_coa"] = {
@@ -827,7 +854,7 @@ def account_reconciliation_simple(request, account_id):
                         "account_name": coa_account.name,
                         "account_display": f"{coa_account.code} - {coa_account.name}"
                     }
-                    suggestion["coa_reason"] = "🔥 Main engine for loan payments"
+                    suggestion["coa_reason"] = "🔥 Main engine for loan payments (Configured at /loan-bridge/setup/)"
                 else:
                     suggestion["suggested_coa"] = None
                     suggestion["coa_reason"] = ""
@@ -881,6 +908,111 @@ def account_reconciliation_simple(request, account_id):
             print(f"⚠️ Bank rules error for transaction {txn.id}: {e}")
             import traceback
             traceback.print_exc()
+        
+        # 🧠 NEW: Add AI Pattern Learning suggestions (modular - safe if disabled)
+        try:
+            from smart_learning.services import PatternMatcher, ConfidenceCalculator
+            
+            # DEBUG: Log AI pattern attempt
+            if 'Интернэт' in (txn.description or ''):
+                print(f"\n🔍 DEBUG: Attempting AI pattern matching for transaction {txn.id}")
+                print(f"  Description: '{txn.description}'")
+                print(f"  Amount: {txn.amount}")
+                print(f"  Company: {company}")
+            
+            # Initialize pattern matcher for this company
+            pattern_matcher = PatternMatcher(company=company)
+            confidence_calc = ConfidenceCalculator()
+            
+            # DEBUG: Log pattern matcher initialization
+            if 'Интернэт' in (txn.description or ''):
+                print(f"  ✅ PatternMatcher initialized successfully")
+            
+            # Get AI pattern suggestions
+            ai_suggestions = pattern_matcher.get_smart_suggestions(
+                transaction_description=txn.description or '',
+                amount=abs(float(txn.amount)),
+                trans_type='debit' if float(txn.amount) < 0 else 'credit'
+            )
+            
+            # DEBUG: Log AI suggestions result
+            if 'Интернэт' in (txn.description or ''):
+                print(f"  🧠 AI suggestions returned: {len(ai_suggestions)} suggestions")
+                if ai_suggestions:
+                    for i, s in enumerate(ai_suggestions):
+                        print(f"    {i+1}: {s}")
+                else:
+                    print(f"    (No AI suggestions found)")
+            
+            # Convert AI suggestions to the same format as rule suggestions
+            for ai_sug in ai_suggestions:
+                suggestion = {
+                    'source': 'ai_pattern',  # Mark as AI-generated
+                    'pattern_id': ai_sug['pattern_id'],
+                    'pattern_name': ai_sug['pattern_name'],
+                    'confidence': ai_sug['confidence'],
+                    'confidence_label': confidence_calc.get_confidence_label(ai_sug['confidence']),
+                    'suggested_who_text': ai_sug['who'],
+                    'customer_name': ai_sug['who'],  # Add for template compatibility
+                    'match_percentage': round(ai_sug['confidence'], 1),  # Add for template compatibility
+                    'suggested_coa': {
+                        'account_id': ai_sug['what'].id,
+                        'account_code': ai_sug['what'].code,
+                        'account_name': ai_sug['what'].name,
+                        'account_display': f"{ai_sug['what'].code} - {ai_sug['what'].name}"
+                    },
+                    'coa_reason': f"🧠 AI Pattern: {ai_sug['accuracy_history']:.0f}% accurate ({ai_sug['times_used']} uses)",
+                    'auto_apply': ai_sug.get('auto_apply', False),
+                }
+                suggestions.append(suggestion)
+                
+                # DEBUG: Log suggestion conversion
+                if 'Интернэт' in (txn.description or ''):
+                    print(f"  ✅ Converted AI suggestion: {suggestion}")
+                    print(f"    source: {suggestion['source']}")
+                    print(f"    pattern_id: {suggestion['pattern_id']}")
+                    print(f"    confidence: {suggestion['confidence']}")
+                    print(f"    suggested_who_text: {suggestion['suggested_who_text']}")
+                    print(f"    suggested_coa: {suggestion['suggested_coa']}")
+            
+            # DEBUG: Print AI suggestions
+            if ai_suggestions and ('Интернэт' in (txn.description or '') or 'bank fee' in (txn.description or '').lower()):
+                print(f"\n🧠 AI Pattern suggestions for '{txn.description}':")
+                print(f"  Count: {len(ai_suggestions)}")
+                for s in ai_suggestions[:3]:
+                    print(f"  - {s['who']} / {s['what'].name} ({s['confidence']:.1f}% confidence)")
+        
+        except ImportError as ie:
+            # smart_learning app not installed - continue normally
+            if 'Интернэт' in (txn.description or ''):
+                print(f"  ❌ ImportError in AI pattern matching: {ie}")
+            pass
+        except Exception as e:
+            # AI engine error - log and continue
+            if 'Интернэт' in (txn.description or ''):
+                print(f"  ⚠️ AI pattern matching error for transaction {txn.id}: {e}")
+                import traceback
+                traceback.print_exc()
+            else:
+                print(f"⚠️ AI pattern matching error for transaction {txn.id}: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # 🛡️ Filter out any None values that may have slipped through
+        suggestions = [s for s in suggestions if s is not None and isinstance(s, dict)]
+        
+        # 🎯 Sort all suggestions by confidence (highest first)
+        # Rule suggestions default to 80% confidence if not specified
+        # AI pattern suggestions have calculated confidence
+        suggestions.sort(key=lambda x: x.get('confidence', 80), reverse=True)
+
+        # DEBUG: Log final suggestions for Интернэт transactions
+        if 'Интернэт' in (txn.description or ''):
+            print(f"\n🔍 FINAL SUGGESTIONS for transaction {txn.id}:")
+            print(f"  Total suggestions: {len(suggestions)}")
+            for i, sug in enumerate(suggestions):
+                print(f"    {i+1}: source={sug.get('source', 'unknown')}, confidence={sug.get('confidence', 0)}")
+                print(f"       who={sug.get('suggested_who_text', 'unknown')}, coa={sug.get('suggested_coa', {}).get('account_display', 'unknown')}")
 
         # Create enhanced transaction dict
         enhanced_txn = {
@@ -894,6 +1026,11 @@ def account_reconciliation_simple(request, account_id):
             "coa_account": txn.coa_account,
             "smart_suggestions": suggestions[:5],  # Limit to top 5 suggestions
         }
+        
+        # DEBUG: Log the final enhanced transaction for Интернэт
+        if 'Интернэт' in (txn.description or ''):
+            print(f"  📦 Enhanced transaction {txn.id} smart_suggestions count: {len(enhanced_txn['smart_suggestions'])}")
+        
         transactions_list.append(enhanced_txn)
 
     # Get reconciliation progress (across ALL pages, not just current page)
@@ -1004,10 +1141,19 @@ def account_reconciliation_simple(request, account_id):
                 if vehicle_plates:
                     display_detail += f" | Plates: {', '.join(vehicle_plates)}"
 
+                # Get loan number if the application has been converted to an active loan
+                loan_number = app.application_id  # Default to application_id
+                try:
+                    if hasattr(app, 'loan') and app.loan:
+                        loan_number = app.loan.loan_number
+                except Exception:
+                    pass  # If no loan exists yet, use application_id
+
                 # Create loan customer data structure matching template expectations
                 loan_customer_data = {
                     "loan_id": app.id,
-                    "loan_number": app.application_id,  # Use application_id as loan_number
+                    "loan_number": loan_number,  # Use loan_number from Loan model, or application_id as fallback
+                    "application_id": app.application_id,  # Keep application_id separately
                     "customer_name": customer_name,
                     "customer_id": app.customer.id,
                     "loan_amount": (
@@ -1047,6 +1193,9 @@ def account_reconciliation_simple(request, account_id):
         "coa_groups": coa_groups,
         "loan_customers": loan_customers,
         "title": f"Bank Reconciliation - {account.name} (Simple)",
+        # File filtering info
+        "file_id": file_id,
+        "filtered_by_file": filtered_by_file,
         # Pagination data
         "current_page": page,
         "total_pages": total_pages,
@@ -1057,6 +1206,7 @@ def account_reconciliation_simple(request, account_id):
         "previous_page": page - 1 if has_previous else None,
         "showing_from": offset + 1,
         "showing_to": min(offset + transactions_per_page, total_transactions),
+        "page_range": range(1, min(total_pages + 1, 11)),  # Show first 10 pages
     }
 
-    return render(request, "reconciliation/reconciliation_simple.html", context)
+    return render(request, "reconciliation/reconciliation_simple_minimal.html", context)

@@ -1,457 +1,692 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Bank Accounts{% endblock %}
 
 {% block extra_css %}
 <style>
-  .dashboard-header { 
-    background: linear-gradient(135deg, #1e40af 0%, #3730a3 100%); 
-    color: white; 
-    border-radius: 0 0 2rem 2rem;
-    margin: -1rem -15px 0 -15px;
-    padding: 2rem 15px;
+  /* PROFESSIONAL MINIMALISTIC EXCEL DESIGN */
+  * {
+    box-sizing: border-box;
   }
-  .account-card { 
-    border: none; 
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); 
-    transition: all 0.3s ease;
-    border-radius: 1rem;
-    overflow: hidden;
+  
+  body {
+    font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+    font-size: 11pt;
+    background: #F5F5F5;
+    color: #1F1F1F;
+    margin: 0;
+    padding: 0;
   }
-  .account-card:hover { 
-    transform: translateY(-8px); 
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  
+  .page-wrapper {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white;
   }
-  .balance-positive { color: #16a34a; }
-  .balance-negative { color: #dc2626; }
-  .balance-zero { color: #6b7280; }
-  .quick-action { 
-    background: white; 
-    border: 2px solid #e5e7eb; 
-    transition: all 0.3s ease;
-    border-radius: 1rem;
+
+  /* Excel-Style Header */
+  .excel-header {
+    background: white;
+    border-bottom: 2px solid #217346;
+    padding: 20px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
-  .quick-action:hover { 
-    border-color: #3b82f6; 
-    background: #f0f9ff;
-    transform: translateY(-2px);
+
+  .header-left h1 {
+    margin: 0 0 4px 0;
+    font-size: 22px;
+    font-weight: 600;
+    color: #1F1F1F;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
-  .stats-grid { 
-    display: grid; 
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-    gap: 1.5rem; 
-    margin: 2rem 0;
+
+  .header-left h1 i {
+    color: #217346;
   }
-  .stat-item { 
-    background: white; 
-    padding: 1.5rem; 
-    border-radius: 1rem; 
-    text-align: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    border: 1px solid #f3f4f6;
+
+  .subtitle {
+    margin: 0;
+    font-size: 12px;
+    color: #605E5C;
   }
-  .empty-state { 
-    background: #fafbfc; 
-    border: 2px dashed #d1d5db; 
-    border-radius: 1rem; 
-    padding: 4rem 2rem; 
-    text-align: center;
-  }
-  .company-badge {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 2rem;
-    font-size: 0.875rem;
+
+  /* Excel Button Styles */
+  .excel-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1px solid #D1D1D1;
+    background: white;
+    color: #323130;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
   }
-  .upload-delete-btn {
-    opacity: 0.6;
-    transition: all 0.2s ease;
+
+  .excel-btn:hover {
+    background: #F3F2F1;
+    border-color: #8A8886;
   }
-  .upload-delete-btn:hover {
-    opacity: 1;
-    transform: scale(1.1);
+
+  .excel-btn-primary {
+    background: #217346;
+    color: white;
+    border-color: #217346;
   }
-  .recent-upload-item {
-    transition: all 0.2s ease;
+
+  .excel-btn-primary:hover {
+    background: #185C37;
+    border-color: #185C37;
   }
-  .recent-upload-item:hover {
-    background-color: #f1f5f9 !important;
+
+  .excel-btn-success {
+    background: #107C10;
+    color: white;
+    border-color: #107C10;
   }
-  .recent-upload-item:hover .upload-delete-btn {
-    opacity: 1;
+
+  .excel-btn-success:hover {
+    background: #0B5A0B;
+  }
+
+  .excel-btn-info {
+    background: #0078D4;
+    color: white;
+    border-color: #0078D4;
+  }
+
+  .excel-btn-info:hover {
+    background: #005A9E;
+  }
+
+  .excel-btn-secondary {
+    background: #605E5C;
+    color: white;
+    border-color: #605E5C;
+  }
+
+  .excel-btn-secondary:hover {
+    background: #484644;
+  }
+
+  .excel-btn-large {
+    padding: 12px 24px;
+    font-size: 14px;
+  }
+
+  /* Excel Container */
+  .excel-container {
+    padding: 24px 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* Excel Section (per account) */
+  .excel-section {
+    background: white;
+    border: 1px solid #D1D1D1;
+    margin-bottom: 32px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  /* Account Header Row */
+  .account-header-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 180px;
+    gap: 16px;
+    padding: 16px 20px;
+    background: #F9F9F9;
+    border-bottom: 2px solid #217346;
+    align-items: center;
+  }
+
+  .account-info-cell .account-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1F1F1F;
+    margin-bottom: 2px;
+  }
+
+  .account-info-cell .account-meta {
+    font-size: 11px;
+    color: #605E5C;
+    text-transform: uppercase;
+  }
+
+  .balance-cell {
+    text-align: right;
+  }
+
+  .balance-label {
+    font-size: 10px;
+    color: #605E5C;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .balance-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #107C10;
+  }
+
+  .balance-value.negative {
+    color: #D13438;
+  }
+
+  .stats-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .stat-item {
+    font-size: 12px;
+  }
+
+  .stat-label {
+    color: #605E5C;
+    margin-right: 4px;
+  }
+
+  .stat-value {
+    font-weight: 600;
+    color: #1F1F1F;
+  }
+
+  .actions-cell {
+    text-align: right;
+  }
+
+  .excel-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #0078D4;
+    color: white;
+    text-decoration: none;
+    border-radius: 2px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+
+  .excel-link:hover {
+    background: #005A9E;
+  }
+
+  /* Coverage Row */
+  .coverage-row {
+    padding: 10px 20px;
+    background: #FFF4E5;
+    border-bottom: 1px solid #F0E5D2;
+    font-size: 12px;
+    color: #3D3D3D;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .coverage-row i {
+    color: #D97706;
+  }
+
+  .coverage-badge {
+    display: inline-block;
+    background: #217346;
+    color: white;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 8px;
+  }
+
+  /* Excel Table */
+  .excel-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .excel-table thead {
+    background: #F3F2F1;
+    border-bottom: 2px solid #D1D1D1;
+  }
+
+  .excel-table th {
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: #323130;
+    text-transform: uppercase;
+    border-right: 1px solid #EDEBE9;
+  }
+
+  .excel-table th:last-child {
+    border-right: none;
+  }
+
+  .excel-table tbody tr {
+    border-bottom: 1px solid #EDEBE9;
+  }
+
+  .excel-table tbody tr:hover {
+    background: #F9F9F9;
+  }
+
+  .excel-table td {
+    padding: 12px;
+    color: #323130;
+    border-right: 1px solid #F3F2F1;
+  }
+
+  .excel-table td:last-child {
+    border-right: none;
+  }
+
+  .text-center {
+    text-align: center;
+  }
+
+  .text-muted {
+    color: #8A8886;
+  }
+
+  .file-name {
+    font-weight: 600;
+    color: #1F1F1F;
+    margin-bottom: 2px;
+  }
+
+  .file-meta {
+    font-size: 10px;
+    color: #605E5C;
+  }
+
+  .period-label {
+    font-weight: 600;
+    color: #0078D4;
+    margin-bottom: 2px;
+  }
+
+  .period-dates {
+    font-size: 10px;
+    color: #605E5C;
+  }
+
+  .days-badge {
+    display: inline-block;
+    background: #0078D4;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .duplicate-badge {
+    display: inline-block;
+    background: #FFF4E5;
+    color: #CA5010;
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 4px;
+  }
+
+  .reconcile-badge {
+    display: inline-block;
+    background: #E3F2FD;
+    color: #0078D4;
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  /* Progress Bar */
+  .progress-bar-container {
+    width: 100%;
+    height: 18px;
+    background: #F3F2F1;
+    border-radius: 9px;
+    overflow: hidden;
+    border: 1px solid #EDEBE9;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #107C10 0%, #0B5A0B 100%);
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+  }
+
+  .progress-text {
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+
+  /* Action Buttons in Table */
+  .action-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .excel-btn-small {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #D1D1D1;
+    background: white;
+    color: #323130;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 14px;
+  }
+
+  .excel-btn-small:hover {
+    background: #F3F2F1;
+  }
+
+  .excel-btn-reconcile {
+    background: #0078D4;
+    color: white;
+    border-color: #0078D4;
+  }
+
+  .excel-btn-reconcile:hover {
+    background: #005A9E;
+  }
+
+  .excel-btn-delete {
+    background: #D13438;
+    color: white;
+    border-color: #D13438;
+  }
+
+  .excel-btn-delete:hover {
+    background: #A72629;
+  }
+
+  /* Account Footer */
+  .account-footer {
+    padding: 16px 20px;
+    background: #FAFAFA;
+    border-top: 1px solid #EDEBE9;
+    display: flex;
+    gap: 12px;
+  }
+
+  /* Empty States */
+  .empty-files {
+    padding: 40px;
+    text-align: center;
+    color: #8A8886;
+    font-size: 13px;
+    background: #FAFAFA;
+  }
+
+  .empty-files i {
+    font-size: 36px;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .empty-state {
+    padding: 80px 40px;
+    text-align: center;
+    color: #605E5C;
+  }
+
+  .empty-state i {
+    font-size: 64px;
+    color: #D1D1D1;
+    margin-bottom: 20px;
+  }
+
+  .empty-state h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #323130;
+    margin-bottom: 12px;
+  }
+
+  .empty-state p {
+    font-size: 14px;
+    color: #605E5C;
+    margin-bottom: 24px;
+  }
+
+  /* Responsive */
+  @media (max-width: 1200px) {
+    .account-header-row {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    
+    .balance-cell,
+    .stats-cell,
+    .actions-cell {
+      text-align: left;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .excel-container {
+      padding: 16px;
+    }
+    
+    .excel-table {
+      font-size: 11px;
+    }
+    
+    .excel-table th,
+    .excel-table td {
+      padding: 8px;
+    }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Dashboard Header -->
-<div class="dashboard-header">
-  <div class="row align-items-center">
-    <div class="col-md-8">
-      <h1 class="h2 mb-2">
-        <i class="fas fa-university me-3"></i>Bank Account Management
-      </h1>
-      {% if company %}
-        <div class="company-badge">
-          <i class="fas fa-building"></i>
-          {{ company.name }}
-        </div>
-      {% endif %}
+<div class="page-wrapper">
+  <!-- Minimalist Excel Header -->
+  <div class="excel-header">
+    <div class="header-left">
+      <h1><i class="bi bi-bank"></i> Bank Accounts</h1>
+      <p class="subtitle">{{ company.name }}</p>
     </div>
-    <div class="col-md-4 text-end">
-      {% if not no_company %}
-        <a href="{% url 'bank_accounts:add' %}" class="btn btn-light btn-lg">
-          <i class="fas fa-plus me-2"></i>Add Account
-        </a>
-      {% endif %}
+    <div class="header-actions">
+      <a href="{% url 'bank_accounts:add' %}" class="excel-btn excel-btn-primary">
+        <i class="bi bi-plus-circle"></i> Add Account
+      </a>
     </div>
   </div>
-</div>
 
-<!-- Content Area -->
-<div class="container-fluid py-4">
-  {% if no_company %}
-    <!-- No Company State -->
-    <div class="empty-state">
-      <i class="fas fa-building fa-4x text-warning mb-4"></i>
-      <h3 class="h4 mb-3">Select a Company First</h3>
-      <p class="text-muted mb-4">
-        You need to select a company before you can manage bank accounts. 
-        Please go to your dashboard and choose the company you want to work with.
-      </p>
-      <a href="{% url 'dashboard' %}" class="btn btn-warning btn-lg">
-        <i class="fas fa-arrow-left me-2"></i>Go to Dashboard
-      </a>
-    </div>
-
-  {% elif not accounts %}
-    <!-- No Accounts State -->
-    <div class="empty-state">
-      <i class="fas fa-university fa-4x text-primary mb-4"></i>
-      <h3 class="h4 mb-3">No Bank Accounts Yet</h3>
-      <p class="text-muted mb-4">
-        Ready to start managing your finances? Add your first bank account to upload statements, 
-        track transactions, and keep your books balanced.
-      </p>
-      <a href="{% url 'bank_accounts:add' %}" class="btn btn-primary btn-lg">
-        <i class="fas fa-plus me-2"></i>Add Your First Bank Account
-      </a>
-    </div>
-
-  {% else %}
-    <!-- Stats Overview -->
-    <div class="stats-grid">
-      <div class="stat-item">
-        <i class="fas fa-university fa-2x text-primary mb-3"></i>
-        <div class="h3 mb-1">{{ accounts.count }}</div>
-        <div class="text-muted">Bank Accounts</div>
-      </div>
-      <div class="stat-item">
-        <i class="fas fa-dollar-sign fa-2x text-success mb-3"></i>
-        <div class="h3 mb-1 {% if total_balance > 0 %}balance-positive{% elif total_balance < 0 %}balance-negative{% else %}balance-zero{% endif %}">
-          ${{ total_balance|default:0|floatformat:2 }}
+  <!-- Accounts List -->
+  {% if accounts_data %}
+  <div class="excel-container">
+    {% for account_data in accounts_data %}
+    <div class="excel-section">
+      
+      <!-- Account Header Row -->
+      <div class="account-header-row">
+        <div class="account-info-cell">
+          <div class="account-title">{{ account_data.account.code }} - {{ account_data.account.name }}</div>
+          <div class="account-meta">{{ account_data.account.account_type }}</div>
         </div>
-        <div class="text-muted">Total Balance</div>
-      </div>
-      <div class="stat-item">
-        <i class="fas fa-exchange-alt fa-2x text-info mb-3"></i>
-        <div class="h3 mb-1">{{ total_transactions|default:0 }}</div>
-        <div class="text-muted">Total Transactions</div>
-      </div>
-      <div class="stat-item">
-        <i class="fas fa-file-csv fa-2x text-warning mb-3"></i>
-        <div class="h3 mb-1">{{ total_upload_files|default:0 }}</div>
-        <div class="text-muted">Uploaded Files</div>
-      </div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <h5 class="mb-3">
-          <i class="fas fa-bolt me-2 text-warning"></i>Quick Actions
-        </h5>
-        <div class="row g-3">
-          <div class="col-md-3 col-6">
-            <a href="{% url 'bank_accounts:add' %}" class="quick-action p-3 d-block text-decoration-none text-center">
-              <i class="fas fa-plus fa-2x text-primary mb-2"></i>
-              <div class="fw-semibold">Add Account</div>
-              <small class="text-muted">New bank account</small>
-            </a>
-          </div>
-          <div class="col-md-3 col-6">
-            <a href="#" class="quick-action p-3 d-block text-decoration-none text-center">
-              <i class="fas fa-upload fa-2x text-success mb-2"></i>
-              <div class="fw-semibold">Upload Statements</div>
-              <small class="text-muted">Bulk import</small>
-            </a>
-          </div>
-          <div class="col-md-3 col-6">
-            <a href="#" class="quick-action p-3 d-block text-decoration-none text-center">
-              <i class="fas fa-balance-scale fa-2x text-info mb-2"></i>
-              <div class="fw-semibold">Reconcile</div>
-              <small class="text-muted">Match transactions</small>
-            </a>
-          </div>
-          <div class="col-md-3 col-6">
-            <a href="#" class="quick-action p-3 d-block text-decoration-none text-center">
-              <i class="fas fa-chart-bar fa-2x text-warning mb-2"></i>
-              <div class="fw-semibold">Reports</div>
-              <small class="text-muted">View analytics</small>
-            </a>
+        <div class="balance-cell">
+          <div class="balance-label">Balance</div>
+          <div class="balance-value {% if account_data.account.current_balance < 0 %}negative{% endif %}">
+            ${{ account_data.account.current_balance|default:0|floatformat:2 }}
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Bank Accounts Grid -->
-    <div class="row">
-      <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5>
-            <i class="fas fa-university me-2 text-primary"></i>Your Bank Accounts
-          </h5>
-          <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary btn-sm">
-              <i class="fas fa-th me-1"></i>Grid
-            </button>
-            <button class="btn btn-outline-secondary btn-sm">
-              <i class="fas fa-list me-1"></i>List
-            </button>
+        <div class="stats-cell">
+          <div class="stat-item">
+            <span class="stat-label">Files:</span>
+            <span class="stat-value">{{ account_data.total_uploads }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Transactions:</span>
+            <span class="stat-value">{{ account_data.transaction_count }}</span>
           </div>
         </div>
-        
-        <div class="row g-4">
-          {% for account_data in accounts_data %}
-          <div class="col-lg-6 col-xl-4">
-            <div class="account-card card h-100">
-              <!-- Account Header -->
-              <div class="card-header bg-white border-0 pb-0">
-                <div class="d-flex align-items-center">
-                  <div class="bg-primary bg-opacity-10 rounded-circle p-3 me-3">
-                    <i class="fas fa-university fa-lg text-primary"></i>
-                  </div>
-                  <div class="flex-grow-1">
-                    <h6 class="card-title mb-1 fw-bold">{{ account_data.account.name }}</h6>
-                    <small class="text-muted">{{ account_data.account.code|default:"No code set" }}</small>
-                  </div>
-                  <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-                      <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <ul class="dropdown-menu">
-                      <li><a class="dropdown-item" href="#"><i class="fas fa-edit me-2"></i>Edit Account</a></li>
-                      <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
-                      <li><hr class="dropdown-divider"></li>
-                      <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash me-2"></i>Delete</a></li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
+        <div class="actions-cell">
+          <a href="{% url 'bank_accounts:account_detail' account_data.account.id %}" class="excel-link" title="View comprehensive report">
+            <i class="bi bi-file-earmark-text"></i> Overall Report
+          </a>
+        </div>
+      </div>
 
-              <!-- Account Body -->
-              <div class="card-body">
-                <!-- Balance Display -->
-                <div class="text-center py-3 mb-3" style="background: #f8fafc; border-radius: 0.75rem;">
-                  <div class="h4 mb-1 {% if account_data.account.current_balance > 0 %}balance-positive{% elif account_data.account.current_balance < 0 %}balance-negative{% else %}balance-zero{% endif %}">
-                    ${{ account_data.account.current_balance|default:0|floatformat:2 }}
-                  </div>
-                  <small class="text-muted">Current Balance</small>
-                </div>
+      <!-- Coverage Summary -->
+      {% if account_data.date_coverage %}
+      <div class="coverage-row">
+        <i class="bi bi-calendar-range"></i>
+        <strong>Coverage Period:</strong>
+        {{ account_data.date_coverage.first_date|date:"M d, Y" }} - {{ account_data.date_coverage.last_date|date:"M d, Y" }}
+        <span class="coverage-badge">{{ account_data.date_coverage.total_days }} days</span>
+      </div>
+      {% endif %}
 
-                <!-- Account Stats -->
-                <div class="row text-center mb-3">
-                  <div class="col-4">
-                    <div class="border-end">
-                      <div class="fw-bold text-primary">{{ account_data.transaction_count }}</div>
-                      <small class="text-muted">Transactions</small>
+      <!-- Uploaded Files Table -->
+      {% if account_data.recent_uploads %}
+      <table class="excel-table">
+        <thead>
+          <tr>
+            <th style="width: 4%;">#</th>
+            <th style="width: 20%;">File Name</th>
+            <th style="width: 16%;">Period Coverage</th>
+            <th style="width: 8%;">Days</th>
+            <th style="width: 10%;">Transactions</th>
+            <th style="width: 12%;">Reconciliation</th>
+            <th style="width: 12%;">Uploaded</th>
+            <th style="width: 10%;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for upload in account_data.recent_uploads %}
+          <tr>
+            <td class="text-center">{{ forloop.counter }}</td>
+            <td>
+              <div class="file-name">{{ upload.original_filename }}</div>
+              <div class="file-meta">by {{ upload.uploaded_by.username }}</div>
+            </td>
+            <td>
+              {% if upload.date_from and upload.date_to %}
+                <div class="period-label">{{ upload.get_period_label }}</div>
+                <div class="period-dates">{{ upload.date_from|date:"M d" }} - {{ upload.date_to|date:"M d, Y" }}</div>
+              {% else %}
+                <span class="text-muted">Not calculated</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% if upload.date_from and upload.date_to %}
+                <span class="days-badge">{{ upload.get_period_days }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <strong>{{ upload.imported_count }}</strong>
+              {% if upload.duplicate_count > 0 %}
+                <span class="duplicate-badge">+{{ upload.duplicate_count }} dup</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% comment %}Calculate reconciliation progress for this file{% endcomment %}
+              {% with total=upload.imported_count %}
+                {% if total > 0 %}
+                  {% comment %}Count reconciled transactions from this file{% endcomment %}
+                  <div style="margin-bottom: 4px;">
+                    <span class="reconcile-badge">
+                      {{ upload.reconciled_count|default:0 }} / {{ total }}
+                    </span>
+                  </div>
+                  <div class="progress-bar-container">
+                    {% widthratio upload.reconciled_count|default:0 total 100 as progress %}
+                    <div class="progress-bar" style="width: {{ progress }}%">
+                      <span class="progress-text">{{ progress }}%</span>
                     </div>
                   </div>
-                  <div class="col-4">
-                    <div class="border-end">
-                      <div class="fw-bold text-success">{{ account_data.total_uploads }}</div>
-                      <small class="text-muted">Uploads</small>
-                    </div>
-                  </div>
-                  <div class="col-4">
-                    <div class="fw-bold text-warning">0</div>
-                    <small class="text-muted">Pending</small>
-                  </div>
-                </div>
-
-                <!-- Recent Uploads Info -->
-                {% if account_data.recent_uploads %}
-                <div class="mb-3">
-                  <div class="d-flex align-items-center justify-content-between mb-2">
-                    <small class="fw-semibold text-muted">
-                      <i class="fas fa-file-csv me-1"></i>Recent Files
-                    </small>
-                    {% if account_data.last_upload %}
-                    <small class="text-muted">{{ account_data.last_upload.uploaded_at|timesince }} ago</small>
-                    {% endif %}
-                  </div>
-                  <div class="recent-uploads" style="max-height: 120px; overflow-y: auto;">
-                    {% for upload in account_data.recent_uploads %}
-                    <div class="d-flex align-items-center mb-2 p-2 recent-upload-item" style="background: #f8fafc; border-radius: 0.5rem; font-size: 0.875rem;">
-                      <div class="bg-success bg-opacity-10 rounded p-1 me-2">
-                        <i class="fas fa-file-csv text-success" style="font-size: 0.75rem;"></i>
-                      </div>
-                      <div class="flex-grow-1 min-w-0">
-                        <div class="fw-medium text-truncate" style="max-width: 100px;" title="{{ upload.original_filename }}">
-                          {{ upload.original_filename }}
-                        </div>
-                        <div class="d-flex gap-1">
-                          {% if upload.imported_count > 0 %}
-                          <span class="badge bg-success" style="font-size: 0.6rem;">{{ upload.imported_count }}</span>
-                          {% endif %}
-                          {% if upload.duplicate_count > 0 %}
-                          <span class="badge bg-warning" style="font-size: 0.6rem;">{{ upload.duplicate_count }} dup</span>
-                          {% endif %}
-                          {% if upload.error_count > 0 %}
-                          <span class="badge bg-danger" style="font-size: 0.6rem;">{{ upload.error_count }} err</span>
-                          {% endif %}
-                        </div>
-                      </div>
-                      <div class="ms-1">
-                        <button class="btn btn-danger btn-sm upload-delete-btn" 
-                                style="font-size: 0.75rem; padding: 4px 6px; min-width: 28px;"
-                                onclick="confirmDelete({{ account_data.account.id }}, {{ upload.id }}, '{{ upload.original_filename|escapejs }}', {{ upload.imported_count }})"
-                                title="Delete '{{ upload.original_filename }}' and {{ upload.imported_count }} transactions">
-                          <i class="fas fa-trash" style="font-size: 0.65rem;"></i>
-                        </button>
-                      </div>
-                    </div>
-                    {% endfor %}
-                    {% if account_data.total_uploads > 3 %}
-                    <div class="text-center">
-                      <small class="text-muted">
-                        <i class="fas fa-ellipsis-h me-1"></i>{{ account_data.total_uploads|add:"-3" }} more files
-                      </small>
-                    </div>
-                    {% endif %}
-                  </div>
-                </div>
                 {% else %}
-                <div class="text-center py-2 mb-3" style="background: #f8fafc; border-radius: 0.5rem;">
-                  <small class="text-muted">
-                    <i class="fas fa-upload me-1"></i>No files uploaded yet
-                  </small>
-                </div>
+                  <span class="text-muted">—</span>
                 {% endif %}
-
-                <!-- Action Buttons -->
-                <div class="d-grid gap-2">
-                  <a href="{% url 'bank_accounts:upload_transactions' account_data.account.id %}" class="btn btn-primary">
-                    <i class="fas fa-upload me-2"></i>Upload Statements
-                  </a>
-                  <div class="row g-2">
-                    <div class="col-6">
-                      <a href="{% url 'bank_accounts:bank_statement' account_data.account.id %}" class="btn btn-outline-success btn-sm w-100">
-                        <i class="fas fa-eye me-1"></i>Statement
-                      </a>
-                    </div>
-                    <div class="col-6">
-                      <a href="{% url 'reconciliation:account_detail' account_data.account.id %}" class="btn btn-outline-info btn-sm w-100">
-                        <i class="fas fa-balance-scale me-1"></i>Reconcile
-                      </a>
-                    </div>
-                  </div>
-                </div>
+              {% endwith %}
+            </td>
+            <td class="text-center text-muted">
+              {{ upload.uploaded_at|date:"M d, Y H:i" }}
+            </td>
+            <td class="text-center">
+              <div class="action-buttons">
+                <a href="{% url 'reconciliation:account_detail' account_data.account.id %}?file_id={{ upload.id }}" 
+                   class="excel-btn-small excel-btn-reconcile" title="Reconcile this file">
+                  <i class="bi bi-check-circle"></i>
+                </a>
+                <form method="post" action="{% url 'bank_accounts:delete_upload' account_data.account.id upload.id %}" 
+                      onsubmit="return confirm('Delete {{ upload.original_filename }}?\n\nThis will remove {{ upload.imported_count }} transaction(s).')" 
+                      style="display: inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="excel-btn-small excel-btn-delete" title="Delete file">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
               </div>
-
-              <!-- Account Footer -->
-              <div class="card-footer bg-light border-0 pt-0">
-                <small class="text-muted">
-                  <i class="fas fa-clock me-1"></i>
-                  {% if account_data.last_upload %}
-                    Last upload: {{ account_data.last_upload.uploaded_at|date:"M j" }}
-                  {% else %}
-                    No uploads yet
-                  {% endif %}
-                </small>
-              </div>
-            </div>
-          </div>
+            </td>
+          </tr>
           {% endfor %}
-        </div>
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-files">
+        <i class="bi bi-inbox"></i> No files uploaded yet
       </div>
+      {% endif %}
+
+      <!-- Account Actions Footer -->
+      <div class="account-footer">
+        <a href="{% url 'bank_accounts:upload_transactions' account_data.account.id %}" class="excel-btn excel-btn-success">
+          <i class="bi bi-upload"></i> Upload File
+        </a>
+        <a href="{% url 'coa:edit_account' account_data.account.id %}" class="excel-btn excel-btn-secondary">
+          <i class="bi bi-pencil"></i> Edit Account
+        </a>
+      </div>
+
     </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-bank"></i>
+    <h3>No Bank Accounts Yet</h3>
+    <p>Start by adding a bank account to track your transactions and reconciliations.</p>
+    <a href="{% url 'bank_accounts:add' %}" class="excel-btn excel-btn-primary excel-btn-large">
+      <i class="bi bi-plus-circle"></i> Add First Account
+    </a>
+  </div>
   {% endif %}
 </div>
-
-<script>
-// Global function to confirm and delete upload
-function confirmDelete(accountId, uploadId, filename, transactionCount) {
-  console.log('Delete function called:', {accountId, uploadId, filename, transactionCount});
-  
-  // Better confirmation dialog
-  const confirmed = confirm(
-    `🗑️ DELETE FILE CONFIRMATION\n\n` +
-    `File: "${filename}"\n` +
-    `Transactions to remove: ${transactionCount}\n\n` +
-    `⚠️ This action cannot be undone!\n\n` +
-    `Click OK to delete, Cancel to keep the file.`
-  );
-  
-  if (confirmed) {
-    console.log('User confirmed delete');
-    
-    // Show loading feedback immediately
-    const deleteBtn = event.target.closest('button');
-    if (deleteBtn) {
-      deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-      deleteBtn.disabled = true;
-      deleteBtn.style.opacity = '1';
-    }
-    
-    // Create and submit form
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `/bank_accounts/upload/${accountId}/delete/${uploadId}/`;
-    form.style.display = 'none';
-    
-    console.log('Form action:', form.action);
-    
-    // Add CSRF token
-    const csrfToken = getCookie('csrftoken');
-    console.log('CSRF token:', csrfToken ? 'Found' : 'Not found');
-    
-    if (csrfToken) {
-      const csrfInput = document.createElement('input');
-      csrfInput.type = 'hidden';
-      csrfInput.name = 'csrfmiddlewaretoken';
-      csrfInput.value = csrfToken;
-      form.appendChild(csrfInput);
-    }
-    
-    // Add to page and submit
-    document.body.appendChild(form);
-    console.log('Submitting form...');
-    form.submit();
-  } else {
-    console.log('User cancelled delete');
-  }
-}
-
-// Helper function to get cookie value
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
-</script>
 {% endblock %}

@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ account.name }} - Details{% endblock %}
+
+{% block content %}
+<div class="reconciliation-container">
+  
+  <!-- Header with Back Button -->
+  <div class="unified-header" style="margin-bottom: 24px;">
+    <div class="header-title-section">
+      <a href="{% url 'bank_accounts:dashboard' %}" style="display: inline-flex; align-items: center; gap: 8px; color: #0078D4; text-decoration: none; margin-bottom: 8px; font-weight: 600;">
+        <i class="bi bi-arrow-left"></i> Back to Bank Accounts
+      </a>
+      <h2 style="display: flex; align-items: center; gap: 12px;">
+        <i class="bi bi-bank"></i>
+        {{ account.name }}
+      </h2>
+      <p class="company-name">{{ account.code }} | {{ account.account_type }}</p>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="header-actions">
+      <a href="{% url 'bank_accounts:upload_transactions' account.id %}" class="btn btn-primary">
+        <i class="bi bi-upload"></i> Upload File
+      </a>
+      <a href="{% url 'reconciliation:account_detail' account.id %}" class="btn btn-primary">
+        <i class="bi bi-check-circle"></i> Reconcile
+      </a>
+    </div>
+  </div>
+  
+  <!-- Summary Cards Grid -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    
+    <!-- Balance Card -->
+    <div style="background: white; border: 1px solid #EDEBE9; border-radius: 8px; padding: 20px;">
+      <div style="color: #605E5C; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Current Balance</div>
+      <div style="font-size: 32px; font-weight: 700; color: {% if account.current_balance < 0 %}#D83B01{% else %}#107C10{% endif %};">
+        ${{ account.current_balance|default:0|floatformat:2 }}
+      </div>
+    </div>
+    
+    <!-- Transactions Card -->
+    <div style="background: white; border: 1px solid #EDEBE9; border-radius: 8px; padding: 20px;">
+      <div style="color: #605E5C; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Total Transactions</div>
+      <div style="font-size: 32px; font-weight: 700; color: #0078D4;">
+        {{ transaction_count }}
+      </div>
+    </div>
+    
+    <!-- Files Card -->
+    <div style="background: white; border: 1px solid #EDEBE9; border-radius: 8px; padding: 20px;">
+      <div style="color: #605E5C; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Uploaded Files</div>
+      <div style="font-size: 32px; font-weight: 700; color: #8764B8;">
+        {{ total_uploads }}
+      </div>
+    </div>
+    
+    <!-- Coverage Card -->
+    {% if date_coverage %}
+    <div style="background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%); border: 2px solid #2196F3; border-radius: 8px; padding: 20px;">
+      <div style="color: #1565C0; font-size: 12px; text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">
+        <i class="bi bi-calendar-check"></i> Date Coverage
+      </div>
+      <div style="font-size: 14px; font-weight: 600; color: #0D47A1; margin-bottom: 4px;">
+        {{ date_coverage.first_date|date:"M Y" }} - {{ date_coverage.last_date|date:"M Y" }}
+      </div>
+      <div style="font-size: 11px; color: #1976D2;">
+        {{ date_coverage.total_days }} days
+      </div>
+    </div>
+    {% endif %}
+    
+  </div>
+  
+  <!-- Coverage Calendar Visualization -->
+  {% if calendar_data %}
+  <div style="background: white; border: 1px solid #EDEBE9; border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+    <div style="background: #F3F2F1; padding: 16px 20px; border-bottom: 1px solid #EDEBE9;">
+      <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #323130;">
+        <i class="bi bi-calendar3"></i> Coverage Calendar
+      </h3>
+      <p style="margin: 4px 0 0 0; font-size: 12px; color: #605E5C;">
+        Green blocks show days with uploaded file coverage
+      </p>
+    </div>
+    
+    <div style="padding: 20px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
+        {% for month in calendar_data %}
+        <div style="border: 1px solid #EDEBE9; border-radius: 8px; overflow: hidden;">
+          <!-- Month Header -->
+          <div style="background: linear-gradient(135deg, #0078D4 0%, #005A9E 100%); color: white; padding: 12px; text-align: center; font-weight: 600; font-size: 14px;">
+            {{ month.month_name }}
+          </div>
+          
+          <!-- Calendar Grid -->
+          <div style="padding: 12px;">
+            <!-- Weekday Headers -->
+            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px;">
+              <div style="text-align: center; font-size: 10px; font-weight: 600; color: #605E5C;">Sun</div>
+              <div style="text-align: center; font-size: 10px; font-weight: 600; color: #605E5C;">Mon</div>
+              <div style="text-align: center; font-size: 10px; font-weight: 600; color: #605E5C;">Tue</div>
+              <div style="text-align: center; font-size: 10px; font-weight: 600; color: #605E5C;">Wed</div>
+              <div style="text-align: center; font-size: 10px; font-weight: 600; color: #605E5C;">Thu</div>
+              <div style="text-align: center; font-size: 10px; font-weight: 600; color: #605E5C;">Fri</div>
+              <div style="text-align: center; font-size: 10px; font-weight: 600; color: #605E5C;">Sat</div>
+            </div>
+            
+            <!-- Days Grid -->
+            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;">
+              {% for day in month.days %}
+                {% if day.day %}
+                  <div style="
+                    aspect-ratio: 1;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    position: relative;
+                    cursor: pointer;
+                    {% if day.covered %}
+                      background: linear-gradient(135deg, #107C10 0%, #0B5A0B 100%);
+                      color: white;
+                      border: 2px solid #107C10;
+                    {% else %}
+                      background: #F3F2F1;
+                      color: #8A8886;
+                      border: 1px solid #EDEBE9;
+                    {% endif %}
+                  " {% if day.files %}title="{{ day.file_count }} file{{ day.file_count|pluralize }}: {% for file in day.files %}{{ file }}{% if not forloop.last %}, {% endif %}{% endfor %}"{% endif %}>
+                    {{ day.day }}
+                    {% if day.file_count > 1 %}
+                      <span style="position: absolute; top: 2px; right: 2px; background: #FFD700; color: #000; border-radius: 50%; width: 14px; height: 14px; font-size: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700;">{{ day.file_count }}</span>
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <div style="aspect-ratio: 1;"></div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      
+      <!-- Legend -->
+      <div style="margin-top: 20px; padding: 16px; background: #F9F9F9; border-radius: 8px; display: flex; gap: 24px; align-items: center; justify-content: center; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; background: linear-gradient(135deg, #107C10 0%, #0B5A0B 100%); border-radius: 4px; border: 2px solid #107C10;"></div>
+          <span style="font-size: 12px; color: #323130;">Covered (has uploaded files)</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; background: #F3F2F1; border-radius: 4px; border: 1px solid #EDEBE9;"></div>
+          <span style="font-size: 12px; color: #323130;">Not covered (no files)</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 24px; height: 24px; background: linear-gradient(135deg, #107C10 0%, #0B5A0B 100%); border-radius: 4px; border: 2px solid #107C10; position: relative;">
+            <span style="position: absolute; top: -2px; right: -2px; background: #FFD700; color: #000; border-radius: 50%; width: 14px; height: 14px; font-size: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700;">3</span>
+          </div>
+          <span style="font-size: 12px; color: #323130;">Multiple files overlap (number shows count)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  
+  <!-- Uploaded Files Table -->
+  <div style="background: white; border: 1px solid #EDEBE9; border-radius: 8px; overflow: hidden;">
+    <div style="background: #F3F2F1; padding: 16px 20px; border-bottom: 1px solid #EDEBE9;">
+      <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #323130;">
+        <i class="bi bi-file-earmark-text"></i> Uploaded Files ({{ total_uploads }})
+      </h3>
+    </div>
+    
+    {% if uploads %}
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead style="background: #FAF9F8;">
+          <tr>
+            <th style="padding: 12px 20px; text-align: left; font-size: 12px; font-weight: 600; color: #605E5C; border-bottom: 2px solid #EDEBE9;">#</th>
+            <th style="padding: 12px 20px; text-align: left; font-size: 12px; font-weight: 600; color: #605E5C; border-bottom: 2px solid #EDEBE9;">Filename</th>
+            <th style="padding: 12px 20px; text-align: left; font-size: 12px; font-weight: 600; color: #605E5C; border-bottom: 2px solid #EDEBE9;">Coverage Period</th>
+            <th style="padding: 12px 20px; text-align: center; font-size: 12px; font-weight: 600; color: #605E5C; border-bottom: 2px solid #EDEBE9;">Days</th>
+            <th style="padding: 12px 20px; text-align: center; font-size: 12px; font-weight: 600; color: #605E5C; border-bottom: 2px solid #EDEBE9;">Transactions</th>
+            <th style="padding: 12px 20px; text-align: center; font-size: 12px; font-weight: 600; color: #605E5C; border-bottom: 2px solid #EDEBE9;">Uploaded</th>
+            <th style="padding: 12px 20px; text-align: right; font-size: 12px; font-weight: 600; color: #605E5C; border-bottom: 2px solid #EDEBE9;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for upload in uploads %}
+          <tr style="border-bottom: 1px solid #F3F2F1;">
+            <td style="padding: 16px 20px; font-size: 13px; color: #605E5C;">{{ forloop.counter }}</td>
+            <td style="padding: 16px 20px;">
+              <div style="font-weight: 600; color: #323130; margin-bottom: 4px;">{{ upload.original_filename }}</div>
+              <div style="font-size: 11px; color: #605E5C;">
+                <i class="bi bi-person"></i> {{ upload.uploaded_by.username }}
+              </div>
+            </td>
+            <td style="padding: 16px 20px;">
+              {% if upload.date_from and upload.date_to %}
+                <div style="font-weight: 600; color: #0078D4; margin-bottom: 4px;">{{ upload.get_period_label }}</div>
+                <div style="font-size: 11px; color: #605E5C;">
+                  {{ upload.date_from|date:"M d, Y" }} - {{ upload.date_to|date:"M d, Y" }}
+                </div>
+              {% else %}
+                <span style="color: #A19F9D;">Not calculated</span>
+              {% endif %}
+            </td>
+            <td style="padding: 16px 20px; text-align: center;">
+              {% if upload.date_from and upload.date_to %}
+                <span style="display: inline-block; background: #0078D4; color: white; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 700;">
+                  {{ upload.get_period_days }}
+                </span>
+              {% else %}
+                <span style="color: #A19F9D;">—</span>
+              {% endif %}
+            </td>
+            <td style="padding: 16px 20px; text-align: center;">
+              <span style="font-weight: 600; color: #107C10;">{{ upload.imported_count }}</span>
+              {% if upload.duplicate_count > 0 %}
+                <span style="font-size: 11px; color: #CA5010;"> (+{{ upload.duplicate_count }} dup)</span>
+              {% endif %}
+            </td>
+            <td style="padding: 16px 20px; text-align: center; font-size: 12px; color: #605E5C;">
+              {{ upload.uploaded_at|date:"M d, Y H:i" }}
+            </td>
+            <td style="padding: 16px 20px; text-align: right;">
+              <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <a href="{% url 'reconciliation:account_detail' account.id %}?file_id={{ upload.id }}" 
+                   style="padding: 6px 12px; background: #4472C4; color: white; border-radius: 4px; font-size: 11px; text-decoration: none; font-weight: 600;">
+                  <i class="bi bi-check-circle"></i> Reconcile
+                </a>
+                <form method="post" action="{% url 'bank_accounts:delete_upload' account.id upload.id %}" 
+                      onsubmit="return confirm('Delete {{ upload.original_filename }}? This will remove {{ upload.imported_count }} transactions.')" 
+                      style="display: inline;">
+                  {% csrf_token %}
+                  <button type="submit" 
+                          style="padding: 6px 12px; background: #D13438; color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 600;">
+                    <i class="bi bi-trash"></i> Delete
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="padding: 60px 20px; text-align: center; color: #605E5C;">
+      <i class="bi bi-inbox" style="font-size: 48px; color: #C8C6C4; margin-bottom: 16px;"></i>
+      <h4 style="margin-bottom: 8px;">No Files Uploaded Yet</h4>
+      <p style="margin-bottom: 20px;">Upload bank statement files to start tracking transactions.</p>
+      <a href="{% url 'bank_accounts:upload_transactions' account.id %}" class="btn btn-primary">
+        <i class="bi bi-upload"></i> Upload First File
+      </a>
+    </div>
+    {% endif %}
+  </div>
+  
+</div>
+{% endblock %}

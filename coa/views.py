@@ -329,41 +329,105 @@ class DeleteAccountView(CompanyAwareAccountMixin, DeleteView):
     pk_url_kwarg = "account_id"
     success_url = reverse_lazy("coa:chart_of_accounts")
 
-    def delete(self, request, *args, **kwargs):
-        """Handle account deletion with checks."""
+    def form_valid(self, form):
+        """Override to handle AI data before deletion."""
         account = self.get_object()
         
         # Check if account can be deleted
         can_delete, reason = self._can_delete_account(account)
         
         if not can_delete:
-            messages.warning(request, f"⚠️ Cannot delete account: {reason}")
+            messages.warning(self.request, f"⚠️ Cannot delete account: {reason}")
             return redirect("coa:chart_of_accounts")
         
-        # Soft delete by deactivating instead of hard delete
-        account.is_active = False
-        account.updated_by = request.user
-        account.save()
+        # Get the action type from the form
+        action = self.request.POST.get('action', 'deactivate')
         
-        messages.success(
-            request, 
-            f'Account "{account.full_name}" has been deactivated successfully!'
-        )
+        # Check for AI learning data
+        has_ai_data = False
+        ai_patterns_count = 0
+        ai_history_count = 0
+        
+        try:
+            from smart_learning.models import MatchPattern, TransactionMatchHistory
+            ai_patterns_count = MatchPattern.objects.filter(suggested_what=account).count()
+            ai_history_count = TransactionMatchHistory.objects.filter(matched_what=account).count()
+            has_ai_data = ai_patterns_count > 0 or ai_history_count > 0
+        except ImportError:
+            pass  # Smart learning not installed
+        
+        # If user confirmed to delete AI data
+        delete_ai_data = self.request.POST.get('delete_ai_data') == 'yes'
+        
+        if has_ai_data and not delete_ai_data and action == 'permanent_delete':
+            # Show warning with options
+            messages.warning(
+                self.request,
+                f"⚠️ This account is used by the AI Learning System! "
+                f"It has {ai_patterns_count} learned pattern(s) and {ai_history_count} training record(s). "
+                f"Please confirm if you want to delete the AI data as well."
+            )
+            # Store the warning in session to show on confirmation page
+            self.request.session['pending_delete_account'] = account.id
+            self.request.session['ai_patterns_count'] = ai_patterns_count
+            self.request.session['ai_history_count'] = ai_history_count
+            return redirect('coa:confirm_delete_with_ai', account_id=account.id)
+        
+        # Delete AI data if confirmed and permanent delete
+        if has_ai_data and action == 'permanent_delete':
+            try:
+                from smart_learning.models import MatchPattern, TransactionMatchHistory
+                MatchPattern.objects.filter(suggested_what=account).delete()
+                TransactionMatchHistory.objects.filter(matched_what=account).delete()
+                messages.info(
+                    self.request,
+                    f"🗑️ Deleted {ai_patterns_count} AI pattern(s) and {ai_history_count} training record(s)"
+                )
+            except ImportError:
+                pass
+        
+        # Handle based on action type
+        if action == 'permanent_delete':
+            # Permanently delete the account
+            account_name = account.full_name
+            try:
+                account.delete()
+                messages.success(
+                    self.request, 
+                    f'✅ Account "{account_name}" has been permanently deleted!'
+                )
+            except Exception as e:
+                messages.error(
+                    self.request,
+                    f'❌ Error deleting account: {str(e)}'
+                )
+        else:
+            # Soft delete by deactivating (default)
+            account.is_active = False
+            account.updated_by = self.request.user
+            account.save()
+            messages.success(
+                self.request, 
+                f'✅ Account "{account.full_name}" has been deactivated successfully!'
+            )
+        
         return redirect("coa:chart_of_accounts")
 
     def _can_delete_account(self, account):
         """Check if account can be safely deleted."""
-        # Check if account has transactions (you may need to implement this)
-        # For now, we'll allow deletion but deactivate instead
-        
         # Check if it's a system essential account
         if account.is_essential:
             return False, "Essential system accounts cannot be deleted"
         
-        # Check if account has a balance
-        if account.ytd_balance != 0:
-            return False, f"Account has a balance of ${account.ytd_balance}. Please zero the balance first"
+        # Check if locked (system accounts)
+        if account.is_locked:
+            return False, "Locked accounts cannot be deleted"
         
+        # Check if has child accounts
+        if account.get_children().exists():
+            return False, f"This account has {account.get_children().count()} child account(s). Please delete or reassign child accounts first"
+        
+        # Allow deletion (will deactivate, not hard delete)
         return True, "Account can be deleted"
 
     def get_context_data(self, **kwargs):
@@ -384,6 +448,50 @@ class DeleteAccountView(CompanyAwareAccountMixin, DeleteView):
 # Function-based view wrappers
 edit_account_view = EditAccountView.as_view()
 delete_account_view = DeleteAccountView.as_view()
+
+
+@login_required
+def confirm_delete_with_ai(request, account_id):
+    """Confirmation page for deleting an account with AI data."""
+    # Get active company
+    mixin = CompanyContextMixin()
+    mixin.request = request
+    active_company = mixin.get_active_company()
+    
+    if not active_company:
+        messages.error(request, "Please select a company first.")
+        return redirect("dashboard")
+    
+    account = Account.objects.for_company(active_company).get(id=account_id)
+    
+    # Get AI data counts
+    ai_patterns_count = request.session.get('ai_patterns_count', 0)
+    ai_history_count = request.session.get('ai_history_count', 0)
+    
+    # Get AI patterns details
+    ai_patterns = []
+    try:
+        from smart_learning.models import MatchPattern
+        patterns = MatchPattern.objects.filter(suggested_what=account)
+        for p in patterns:
+            ai_patterns.append({
+                'name': p.pattern_name,
+                'description': p.description_pattern,
+                'confidence': p.confidence,
+                'times_seen': p.times_seen,
+            })
+    except ImportError:
+        pass
+    
+    context = {
+        'account': account,
+        'active_company': active_company,
+        'ai_patterns_count': ai_patterns_count,
+        'ai_history_count': ai_history_count,
+        'ai_patterns': ai_patterns,
+    }
+    
+    return render(request, 'coa/confirm_delete_with_ai.html', context)
 
 
 @login_required

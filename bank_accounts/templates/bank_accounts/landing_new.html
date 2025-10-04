@@ -1,0 +1,636 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Bank Accounts{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* PROFESSIONAL MINIMALISTIC EXCEL DESIGN */
+  * {
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+    font-size: 11pt;
+    background: #F5F5F5;
+    color: #1F1F1F;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .page-wrapper {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+
+  /* Excel-Style Header */
+  .excel-header {
+    background: white;
+    border-bottom: 2px solid #217346;
+    padding: 20px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .header-left h1 {
+    margin: 0 0 4px 0;
+    font-size: 22px;
+    font-weight: 600;
+    color: #1F1F1F;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .header-left h1 i {
+    color: #217346;
+  }
+
+  .subtitle {
+    margin: 0;
+    font-size: 12px;
+    color: #605E5C;
+  }
+
+  /* Excel Button Styles */
+  .excel-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1px solid #D1D1D1;
+    background: white;
+    color: #323130;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .excel-btn:hover {
+    background: #F3F2F1;
+    border-color: #8A8886;
+  }
+
+  .excel-btn-primary {
+    background: #217346;
+    color: white;
+    border-color: #217346;
+  }
+
+  .excel-btn-primary:hover {
+    background: #185C37;
+    border-color: #185C37;
+  }
+
+  .excel-btn-success {
+    background: #107C10;
+    color: white;
+    border-color: #107C10;
+  }
+
+  .excel-btn-success:hover {
+    background: #0B5A0B;
+  }
+
+  .excel-btn-info {
+    background: #0078D4;
+    color: white;
+    border-color: #0078D4;
+  }
+
+  .excel-btn-info:hover {
+    background: #005A9E;
+  }
+
+  .excel-btn-secondary {
+    background: #605E5C;
+    color: white;
+    border-color: #605E5C;
+  }
+
+  .excel-btn-secondary:hover {
+    background: #484644;
+  }
+
+  .excel-btn-large {
+    padding: 12px 24px;
+    font-size: 14px;
+  }
+
+  /* Excel Container */
+  .excel-container {
+    padding: 24px 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* Excel Section (per account) */
+  .excel-section {
+    background: white;
+    border: 1px solid #D1D1D1;
+    margin-bottom: 32px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  /* Account Header Row */
+  .account-header-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 180px;
+    gap: 16px;
+    padding: 16px 20px;
+    background: #F9F9F9;
+    border-bottom: 2px solid #217346;
+    align-items: center;
+  }
+
+  .account-info-cell .account-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1F1F1F;
+    margin-bottom: 2px;
+  }
+
+  .account-info-cell .account-meta {
+    font-size: 11px;
+    color: #605E5C;
+    text-transform: uppercase;
+  }
+
+  .balance-cell {
+    text-align: right;
+  }
+
+  .balance-label {
+    font-size: 10px;
+    color: #605E5C;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .balance-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #107C10;
+  }
+
+  .balance-value.negative {
+    color: #D13438;
+  }
+
+  .stats-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .stat-item {
+    font-size: 12px;
+  }
+
+  .stat-label {
+    color: #605E5C;
+    margin-right: 4px;
+  }
+
+  .stat-value {
+    font-weight: 600;
+    color: #1F1F1F;
+  }
+
+  .actions-cell {
+    text-align: right;
+  }
+
+  .excel-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #0078D4;
+    color: white;
+    text-decoration: none;
+    border-radius: 2px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+
+  .excel-link:hover {
+    background: #005A9E;
+  }
+
+  /* Coverage Row */
+  .coverage-row {
+    padding: 10px 20px;
+    background: #FFF4E5;
+    border-bottom: 1px solid #F0E5D2;
+    font-size: 12px;
+    color: #3D3D3D;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .coverage-row i {
+    color: #D97706;
+  }
+
+  .coverage-badge {
+    display: inline-block;
+    background: #217346;
+    color: white;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 8px;
+  }
+
+  /* Excel Table */
+  .excel-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .excel-table thead {
+    background: #F3F2F1;
+    border-bottom: 2px solid #D1D1D1;
+  }
+
+  .excel-table th {
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: #323130;
+    text-transform: uppercase;
+    border-right: 1px solid #EDEBE9;
+  }
+
+  .excel-table th:last-child {
+    border-right: none;
+  }
+
+  .excel-table tbody tr {
+    border-bottom: 1px solid #EDEBE9;
+  }
+
+  .excel-table tbody tr:hover {
+    background: #F9F9F9;
+  }
+
+  .excel-table td {
+    padding: 12px;
+    color: #323130;
+    border-right: 1px solid #F3F2F1;
+  }
+
+  .excel-table td:last-child {
+    border-right: none;
+  }
+
+  .text-center {
+    text-align: center;
+  }
+
+  .text-muted {
+    color: #8A8886;
+  }
+
+  .file-name {
+    font-weight: 600;
+    color: #1F1F1F;
+    margin-bottom: 2px;
+  }
+
+  .file-meta {
+    font-size: 10px;
+    color: #605E5C;
+  }
+
+  .period-label {
+    font-weight: 600;
+    color: #0078D4;
+    margin-bottom: 2px;
+  }
+
+  .period-dates {
+    font-size: 10px;
+    color: #605E5C;
+  }
+
+  .days-badge {
+    display: inline-block;
+    background: #0078D4;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .duplicate-badge {
+    display: inline-block;
+    background: #FFF4E5;
+    color: #CA5010;
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 4px;
+  }
+
+  /* Action Buttons in Table */
+  .action-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .excel-btn-small {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #D1D1D1;
+    background: white;
+    color: #323130;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 14px;
+  }
+
+  .excel-btn-small:hover {
+    background: #F3F2F1;
+  }
+
+  .excel-btn-reconcile {
+    background: #0078D4;
+    color: white;
+    border-color: #0078D4;
+  }
+
+  .excel-btn-reconcile:hover {
+    background: #005A9E;
+  }
+
+  .excel-btn-delete {
+    background: #D13438;
+    color: white;
+    border-color: #D13438;
+  }
+
+  .excel-btn-delete:hover {
+    background: #A72629;
+  }
+
+  /* Account Footer */
+  .account-footer {
+    padding: 16px 20px;
+    background: #FAFAFA;
+    border-top: 1px solid #EDEBE9;
+    display: flex;
+    gap: 12px;
+  }
+
+  /* Empty States */
+  .empty-files {
+    padding: 40px;
+    text-align: center;
+    color: #8A8886;
+    font-size: 13px;
+    background: #FAFAFA;
+  }
+
+  .empty-files i {
+    font-size: 36px;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .empty-state {
+    padding: 80px 40px;
+    text-align: center;
+    color: #605E5C;
+  }
+
+  .empty-state i {
+    font-size: 64px;
+    color: #D1D1D1;
+    margin-bottom: 20px;
+  }
+
+  .empty-state h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #323130;
+    margin-bottom: 12px;
+  }
+
+  .empty-state p {
+    font-size: 14px;
+    color: #605E5C;
+    margin-bottom: 24px;
+  }
+
+  /* Responsive */
+  @media (max-width: 1200px) {
+    .account-header-row {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    
+    .balance-cell,
+    .stats-cell,
+    .actions-cell {
+      text-align: left;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .excel-container {
+      padding: 16px;
+    }
+    
+    .excel-table {
+      font-size: 11px;
+    }
+    
+    .excel-table th,
+    .excel-table td {
+      padding: 8px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  <!-- Minimalist Excel Header -->
+  <div class="excel-header">
+    <div class="header-left">
+      <h1><i class="bi bi-bank"></i> Bank Accounts</h1>
+      <p class="subtitle">{{ company.name }}</p>
+    </div>
+    <div class="header-actions">
+      <a href="{% url 'bank_accounts:add' %}" class="excel-btn excel-btn-primary">
+        <i class="bi bi-plus-circle"></i> Add Account
+      </a>
+    </div>
+  </div>
+
+  <!-- Accounts List -->
+  {% if accounts_with_uploads %}
+  <div class="excel-container">
+    {% for account_data in accounts_with_uploads %}
+    <div class="excel-section">
+      
+      <!-- Account Header Row -->
+      <div class="account-header-row">
+        <div class="account-info-cell">
+          <div class="account-title">{{ account_data.account.code }} - {{ account_data.account.name }}</div>
+          <div class="account-meta">{{ account_data.account.account_type }}</div>
+        </div>
+        <div class="balance-cell">
+          <div class="balance-label">Balance</div>
+          <div class="balance-value {% if account_data.account.current_balance < 0 %}negative{% endif %}">
+            ${{ account_data.account.current_balance|default:0|floatformat:2 }}
+          </div>
+        </div>
+        <div class="stats-cell">
+          <div class="stat-item">
+            <span class="stat-label">Files:</span>
+            <span class="stat-value">{{ account_data.total_uploads }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Transactions:</span>
+            <span class="stat-value">{{ account_data.transaction_count }}</span>
+          </div>
+        </div>
+        <div class="actions-cell">
+          <a href="{% url 'bank_accounts:account_detail' account_data.account.id %}" class="excel-link" title="View comprehensive report">
+            <i class="bi bi-file-earmark-text"></i> Overall Report
+          </a>
+        </div>
+      </div>
+
+      <!-- Coverage Summary -->
+      {% if account_data.date_coverage %}
+      <div class="coverage-row">
+        <i class="bi bi-calendar-range"></i>
+        <strong>Coverage Period:</strong>
+        {{ account_data.date_coverage.first_date|date:"M d, Y" }} - {{ account_data.date_coverage.last_date|date:"M d, Y" }}
+        <span class="coverage-badge">{{ account_data.date_coverage.total_days }} days</span>
+      </div>
+      {% endif %}
+
+      <!-- Uploaded Files Table -->
+      {% if account_data.recent_uploads %}
+      <table class="excel-table">
+        <thead>
+          <tr>
+            <th style="width: 5%;">#</th>
+            <th style="width: 25%;">File Name</th>
+            <th style="width: 20%;">Period Coverage</th>
+            <th style="width: 10%;">Days</th>
+            <th style="width: 12%;">Transactions</th>
+            <th style="width: 15%;">Uploaded</th>
+            <th style="width: 13%;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for upload in account_data.recent_uploads %}
+          <tr>
+            <td class="text-center">{{ forloop.counter }}</td>
+            <td>
+              <div class="file-name">{{ upload.original_filename }}</div>
+              <div class="file-meta">by {{ upload.uploaded_by.username }}</div>
+            </td>
+            <td>
+              {% if upload.date_from and upload.date_to %}
+                <div class="period-label">{{ upload.get_period_label }}</div>
+                <div class="period-dates">{{ upload.date_from|date:"M d" }} - {{ upload.date_to|date:"M d, Y" }}</div>
+              {% else %}
+                <span class="text-muted">Not calculated</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% if upload.date_from and upload.date_to %}
+                <span class="days-badge">{{ upload.get_period_days }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <strong>{{ upload.imported_count }}</strong>
+              {% if upload.duplicate_count > 0 %}
+                <span class="duplicate-badge">+{{ upload.duplicate_count }} dup</span>
+              {% endif %}
+            </td>
+            <td class="text-center text-muted">
+              {{ upload.uploaded_at|date:"M d, Y H:i" }}
+            </td>
+            <td class="text-center">
+              <div class="action-buttons">
+                <a href="{% url 'reconciliation:account_detail' account_data.account.id %}?file_id={{ upload.id }}" 
+                   class="excel-btn-small excel-btn-reconcile" title="Reconcile this file">
+                  <i class="bi bi-check-circle"></i>
+                </a>
+                <form method="post" action="{% url 'bank_accounts:delete_upload' account_data.account.id upload.id %}" 
+                      onsubmit="return confirm('Delete {{ upload.original_filename }}?\n\nThis will remove {{ upload.imported_count }} transaction(s).')" 
+                      style="display: inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="excel-btn-small excel-btn-delete" title="Delete file">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-files">
+        <i class="bi bi-inbox"></i> No files uploaded yet
+      </div>
+      {% endif %}
+
+      <!-- Account Actions Footer -->
+      <div class="account-footer">
+        <a href="{% url 'bank_accounts:upload_transactions' account_data.account.id %}" class="excel-btn excel-btn-success">
+          <i class="bi bi-upload"></i> Upload File
+        </a>
+        <a href="{% url 'reconciliation:account_detail' account_data.account.id %}" class="excel-btn excel-btn-info">
+          <i class="bi bi-check-circle"></i> Reconcile All
+        </a>
+        <a href="{% url 'coa:edit_account' account_data.account.id %}" class="excel-btn excel-btn-secondary">
+          <i class="bi bi-pencil"></i> Edit Account
+        </a>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-bank"></i>
+    <h3>No Bank Accounts Yet</h3>
+    <p>Start by adding a bank account to track your transactions and reconciliations.</p>
+    <a href="{% url 'bank_accounts:add' %}" class="excel-btn excel-btn-primary excel-btn-large">
+      <i class="bi bi-plus-circle"></i> Add First Account
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

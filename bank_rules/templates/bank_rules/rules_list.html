@@ -4,198 +4,843 @@
 {% block title %}Bank Rules - {{ company.name }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <h2 class="mb-1">🎯 Bank Reconciliation Rules</h2>
-          <p class="text-muted">Automate repetitive transaction matching</p>
-        </div>
-        <div>
-          <a href="{% url 'bank_rules:create' %}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Create New Rule
-          </a>
-        </div>
+<style>
+  /* Excel Minimal Design System */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 11pt;
+    color: #201F1E;
+    background: #F0F0F0;
+    line-height: 1.4;
+  }
+
+  /* Page Wrapper */
+  .page-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #F0F0F0;
+  }
+
+  /* Unified Header Section - Excel Style */
+  .unified-header {
+    background: linear-gradient(135deg, #4472C4 0%, #2B579A 100%);
+    border-bottom: 3px solid #1F4788;
+    padding: 16px 24px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .header-title-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+
+  .header-title-section h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: white;
+    line-height: 1.2;
+  }
+
+  .company-name {
+    font-size: 12px;
+    opacity: 0.85;
+    color: rgba(255, 255, 255, 0.95);
+    margin: 0;
+    font-weight: 400;
+  }
+
+  /* Balance Grid - Compact Cards */
+  .balance-grid {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  .balance-item {
+    flex: 0 0 auto;
+    padding: 10px 16px;
+    background: white;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .balance-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  }
+
+  .balance-item:first-child {
+    border-left: 3px solid #107C10;
+  }
+
+  .balance-item:nth-child(2) {
+    border-left: 3px solid #CA5010;
+  }
+
+  .balance-item:nth-child(3) {
+    border-left: 3px solid #4472C4;
+  }
+
+  .balance-label {
+    font-size: 9px;
+    color: #605E5C;
+    margin-bottom: 4px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: 'Segoe UI', sans-serif;
+    text-align: center;
+  }
+
+  .balance-value {
+    font-size: 18px;
+    font-weight: 700;
+    font-family: Consolas, 'Courier New', monospace;
+    color: #201F1E;
+  }
+
+  /* Header Actions */
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    flex: 0 0 auto;
+  }
+
+  .header-actions .btn-primary {
+    background: white;
+    color: #4472C4;
+    border: none;
+    padding: 8px 16px;
+    font-size: 11pt;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    border-radius: 0;
+  }
+
+  .header-actions .btn-primary:hover {
+    background: #F3F2F1;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  /* Content Area */
+  .content-area {
+    flex: 1;
+    padding: 20px;
+  }
+
+  .excel-container {
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  /* Buttons */
+  .excel-btn {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 11pt;
+    padding: 8px 16px;
+    border: 1px solid #8A8886;
+    border-radius: 0;
+    background: #FFFFFF;
+    color: #201F1E;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .excel-btn:hover {
+    background: #F3F2F1;
+    border-color: #201F1E;
+  }
+
+  .excel-btn-primary {
+    background: #4472C4;
+    color: #FFFFFF;
+    border-color: #4472C4;
+  }
+
+  .excel-btn-primary:hover {
+    background: #365A9E;
+    border-color: #365A9E;
+    color: #FFFFFF;
+  }
+
+  .excel-btn-success {
+    background: #107C10;
+    color: #FFFFFF;
+    border-color: #107C10;
+  }
+
+  .excel-btn-success:hover {
+    background: #0B5A0B;
+    border-color: #0B5A0B;
+  }
+
+  .excel-btn-warning {
+    background: #CA5010;
+    color: #FFFFFF;
+    border-color: #CA5010;
+  }
+
+  .excel-btn-warning:hover {
+    background: #A43D0B;
+    border-color: #A43D0B;
+  }
+
+  .excel-btn-danger {
+    background: #D83B01;
+    color: #FFFFFF;
+    border-color: #D83B01;
+  }
+
+  .excel-btn-danger:hover {
+    background: #A62D01;
+    border-color: #A62D01;
+  }
+
+  .excel-btn-sm {
+    font-size: 10pt;
+    padding: 4px 10px;
+  }
+
+  /* Messages */
+  .excel-message {
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    border-left: 4px solid;
+    background: #F3F2F1;
+    font-size: 10pt;
+  }
+
+  .excel-message-success {
+    border-color: #107C10;
+    background: #DFF6DD;
+  }
+
+  .excel-message-error {
+    border-color: #D83B01;
+    background: #FDE7E9;
+  }
+
+  .excel-message-warning {
+    border-color: #CA5010;
+    background: #FFF4CE;
+  }
+
+  .excel-message-info {
+    border-color: #4472C4;
+    background: #DEECF9;
+  }
+
+  /* Table Container */
+  .excel-table-container {
+    border: 1px solid #D2D0CE;
+    background: #FFFFFF;
+    overflow-x: auto;
+  }
+
+  /* Table */
+  .excel-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11pt;
+  }
+
+  .excel-table thead {
+    background: #F3F2F1;
+    border-bottom: 2px solid #4472C4;
+  }
+
+  .excel-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #323130;
+    border-right: 1px solid #EDEBE9;
+    white-space: nowrap;
+  }
+
+  .excel-table th:last-child {
+    border-right: none;
+  }
+
+  .excel-table tbody tr {
+    border-bottom: 1px solid #EDEBE9;
+    transition: background 0.15s;
+  }
+
+  .excel-table tbody tr:hover {
+    background: #F8F9FA;
+  }
+
+  .excel-table td {
+    padding: 12px 16px;
+    border-right: 1px solid #EDEBE9;
+    vertical-align: top;
+  }
+
+  .excel-table td:last-child {
+    border-right: none;
+  }
+
+  /* Status Badges */
+  .excel-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    font-size: 9pt;
+    font-weight: 600;
+    border-radius: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .excel-badge-success {
+    background: #DFF6DD;
+    color: #107C10;
+    border: 1px solid #107C10;
+  }
+
+  .excel-badge-secondary {
+    background: #EDEBE9;
+    color: #605E5C;
+    border: 1px solid #8A8886;
+  }
+
+  .excel-badge-info {
+    background: #DEECF9;
+    color: #4472C4;
+    border: 1px solid #4472C4;
+  }
+
+  .excel-badge-dark {
+    background: #323130;
+    color: #FFFFFF;
+    border: 1px solid #323130;
+  }
+
+  /* Rule Name */
+  .rule-name {
+    font-weight: 600;
+    color: #323130;
+    margin-bottom: 4px;
+  }
+
+  .rule-description {
+    font-size: 10pt;
+    color: #605E5C;
+  }
+
+  /* Conditions List */
+  .conditions-list {
+    font-size: 10pt;
+    color: #605E5C;
+    margin-top: 6px;
+  }
+
+  .conditions-list div {
+    margin-bottom: 2px;
+  }
+
+  /* Actions List */
+  .actions-list {
+    font-size: 10pt;
+  }
+
+  .actions-list div {
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .action-icon {
+    color: #4472C4;
+    font-size: 9pt;
+  }
+
+  /* Stats */
+  .stats-text {
+    font-size: 10pt;
+  }
+
+  .stats-value {
+    font-family: Consolas, 'Courier New', monospace;
+    font-weight: 600;
+    color: #323130;
+  }
+
+  .stats-muted {
+    color: #8A8886;
+    font-size: 9pt;
+  }
+
+  /* Button Group */
+  .excel-btn-group {
+    display: flex;
+    gap: 4px;
+  }
+
+  .excel-btn-group form {
+    display: inline;
+  }
+
+  /* Action Buttons in Table */
+  .action-btn {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 10pt;
+    padding: 6px 12px;
+    border: 1px solid #D2D0CE;
+    border-radius: 0;
+    background: #FFFFFF;
+    color: #323130;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .action-btn:hover {
+    background: #F3F2F1;
+    border-color: #8A8886;
+  }
+
+  .action-btn-primary {
+    background: #FFFFFF;
+    color: #4472C4;
+    border-color: #4472C4;
+  }
+
+  .action-btn-primary:hover {
+    background: #4472C4;
+    color: #FFFFFF;
+  }
+
+  .action-btn-success {
+    background: #FFFFFF;
+    color: #107C10;
+    border-color: #107C10;
+  }
+
+  .action-btn-success:hover {
+    background: #107C10;
+    color: #FFFFFF;
+  }
+
+  .action-btn-warning {
+    background: #FFFFFF;
+    color: #CA5010;
+    border-color: #CA5010;
+  }
+
+  .action-btn-warning:hover {
+    background: #CA5010;
+    color: #FFFFFF;
+  }
+
+  .action-btn-danger {
+    background: #FFFFFF;
+    color: #D83B01;
+    border-color: #D83B01;
+  }
+
+  .action-btn-danger:hover {
+    background: #D83B01;
+    color: #FFFFFF;
+  }
+
+  /* Empty State */
+  .excel-empty {
+    text-align: center;
+    padding: 60px 20px;
+  }
+
+  .excel-empty-icon {
+    font-size: 48px;
+    color: #C8C6C4;
+    margin-bottom: 16px;
+  }
+
+  .excel-empty-title {
+    font-size: 14pt;
+    font-weight: 600;
+    color: #323130;
+    margin-bottom: 8px;
+  }
+
+  .excel-empty-text {
+    font-size: 11pt;
+    color: #605E5C;
+    margin-bottom: 20px;
+  }
+
+  /* Help Section */
+  .excel-help {
+    margin-top: 24px;
+    padding: 16px 20px;
+    background: #FFFFFF;
+    border: 1px solid #D2D0CE;
+    border-left: 4px solid #4472C4;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  .excel-help-title {
+    font-size: 11pt;
+    font-weight: 600;
+    color: #323130;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .excel-help-list {
+    list-style: none;
+    font-size: 10pt;
+    color: #605E5C;
+    line-height: 1.6;
+  }
+
+  .excel-help-list li {
+    margin-bottom: 8px;
+    padding-left: 16px;
+    position: relative;
+  }
+
+  .excel-help-list li:before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #4472C4;
+    font-weight: bold;
+  }
+
+  .excel-help-list strong {
+    color: #323130;
+  }
+
+  /* Modal Overlay */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .modal.show {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-content {
+    background: #FFFFFF;
+    border: 1px solid #8A8886;
+    border-radius: 0;
+    max-width: 500px;
+    width: 90%;
+  }
+
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #EDEBE9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .modal-title {
+    font-size: 12pt;
+    font-weight: 600;
+    color: #323130;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #605E5C;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+  }
+
+  .modal-close:hover {
+    color: #323130;
+  }
+
+  .modal-body {
+    padding: 20px;
+    font-size: 11pt;
+    color: #323130;
+  }
+
+  .modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid #EDEBE9;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+</style>
+
+<div class="page-wrapper">
+  <!-- Unified Header - Excel Style -->
+  <div class="unified-header">
+    <div class="header-title-section">
+      <h2>🎯 Bank Reconciliation Rules</h2>
+      <p class="company-name">{{ company.name }} • Automate transaction matching</p>
+    </div>
+    
+    <!-- Balance Grid -->
+    <div class="balance-grid">
+      <div class="balance-item">
+        <div class="balance-label">Active Rules</div>
+        <div class="balance-value">{{ rules|length }}</div>
       </div>
+      <div class="balance-item">
+        <div class="balance-label">Total Matches</div>
+        <div class="balance-value">{{ rules|length|default:0 }}</div>
+      </div>
+      <div class="balance-item">
+        <div class="balance-label">Success Rate</div>
+        <div class="balance-value">100%</div>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <a href="{% url 'bank_rules:create' %}" class="btn-primary">
+        + Create Rule
+      </a>
+      <a href="{% url 'dashboard' %}" class="btn-primary">
+        📊 Dashboard
+      </a>
     </div>
   </div>
 
+  <!-- Content Area -->
+  <div class="content-area">
+    <div class="excel-container">
+
+  <!-- Messages -->
   {% if messages %}
-  <div class="row mb-3">
-    <div class="col-12">
-      {% for message in messages %}
-      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+    {% for message in messages %}
+      <div class="excel-message excel-message-{{ message.tags }}">
         {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
-      {% endfor %}
-    </div>
-  </div>
+    {% endfor %}
   {% endif %}
 
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">Active Rules ({{ rules|length }})</h5>
-        </div>
-        <div class="card-body">
-          {% if rules %}
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>Status</th>
-                  <th>Name</th>
-                  <th>Conditions</th>
-                  <th>Actions</th>
-                  <th>Priority</th>
-                  <th>Stats</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for rule in rules %}
-                <tr>
-                  <td>
-                    {% if rule.is_active %}
-                    <span class="badge bg-success">Active</span>
-                    {% else %}
-                    <span class="badge bg-secondary">Disabled</span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    <strong>{{ rule.name }}</strong>
-                    {% if rule.description %}
-                    <br><small class="text-muted">{{ rule.description|truncatewords:10 }}</small>
-                    {% endif %}
-                  </td>
-                  <td>
-                    <span class="badge bg-info">
-                      {{ rule.match_logic }} - {{ rule.conditions.count }} condition{{ rule.conditions.count|pluralize }}
-                    </span>
-                    <div class="small text-muted mt-1">
-                      {% for condition in rule.conditions.all|slice:":3" %}
-                      <div>• {{ condition }}</div>
-                      {% endfor %}
-                      {% if rule.conditions.count > 3 %}
-                      <div>• ... {{ rule.conditions.count|add:"-3" }} more</div>
-                      {% endif %}
-                    </div>
-                  </td>
-                  <td>
-                    <div class="small">
-                      {% if rule.suggested_who %}
-                      <div><i class="fas fa-user text-primary"></i> {{ rule.suggested_who.name }}</div>
-                      {% endif %}
-                      {% if rule.suggested_what %}
-                      <div><i class="fas fa-comment text-info"></i> {{ rule.suggested_what|truncatewords:5 }}</div>
-                      {% endif %}
-                      {% if rule.suggested_coa %}
-                      <div><i class="fas fa-chart-line text-success"></i> {{ rule.suggested_coa.code }}</div>
-                      {% endif %}
-                    </div>
-                  </td>
-                  <td>
-                    <span class="badge bg-dark">{{ rule.priority }}</span>
-                  </td>
-                  <td>
-                    <div class="small">
-                      <div>Matched: {{ rule.times_matched }}</div>
-                      {% if rule.last_matched %}
-                      <div class="text-muted">Last: {{ rule.last_matched|timesince }} ago</div>
-                      {% endif %}
-                    </div>
-                  </td>
-                  <td>
-                    <div class="btn-group btn-group-sm" role="group">
-                      <a href="{% url 'bank_rules:test' rule.id %}" 
-                         class="btn btn-outline-info" 
-                         title="Test Rule">
-                        <i class="fas fa-flask"></i>
-                      </a>
-                      <a href="{% url 'bank_rules:edit' rule.id %}" 
-                         class="btn btn-outline-primary" 
-                         title="Edit">
-                        <i class="fas fa-edit"></i>
-                      </a>
-                      <form method="post" 
-                            action="{% url 'bank_rules:toggle' rule.id %}" 
-                            style="display: inline;">
-                        {% csrf_token %}
-                        <button type="submit" 
-                                class="btn btn-outline-{% if rule.is_active %}warning{% else %}success{% endif %}"
-                                title="{% if rule.is_active %}Disable{% else %}Enable{% endif %}">
-                          <i class="fas fa-{% if rule.is_active %}pause{% else %}play{% endif %}"></i>
-                        </button>
-                      </form>
-                      <button type="button" 
-                              class="btn btn-outline-danger" 
-                              data-bs-toggle="modal" 
-                              data-bs-target="#deleteModal{{ rule.id }}"
-                              title="Delete">
-                        <i class="fas fa-trash"></i>
-                      </button>
-                    </div>
+  <!-- Rules Table -->
+  <div class="excel-table-container">
+    {% if rules %}
+    <table class="excel-table">
+      <thead>
+        <tr>
+          <th style="width: 100px;">Status</th>
+          <th style="width: 250px;">Rule Name</th>
+          <th style="width: 300px;">Conditions</th>
+          <th style="width: 250px;">Suggested Actions</th>
+          <th style="width: 80px;">Priority</th>
+          <th style="width: 150px;">Statistics</th>
+          <th style="width: 180px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rule in rules %}
+        <tr>
+          <td>
+            {% if rule.is_active %}
+            <span class="excel-badge excel-badge-success">Active</span>
+            {% else %}
+            <span class="excel-badge excel-badge-secondary">Disabled</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="rule-name">{{ rule.name }}</div>
+            {% if rule.description %}
+            <div class="rule-description">{{ rule.description|truncatewords:10 }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <span class="excel-badge excel-badge-info">
+              {{ rule.match_logic }} · {{ rule.conditions.count }} condition{{ rule.conditions.count|pluralize }}
+            </span>
+            <div class="conditions-list">
+              {% for condition in rule.conditions.all|slice:":3" %}
+              <div>• {{ condition }}</div>
+              {% endfor %}
+              {% if rule.conditions.count > 3 %}
+              <div>• ... {{ rule.conditions.count|add:"-3" }} more</div>
+              {% endif %}
+            </div>
+          </td>
+          <td>
+            <div class="actions-list">
+              {% if rule.suggested_who %}
+              <div>
+                <span class="action-icon">👤</span>
+                <span>{{ rule.suggested_who.name }}</span>
+              </div>
+              {% endif %}
+              {% if rule.suggested_what %}
+              <div>
+                <span class="action-icon">💬</span>
+                <span>{{ rule.suggested_what|truncatewords:5 }}</span>
+              </div>
+              {% endif %}
+              {% if rule.suggested_coa %}
+              <div>
+                <span class="action-icon">📊</span>
+                <span>{{ rule.suggested_coa.code }}</span>
+              </div>
+              {% endif %}
+            </div>
+          </td>
+          <td>
+            <span class="excel-badge excel-badge-dark">{{ rule.priority }}</span>
+          </td>
+          <td>
+            <div class="stats-text">
+              <div>Matched: <span class="stats-value">{{ rule.times_matched }}</span></div>
+              {% if rule.last_matched %}
+              <div class="stats-muted">{{ rule.last_matched|timesince }} ago</div>
+              {% endif %}
+            </div>
+          </td>
+          <td>
+            <div class="excel-btn-group">
+              <a href="{% url 'bank_rules:test' rule.id %}" 
+                 class="action-btn" 
+                 title="Test Rule">
+                Test
+              </a>
+              <a href="{% url 'bank_rules:edit' rule.id %}" 
+                 class="action-btn action-btn-primary" 
+                 title="Edit">
+                Edit
+              </a>
+              <form method="post" action="{% url 'bank_rules:toggle' rule.id %}">
+                {% csrf_token %}
+                <button type="submit" 
+                        class="action-btn {% if rule.is_active %}action-btn-warning{% else %}action-btn-success{% endif %}"
+                        title="{% if rule.is_active %}Disable{% else %}Enable{% endif %}">
+                  {% if rule.is_active %}Disable{% else %}Enable{% endif %}
+                </button>
+              </form>
+              <button type="button" 
+                      class="action-btn action-btn-danger" 
+                      onclick="openModal('deleteModal{{ rule.id }}')"
+                      title="Delete">
+                Delete
+              </button>
+            </div>
 
-                    <!-- Delete Confirmation Modal -->
-                    <div class="modal fade" id="deleteModal{{ rule.id }}" tabindex="-1">
-                      <div class="modal-dialog">
-                        <div class="modal-content">
-                          <div class="modal-header">
-                            <h5 class="modal-title">Confirm Delete</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                          </div>
-                          <div class="modal-body">
-                            Are you sure you want to delete rule "<strong>{{ rule.name }}</strong>"?
-                          </div>
-                          <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <form method="post" action="{% url 'bank_rules:delete' rule.id %}" style="display: inline;">
-                              {% csrf_token %}
-                              <button type="submit" class="btn btn-danger">Delete</button>
-                            </form>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          {% else %}
-          <div class="text-center py-5">
-            <i class="fas fa-ruler-combined fa-3x text-muted mb-3"></i>
-            <h5>No Rules Yet</h5>
-            <p class="text-muted">Create your first bank rule to automate transaction matching.</p>
-            <a href="{% url 'bank_rules:create' %}" class="btn btn-primary">
-              <i class="fas fa-plus"></i> Create Rule
-            </a>
-          </div>
-          {% endif %}
-        </div>
-      </div>
+            <!-- Delete Modal -->
+            <div class="modal" id="deleteModal{{ rule.id }}">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Confirm Delete</h5>
+                  <button type="button" class="modal-close" onclick="closeModal('deleteModal{{ rule.id }}')">&times;</button>
+                </div>
+                <div class="modal-body">
+                  Are you sure you want to delete rule "<strong>{{ rule.name }}</strong>"?
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="excel-btn" onclick="closeModal('deleteModal{{ rule.id }}')">Cancel</button>
+                  <form method="post" action="{% url 'bank_rules:delete' rule.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="excel-btn excel-btn-danger">Delete</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="excel-empty">
+      <div class="excel-empty-icon">📏</div>
+      <h3 class="excel-empty-title">No Rules Yet</h3>
+      <p class="excel-empty-text">Create your first bank rule to automate transaction matching.</p>
+      <a href="{% url 'bank_rules:create' %}" class="excel-btn excel-btn-primary">
+        + Create Rule
+      </a>
     </div>
+    {% endif %}
   </div>
 
   <!-- Help Section -->
-  <div class="row mt-4">
-    <div class="col-12">
-      <div class="card bg-light">
-        <div class="card-body">
-          <h6><i class="fas fa-info-circle"></i> How Bank Rules Work</h6>
-          <ul class="mb-0 small">
-            <li><strong>Rules match transactions automatically</strong> based on conditions you define (description, amount, etc.)</li>
-            <li><strong>When a transaction matches</strong>, the system suggests WHO/WHAT/COA for you to apply</li>
-            <li><strong>Higher priority rules</strong> are checked first</li>
-            <li><strong>Test your rules</strong> before activating them to see how many transactions they would match</li>
-          </ul>
-        </div>
-      </div>
+  <div class="excel-help">
+    <div class="excel-help-title">
+      <span>ℹ️</span>
+      <span>How Bank Rules Work</span>
+    </div>
+    <ul class="excel-help-list">
+      <li><strong>Rules match transactions automatically</strong> based on conditions you define (description, amount, etc.)</li>
+      <li><strong>When a transaction matches</strong>, the system suggests WHO/WHAT/COA for you to apply</li>
+      <li><strong>Higher priority rules</strong> are checked first</li>
+      <li><strong>Test your rules</strong> before activating them to see how many transactions they would match</li>
+    </ul>
+  </div>
     </div>
   </div>
 </div>
+
+<script>
+  function openModal(modalId) {
+    document.getElementById(modalId).classList.add('show');
+  }
+
+  function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('show');
+  }
+
+  // Close modal when clicking outside
+  window.onclick = function(event) {
+    if (event.target.classList.contains('modal')) {
+      event.target.classList.remove('show');
+    }
+  }
+</script>
 {% endblock %}

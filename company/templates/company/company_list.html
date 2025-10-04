@@ -1,119 +1,353 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Companies - Professional Accounting System{% endblock %}
 
-{% block extra_css %}
-<style>
+{% block content %}
+    /* EXCEL-LIKE MINIMAL DESIGN - MATCHING RECONCILIATION PAGE */
+    
+    body {
+        font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+        font-size: 11pt;
+        background: #f0f0f0;
+    }
+    
+    .page-wrapper {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        background: white;
+    }
+    
+    /* Unified Header Section - Modern Excel Style */
+    .unified-header {
+        background: linear-gradient(135deg, #4472C4 0%, #2B579A 100%);
+        border-bottom: 3px solid #1F4788;
+        padding: 16px 24px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .header-title-section {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 0 0 auto;
+    }
+    
+    .header-title-section h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+        font-family: 'Segoe UI', sans-serif;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: white;
+        line-height: 1.2;
+    }
+    
+    .header-title-section h2 i {
+        font-size: 20px;
+        color: white;
+        opacity: 0.95;
+    }
+    
+    .company-name {
+        font-size: 12px;
+        opacity: 0.85;
+        color: rgba(255, 255, 255, 0.95);
+        margin: 0;
+        font-weight: 400;
+    }
+    
+    .header-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+    
+    /* Balance Grid - Compact Cards */
+    .balance-grid {
+        display: flex;
+        align-items: stretch;
+        gap: 12px;
+        flex: 1;
+        justify-content: flex-end;
+    }
+    
+    .balance-item {
+        flex: 0 0 auto;
+        padding: 10px 16px;
+        background: white;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-width: 140px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .balance-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .balance-item:first-child {
+        border-left: 3px solid #4472C4;
+    }
+    
+    .balance-item:nth-child(2) {
+        border-left: 3px solid #107C10;
+    }
+    
+    .balance-item:nth-child(3) {
+        border-left: 3px solid #CA5010;
+    }
+    
+    .balance-item:last-child {
+        border-left: 3px solid #D83B01;
+    }
+    
+    .balance-label {
+        font-size: 9px;
+        color: #605E5C;
+        margin-bottom: 4px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-family: 'Segoe UI', sans-serif;
+        text-align: center;
+    }
+    
+    .balance-value {
+        font-size: 16px;
+        font-weight: 700;
+        font-family: 'Segoe UI', sans-serif;
+        letter-spacing: -0.3px;
+        text-align: center;
+    }
+    
+    .balance-value.text-primary {
+        color: #4472C4 !important;
+    }
+    
+    .balance-value.text-success {
+        color: #107C10 !important;
+    }
+    
+    .balance-value.text-warning {
+        color: #CA5010 !important;
+    }
+    
+    .balance-value.text-danger {
+        color: #D83B01 !important;
+    }
+    
+    /* Excel-Style Content Area */
+    .content-area {
+        background: white;
+        padding: 20px 24px;
+        min-height: calc(100vh - 100px);
+    }
+    
+    /* Buttons - Match Dashboard Style */
+    .btn-primary {
+        background: #4472C4;
+        border: none;
+        border-radius: 0;
+        font-family: 'Segoe UI', sans-serif;
+        font-weight: 500;
+        color: white;
+        padding: 8px 20px;
+        font-size: 11pt;
+    }
+    
+    .btn-primary:hover {
+        background: #365a9b;
+        color: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+    
+    .btn-outline-primary {
+        border: 1px solid #4472C4;
+        color: #4472C4;
+        border-radius: 0;
+        font-family: 'Segoe UI', sans-serif;
+        font-weight: 500;
+        background: white;
+        padding: 6px 16px;
+        font-size: 11pt;
+    }
+    
+    .btn-outline-primary:hover {
+        background: #4472C4;
+        color: white;
+        border-color: #4472C4;
+    }
+    
+    /* Active Company Banner */
+    .active-company-banner {
+        background: #E7F3FF;
+        border: 1px solid #4472C4;
+        border-left: 4px solid #4472C4;
+        border-radius: 0;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+    }
+    
+    /* Company Cards - Excel Table Style */
     .company-card {
-        transition: all 0.3s ease;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.75rem;
+        transition: all 0.15s ease;
+        border: 1px solid #D2D0CE;
+        border-radius: 0;
         background: white;
         cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        padding: 20px;
     }
     
     .company-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-        border-color: var(--bs-primary);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        border-color: #4472C4;
     }
     
     .company-card.active {
-        border-color: var(--bs-primary);
-        background: linear-gradient(135deg, rgba(30, 58, 138, 0.05) 0%, rgba(30, 58, 138, 0.02) 100%);
+        border-color: #4472C4;
+        border-left-width: 4px;
+        background: #F3F9FF;
+        box-shadow: 0 2px 6px rgba(68, 114, 196, 0.3);
     }
     
     .company-avatar {
         width: 60px;
         height: 60px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, var(--bs-primary) 0%, #1e40af 100%);
+        border-radius: 4px;
+        background: linear-gradient(135deg, #4472C4 0%, #2B579A 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
         font-weight: 600;
         font-size: 1.5rem;
+        font-family: 'Segoe UI', sans-serif;
     }
     
     .create-company-card {
-        border: 2px dashed #d1d5db;
-        background: #f9fafb;
-        transition: all 0.3s ease;
+        border: 2px dashed #8A8886;
+        background: #FAFAFA;
+        transition: all 0.15s ease;
+        border-radius: 0;
+        padding: 20px;
+        text-align: center;
     }
     
     .create-company-card:hover {
-        border-color: var(--bs-primary);
-        background: rgba(30, 58, 138, 0.05);
+        border-color: #4472C4;
+        background: #F3F9FF;
+        cursor: pointer;
     }
     
     .company-role-badge {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
-        border-radius: 0.375rem;
-        font-weight: 500;
+        font-size: 10px;
+        padding: 4px 8px;
+        border-radius: 0;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
     .role-owner {
-        background: #fef3c7;
-        color: #92400e;
+        background: #FFF4CE;
+        color: #8A6D00;
+        border: 1px solid #F7E6A1;
     }
     
     .role-admin {
-        background: #dbeafe;
+        background: #E7F3FF;
         color: #1e40af;
+        border: 1px solid #4472C4;
     }
     
     .role-user {
-        background: #d1fae5;
+        background: #DFF6DD;
         color: #065f46;
+        border: 1px solid #C7E6C5;
     }
-</style>
-{% endblock %}
 
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h1 class="h3 mb-1 text-navy fw-bold">
-            <i class="bi bi-building me-2"></i>
-            My Companies
-        </h1>
-        <p class="text-muted mb-0">Manage and switch between your companies</p>
+<div class="page-wrapper">
+    <!-- Unified Header - Excel Style -->
+    <div class="unified-header">
+        <div class="header-title-section">
+            <h2>
+                <i class="bi bi-building"></i>
+                My Companies
+            </h2>
+            <p class="company-name">Manage and switch between your companies</p>
+        </div>
+        
+        <!-- Balance Grid - Compact Cards -->
+        <div class="balance-grid">
+            <div class="balance-item">
+                <div class="balance-label">Total Companies</div>
+                <div class="balance-value text-primary">{{ companies|length }}</div>
+            </div>
+            <div class="balance-item">
+                <div class="balance-label">Active Company</div>
+                <div class="balance-value text-success">{% if active_company %}1{% else %}0{% endif %}</div>
+            </div>
+            <div class="balance-item">
+                <div class="balance-label">Your Role</div>
+                <div class="balance-value text-warning">{% if active_company %}Owner{% else %}—{% endif %}</div>
+            </div>
+            <div class="balance-item">
+                <div class="balance-label">Status</div>
+                <div class="balance-value text-danger">{% if active_company %}Active{% else %}—{% endif %}</div>
+            </div>
+        </div>
+        
+        <div class="header-actions">
+            <a href="{% url 'company:company_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-2"></i>Create Company
+            </a>
+        </div>
     </div>
-    <div>
-        <a href="{% url 'company:company_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-2"></i>
-            Create Company
-        </a>
-    </div>
-</div>
+    
+    <!-- Content Area -->
+    <div class="content-area">
 
 {% if companies %}
 <!-- Active Company Banner -->
 {% if active_company %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="alert alert-primary border-0" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);">
-            <div class="d-flex align-items-center">
-                <div class="me-3">
-                    <i class="bi bi-check-circle-fill text-primary" style="font-size: 2rem;"></i>
-                </div>
-                <div class="flex-grow-1">
-                    <h5 class="mb-1 text-primary fw-bold">
-                        Currently working with: {{ active_company.name }}
-                    </h5>
-                    <p class="mb-0 text-primary-emphasis">
-                        All accounting data and reports will be for this company
-                    </p>
-                </div>
-                <div>
-                    <a href="{% url 'company:company_detail' active_company.id %}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-building me-1"></i>
-                        Manage
-                    </a>
-                </div>
-            </div>
+<div class="active-company-banner">
+    <div class="d-flex align-items-center">
+        <div class="me-3">
+            <i class="bi bi-check-circle-fill" style="font-size: 2rem; color: #4472C4;"></i>
+        </div>
+        <div class="flex-grow-1">
+            <h5 class="mb-1" style="font-family: 'Segoe UI'; font-weight: 600; color: #323130; font-size: 16px;">
+                Currently working with: {{ active_company.name }}
+            </h5>
+            <p class="mb-0" style="color: #605E5C; font-size: 12px;">
+                All accounting data and reports will be for this company
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'company:company_detail' active_company.id %}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-building me-1"></i>
+                Manage
+            </a>
+        </div>
+    </div>
+</div>
         </div>
     </div>
 </div>
@@ -384,6 +618,9 @@ document.getElementById('confirmSwitch').addEventListener('click', function() {
     });
 });
 </script>
+
+    </div><!-- /.content-area -->
+</div><!-- /.page-wrapper -->
 
 {% csrf_token %}
 {% endblock %}

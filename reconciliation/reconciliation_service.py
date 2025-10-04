@@ -57,25 +57,30 @@ class ReconciliationService:
         return session
     
     @classmethod 
-    def get_unmatched_transactions(cls, account, limit=None):
+    def get_unmatched_transactions(cls, account, limit=None, uploaded_file_id=None):
         """
         Get unmatched transactions for an account with optimized query
         
         Args:
             account: Account instance
             limit: Maximum number of transactions to return (None = all)
+            uploaded_file_id: Optional filename string to filter transactions from specific upload file
         """
         matched_transaction_ids = TransactionMatch.objects.filter(
             bank_transaction__coa_account=account
         ).values_list('bank_transaction_id', flat=True)
         
         # 🚀 OPTIMIZATION: Use select_related to avoid N+1 queries
-        # Note: Only include ForeignKey fields (coa_account, company, processed_by, uploaded_by)
+        # Note: Only include ForeignKey fields (coa_account, company, processed_by)
         queryset = BankTransaction.objects.filter(
             coa_account=account
         ).exclude(
             id__in=matched_transaction_ids
-        ).select_related('coa_account', 'company', 'processed_by', 'uploaded_by').order_by('-date', '-id')
+        ).select_related('coa_account', 'company', 'processed_by').order_by('-date', '-id')
+        
+        # Filter by uploaded file if specified (uploaded_file is currently a CharField storing filename)
+        if uploaded_file_id:
+            queryset = queryset.filter(uploaded_file=uploaded_file_id)
         
         # Apply limit if specified (for pagination)
         if limit:

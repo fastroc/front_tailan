@@ -281,6 +281,28 @@ class RuleEngineService:
         Returns:
             dict: Suggestion in smart suggestion format
         """
+        # Get matched conditions details
+        conditions = rule.conditions.all()
+        matched_conditions = []
+        for cond in conditions:
+            if RuleEngineService._condition_matches(transaction, cond):
+                field_value = RuleEngineService._get_field_value(transaction, cond.field)
+                matched_conditions.append({
+                    'field': cond.get_field_display(),
+                    'operator': cond.get_operator_display(),
+                    'value': cond.value,
+                    'matched_value': str(field_value)[:50] if field_value else ''
+                })
+        
+        # Create readable match description
+        if len(matched_conditions) == 1:
+            mc = matched_conditions[0]
+            match_desc = f"{mc['field']} {mc['operator']} '{mc['value']}'"
+        elif len(matched_conditions) > 1:
+            match_desc = f"{len(matched_conditions)} conditions matched"
+        else:
+            match_desc = "Rule conditions satisfied"
+        
         # Base suggestion structure
         suggestion = {
             'source': 'bank_rule',
@@ -288,8 +310,9 @@ class RuleEngineService:
             'rule_name': rule.name,
             'engine_display_name': '🎯 Bank Rule',
             'match_percentage': 90,  # Rules get high confidence
-            'match_reason': f'Matched rule: {rule.name}',
-            'matched_data': f'Rule conditions satisfied',
+            'match_reason': f'Rule "{rule.name}" matched',
+            'matched_data': match_desc,
+            'matched_conditions': matched_conditions,  # For detailed display
         }
         
         # Add WHO suggestion (free text - universal correspondent)
@@ -297,6 +320,7 @@ class RuleEngineService:
             suggestion.update({
                 'loan_id': None,
                 'customer_name': rule.suggested_who_text,
+                'suggested_who_text': rule.suggested_who_text,  # Add this field for template
                 'loan_number': '',
                 'loan_amount': 0,
                 'loan_type': '',
@@ -305,6 +329,7 @@ class RuleEngineService:
             suggestion.update({
                 'loan_id': None,
                 'customer_name': '',
+                'suggested_who_text': '',  # Add this field for template
                 'loan_number': '',
                 'loan_amount': 0,
                 'loan_type': '',
@@ -320,7 +345,13 @@ class RuleEngineService:
             }
             suggestion['coa_reason'] = f'Rule: {rule.name}'
         else:
-            suggestion['suggested_coa'] = None
+            # Return empty dict instead of None to prevent .get() errors
+            suggestion['suggested_coa'] = {
+                'account_id': None,
+                'account_code': '',
+                'account_name': '',
+                'account_display': ''
+            }
             suggestion['coa_reason'] = ''
         
         return suggestion

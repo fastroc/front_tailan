@@ -46,8 +46,11 @@ urlpatterns = [
     path("api/", include("api.urls")),
     path("coa/", include("coa.urls")),
     path("bank_accounts/", include("bank_accounts.urls")),
-    path("reconciliation/", include("reconciliation.urls")),
+    # REMOVED: Reconciliation dashboard - use /bank_accounts/ instead
+    # path("reconciliation/", include("reconciliation.urls")),
+    path("reconciliation/", include("reconciliation.urls")),  # Keep for AJAX endpoints only
     path("bank-rules/", include("bank_rules.urls")),  # 🎯 NEW: Bank Rules management
+    path("analytics/", include("analytics.urls")),  # 🧠 NEW: AI Analytics Dashboard
     # path('api/smart-suggestions/', include('reconciliation.suggestion_urls')),  # REMOVED - Complex smart suggestions
     path("journal/", include("journal.urls")),
     path("assets/", include("assets.urls")),  # Fixed Assets management
@@ -88,8 +91,8 @@ if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
     # Add debug toolbar URLs
-    import debug_toolbar
-
-    urlpatterns += [
-        path("__debug__/", include(debug_toolbar.urls)),
-    ]
+    # TEMPORARILY DISABLED: Django Debug Toolbar causing errors
+    # import debug_toolbar
+    # urlpatterns += [
+    #     path("__debug__/", include(debug_toolbar.urls)),
+    # ]

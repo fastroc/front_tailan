@@ -79,10 +79,10 @@ def dashboard(request):
     total_upload_files = 0
 
     for account in accounts:
-        # Get recent uploads for this account
+        # Get ALL uploads for this account (removed limit)
         recent_uploads = UploadedFile.objects.filter(account=account).order_by(
             "-uploaded_at"
-        )[:3]
+        )
 
         # Get transaction count
         transaction_count = BankTransaction.objects.filter(coa_account=account).count()
@@ -94,6 +94,21 @@ def dashboard(request):
         # Total uploads count
         total_uploads = UploadedFile.objects.filter(account=account).count()
         total_upload_files += total_uploads
+        
+        # Calculate overall date coverage for this account
+        date_coverage = None
+        if recent_uploads.exists():
+            from django.db.models import Min, Max
+            coverage = recent_uploads.aggregate(
+                first_date=Min('date_from'),
+                last_date=Max('date_to')
+            )
+            if coverage['first_date'] and coverage['last_date']:
+                date_coverage = {
+                    'first_date': coverage['first_date'],
+                    'last_date': coverage['last_date'],
+                    'total_days': (coverage['last_date'] - coverage['first_date']).days + 1,
+                }
 
         accounts_with_uploads.append(
             {
@@ -102,6 +117,7 @@ def dashboard(request):
                 "transaction_count": transaction_count,
                 "last_upload": last_upload,
                 "total_uploads": total_uploads,
+                "date_coverage": date_coverage,
             }
         )
 
@@ -120,6 +136,116 @@ def dashboard(request):
             "total_upload_files": total_upload_files,
         },
     )
+
+
+@login_required
+def account_detail(request, account_id):
+    """Comprehensive account detail page showing all uploads, coverage analysis, and gaps"""
+    company_id = request.session.get("active_company_id")
+    if not company_id:
+        messages.error(request, "Please select a company first.")
+        return redirect("bank_accounts:dashboard")
+    
+    try:
+        company = Company.objects.get(id=company_id)
+        account = Account.objects.get(id=account_id, company=company, is_bank_account=True)
+    except (Company.DoesNotExist, Account.DoesNotExist):
+        messages.error(request, "Account not found.")
+        return redirect("bank_accounts:dashboard")
+    
+    # Get all uploads for this account
+    uploads = UploadedFile.objects.filter(account=account).order_by('-uploaded_at')
+    
+    # Get transaction count
+    transaction_count = BankTransaction.objects.filter(coa_account=account).count()
+    
+    # Calculate overall coverage
+    date_coverage = None
+    calendar_data = []
+    if uploads.exists():
+        from django.db.models import Min, Max
+        from datetime import timedelta
+        import calendar as cal
+        
+        coverage = uploads.aggregate(
+            first_date=Min('date_from'),
+            last_date=Max('date_to')
+        )
+        if coverage['first_date'] and coverage['last_date']:
+            date_coverage = {
+                'first_date': coverage['first_date'],
+                'last_date': coverage['last_date'],
+                'total_days': (coverage['last_date'] - coverage['first_date']).days + 1,
+            }
+            
+            # Build calendar data structure for visualization
+            # Create a set of all covered dates
+            covered_dates = set()
+            file_coverage = {}  # Map date to list of files covering it
+            
+            for upload in uploads:
+                if upload.date_from and upload.date_to:
+                    current_date = upload.date_from
+                    while current_date <= upload.date_to:
+                        covered_dates.add(current_date)
+                        if current_date not in file_coverage:
+                            file_coverage[current_date] = []
+                        file_coverage[current_date].append(upload.original_filename)
+                        current_date += timedelta(days=1)
+            
+            # Generate calendar months from first to last date
+            current_month = coverage['first_date'].replace(day=1)
+            last_month = coverage['last_date'].replace(day=1)
+            
+            while current_month <= last_month:
+                year = current_month.year
+                month = current_month.month
+                
+                # Get calendar matrix for this month
+                month_cal = cal.monthcalendar(year, month)
+                
+                # Build day data
+                days = []
+                for week in month_cal:
+                    for day in week:
+                        if day == 0:
+                            days.append({'day': None, 'covered': False, 'files': []})
+                        else:
+                            date_obj = current_month.replace(day=day)
+                            is_covered = date_obj in covered_dates
+                            files = file_coverage.get(date_obj, [])
+                            days.append({
+                                'day': day,
+                                'date': date_obj,
+                                'covered': is_covered,
+                                'files': files,
+                                'file_count': len(files)
+                            })
+                
+                calendar_data.append({
+                    'year': year,
+                    'month': month,
+                    'month_name': current_month.strftime('%B %Y'),
+                    'days': days
+                })
+                
+                # Move to next month
+                if month == 12:
+                    current_month = current_month.replace(year=year + 1, month=1)
+                else:
+                    current_month = current_month.replace(month=month + 1)
+    
+    context = {
+        'account': account,
+        'company': company,
+        'uploads': uploads,
+        'transaction_count': transaction_count,
+        'date_coverage': date_coverage,
+        'total_uploads': uploads.count(),
+        'calendar_data': calendar_data,
+    }
+    
+    return render(request, 'bank_accounts/account_detail.html', context)
 
 
 @login_required
@@ -1307,6 +1433,10 @@ def upload_transactions(request, account_id):
                 uploaded_file_record.duplicate_count = duplicates_skipped
                 uploaded_file_record.error_count = len(errors)
                 uploaded_file_record.save()
+                
+                # Calculate date range from imported transactions
+                if transactions_created > 0:
+                    uploaded_file_record.calculate_date_range()
 
             # Show results
             result_messages = []
@@ -1314,6 +1444,13 @@ def upload_transactions(request, account_id):
                 result_messages.append(
                     f"✅ Successfully imported {transactions_created} new transactions!"
                 )
+                
+                # Show date range if calculated
+                if uploaded_file_record.date_from and uploaded_file_record.date_to:
+                    period_label = uploaded_file_record.get_period_label()
+                    result_messages.append(
+                        f"📅 Coverage: {period_label} ({uploaded_file_record.get_period_days()} days)"
+                    )
 
                 # Update account balance (simple sum of all transactions)
                 total_amount = sum(
@@ -1445,6 +1582,7 @@ def delete_upload(request, account_id, upload_id):
                     old_balance = account.current_balance
 
                     account.current_balance = new_balance
+                    account.ytd_balance = new_balance  # Also update YTD balance
                     account.save()
 
                     print(f"  - Updated balance from ${old_balance} to ${new_balance}")

@@ -3,24 +3,68 @@
 
 {% block title %}Loan Payments{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* EXCEL-STYLE DESIGN */
+    body {
+        font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+        font-size: 11pt;
+        background: #f0f0f0;
+    }
+    
+    .btn-primary {
+        background: #4472C4;
+        border: none;
+        border-radius: 0;
+        font-family: 'Segoe UI', sans-serif;
+        font-weight: 500;
+        color: white;
+        padding: 8px 20px;
+    }
+    
+    .btn-primary:hover {
+        background: #365a9b;
+        color: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+    
+    .metric-card {
+        background: white;
+        border: 1px solid #D2D0CE;
+        border-radius: 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        transition: all 0.15s ease;
+    }
+    
+    .metric-card:hover {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid mt-4">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="h3 mb-0 text-gray-800">
-                        <i class="fas fa-credit-card text-primary me-2"></i>
-                        Record Payment
-                    </h1>
-                    <p class="text-muted mb-0">Record incoming loan payments</p>
+<div class="container-fluid" style="background: #f0f0f0;">
+    <!-- Page Header - Excel Style -->
+    <div style="background: white; border: 1px solid #D2D0CE; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); padding: 20px 24px; margin-bottom: 20px;">
+        <div class="d-flex justify-content-between align-items-center">
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #4472C4, #2B579A); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: white;">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <div>
+                        <h1 style="margin: 0; font-size: 24px; font-weight: 600; font-family: 'Segoe UI', sans-serif; color: #323130;">
+                            Loan Payments
+                        </h1>
+                        <p style="margin: 0; font-size: 13px; color: #605E5C;">Record and manage incoming loan payments</p>
+                    </div>
                 </div>
-                <div>
-                    <a href="#" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>Record Payment
-                    </a>
-                </div>
+            </div>
+            <div>
+                <a href="#" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Record Payment
+                </a>
             </div>
         </div>
     </div>
@@ -28,72 +72,72 @@
     <!-- Payment Statistics -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Payments Today
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.payments_today|default:"0"|floatformat:0|intcomma }}</div>
+            <div class="metric-card" style="padding: 16px; border-left: 4px solid #107C10;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 600; color: #605E5C; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                            Payments Today
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        <div style="font-size: 24px; font-weight: 600; color: #323130; font-family: 'Segoe UI', sans-serif;">
+                            ${{ stats.payments_today|default:"0"|floatformat:0|intcomma }}
                         </div>
+                    </div>
+                    <div>
+                        <i class="fas fa-dollar-sign" style="font-size: 32px; color: #D2D0CE;"></i>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Due This Week
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.due_this_week|default:"0"|floatformat:0|intcomma }}</div>
+            <div class="metric-card" style="padding: 16px; border-left: 4px solid #CA5010;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 600; color: #605E5C; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                            Due This Week
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                        <div style="font-size: 24px; font-weight: 600; color: #323130; font-family: 'Segoe UI', sans-serif;">
+                            ${{ stats.due_this_week|default:"0"|floatformat:0|intcomma }}
                         </div>
+                    </div>
+                    <div>
+                        <i class="fas fa-calendar" style="font-size: 32px; color: #D2D0CE;"></i>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-danger shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                Overdue Payments
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.overdue_payments|default:"0"|floatformat:0|intcomma }}</div>
+            <div class="metric-card" style="padding: 16px; border-left: 4px solid #D83B01;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 600; color: #605E5C; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                            Overdue Payments
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        <div style="font-size: 24px; font-weight: 600; color: #323130; font-family: 'Segoe UI', sans-serif;">
+                            ${{ stats.overdue_payments|default:"0"|floatformat:0|intcomma }}
                         </div>
+                    </div>
+                    <div>
+                        <i class="fas fa-exclamation-triangle" style="font-size: 32px; color: #D2D0CE;"></i>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Monthly Collection
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ stats.monthly_collection|default:"0"|floatformat:0|intcomma }}</div>
+            <div class="metric-card" style="padding: 16px; border-left: 4px solid #4472C4;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 600; color: #605E5C; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                            Monthly Collection
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        <div style="font-size: 24px; font-weight: 600; color: #323130; font-family: 'Segoe UI', sans-serif;">
+                            ${{ stats.monthly_collection|default:"0"|floatformat:0|intcomma }}
                         </div>
+                    </div>
+                    <div>
+                        <i class="fas fa-chart-line" style="font-size: 32px; color: #D2D0CE;"></i>
                     </div>
                 </div>
             </div>

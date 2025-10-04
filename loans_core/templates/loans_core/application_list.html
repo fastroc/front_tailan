@@ -6,30 +6,60 @@
 
 {% block extra_css %}
 <style>
+/* EXCEL-STYLE DESIGN */
+body {
+    font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+    font-size: 11pt;
+    background: #f0f0f0;
+}
+
+.btn-primary {
+    background: #4472C4;
+    border: none;
+    border-radius: 0;
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: 500;
+    color: white;
+    padding: 8px 20px;
+}
+
+.btn-primary:hover {
+    background: #365a9b;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
 /* Simple dropdown styling */
 .dropdown-menu {
     z-index: 1050;
     min-width: 200px;
+    border: 1px solid #D2D0CE;
+    border-radius: 0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Progress Badge Styling */
 .badge {
-    font-size: 0.75rem;
-    padding: 0.35em 0.65em;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 0;
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: 600;
 }
 
 .badge i {
-    margin-right: 0.25rem;
+    margin-right: 4px;
 }
 
 /* Progress Bar Styling */
 .progress {
-    background-color: #e9ecef;
-    border-radius: 0.25rem;
+    background-color: #EDEBE9;
+    border-radius: 0;
+    height: 6px;
 }
 
 .progress-bar {
-    /* No transitions - keep it simple */
+    background-color: #4472C4;
 }
 
 /* Progress Column Styling */
@@ -43,35 +73,35 @@
 
 /* Quick Action Button Styling */
 .btn-sm {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
-    margin-left: 0.25rem;
+    font-size: 11px;
+    padding: 4px 12px;
+    margin-left: 4px;
+    border-radius: 0;
 }
 
 /* Badge Colors */
 .badge-secondary {
-    background-color: #6c757d !important;
+    background-color: #605E5C !important;
     color: white;
 }
 
 .badge-success {
-    background-color: #28a745 !important;
+    background-color: #107C10 !important;
     color: white;
 }
 
 .badge-warning {
-    background-color: #ffc107 !important;
-    color: #212529;
+    background-color: #F7B500 !important;
+    color: #323130;
 }
 
 .badge-info {
-    background-color: #17a2b8 !important;
+    background-color: #4472C4 !important;
     color: white;
 }
 
 /* Hover effects for progress badges */
 .badge:hover {
-    /* Simple hover - no transitions */
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
@@ -95,28 +125,33 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="h3 mb-0 text-gray-800">
-                        <i class="fas fa-file-alt text-primary me-2"></i>
-                        Loan Applications
-                    </h1>
-                    <p class="text-muted mb-0">Manage and review loan applications</p>
+<div class="container-fluid" style="background: #f0f0f0;">
+    <!-- Page Header - Excel Style -->
+    <div style="background: white; border: 1px solid #D2D0CE; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); padding: 20px 24px; margin-bottom: 20px;">
+        <div class="d-flex justify-content-between align-items-center">
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #4472C4, #2B579A); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: white;">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div>
+                        <h1 style="margin: 0; font-size: 24px; font-weight: 600; font-family: 'Segoe UI', sans-serif; color: #323130;">
+                            Loan Applications
+                        </h1>
+                        <p style="margin: 0; font-size: 13px; color: #605E5C;">Manage and review loan applications</p>
+                    </div>
                 </div>
-                <div>
-                    <a href="{% url 'loans_core:application_create' %}" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>New Application
-                    </a>
-                    <a href="{% url 'loans_core:application_bulk_upload' %}" class="btn btn-success ms-2">
-                        <i class="fas fa-upload me-2"></i>Bulk Upload
-                    </a>
-                    <a href="{% url 'loans_core:bulk_upload_review' %}" class="btn btn-info ms-2">
-                        <i class="fas fa-clipboard-check me-2"></i>Review Uploads
-                    </a>
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <a href="{% url 'loans_core:application_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>New Application
+                </a>
+                <a href="{% url 'loans_core:application_bulk_upload' %}" class="btn btn-success ms-2" style="background: #107C10; border: none; border-radius: 0;">
+                    <i class="fas fa-upload me-2"></i>Bulk Upload
+                </a>
+                <a href="{% url 'loans_core:bulk_upload_review' %}" class="btn btn-info ms-2" style="background: #4472C4; border: none; border-radius: 0;">
+                    <i class="fas fa-clipboard-check me-2"></i>Review Uploads
+                </a>
                     <!-- DEBUG: Simple test button -->
                     <button class="btn btn-warning ms-2" onclick="console.log('🧪 TEST BUTTON CLICKED!'); alert('JavaScript is working!');">
                         Test JS

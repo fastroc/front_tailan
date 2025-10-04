@@ -3,446 +3,445 @@
 
 {% block title %}Five-Tier Payment Allocation Setup - {{ company.name }}{% endblock %}
 
+{% block extra_css %}
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; font-size: 11pt; color: #201F1E; background: #F0F0F0; line-height: 1.4; }
+  .page-wrapper { min-height: 100vh; display: flex; flex-direction: column; background: #F0F0F0; }
+  .unified-header { background: linear-gradient(135deg, #4472C4 0%, #2B579A 100%); border-bottom: 3px solid #1F4788; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .header-title-section h2 { margin: 0; font-size: 20px; font-weight: 600; color: white; }
+  .company-name { font-size: 12px; opacity: 0.85; color: rgba(255, 255, 255, 0.95); margin: 0; }
+  .balance-grid { display: flex; align-items: stretch; gap: 12px; flex: 1; justify-content: flex-end; }
+  .balance-item { padding: 10px 16px; background: white; display: flex; flex-direction: column; align-items: center; min-width: 140px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); border: 1px solid rgba(255, 255, 255, 0.2); }
+  .balance-item:first-child { border-left: 3px solid #4472C4; }
+  .balance-item:nth-child(2) { border-left: 3px solid #4472C4; }
+  .balance-item:nth-child(3) { border-left: 3px solid #107C10; }
+  .balance-item:nth-child(4) { border-left: 3px solid #CA5010; }
+  .balance-item:nth-child(5) { border-left: 3px solid #4472C4; }
+  .balance-label { font-size: 9px; color: #605E5C; margin-bottom: 4px; font-weight: 700; text-transform: uppercase; text-align: center; }
+  .balance-value { font-size: 18px; font-weight: 700; font-family: Consolas, monospace; color: #201F1E; }
+  .header-actions { display: flex; gap: 8px; }
+  .header-actions a { background: white; color: #4472C4; border: none; padding: 8px 16px; font-size: 11pt; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .header-actions a:hover { background: #F3F2F1; }
+  .content-area { flex: 1; padding: 20px; max-width: 1800px; margin: 0 auto; width: 100%; }
+  .two-col-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .excel-card { background: white; border: 1px solid #D2D0CE; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .excel-card-header { padding: 14px 18px; background: #F3F2F1; border-bottom: 2px solid #4472C4; font-size: 12pt; font-weight: 600; color: #323130; }
+  .excel-card-body { padding: 18px; }
+  .alert-box { padding: 12px 16px; margin-bottom: 16px; border-left: 4px solid; font-size: 10pt; }
+  .alert-info { background: #DEECF9; border-left-color: #4472C4; color: #323130; }
+  .alert-success { background: #DFF6DD; border-left-color: #107C10; color: #323130; }
+  .alert-warning { background: #FFF4CE; border-left-color: #CA5010; color: #323130; }
+  .alert-danger { background: #FDE7E9; border-left-color: #D83B01; color: #323130; }
+  .config-section { background: white; border: 1px solid #D2D0CE; margin-bottom: 16px; }
+  .config-header { padding: 12px 16px; font-size: 10pt; font-weight: 600; background: #F3F2F1; border-bottom: 2px solid; color: #323130; }
+  .config-header.danger { border-bottom-color: #D83B01; }
+  .config-header.primary { border-bottom-color: #4472C4; }
+  .config-header.success { border-bottom-color: #107C10; }
+  .config-header.warning { border-bottom-color: #CA5010; }
+  .config-header.info { border-bottom-color: #4472C4; }
+  .config-body { padding: 16px; }
+  .form-group { margin-bottom: 12px; }
+  .form-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 10pt; color: #323130; }
+  select { width: 100%; padding: 8px 12px; border: 1px solid #D2D0CE; font-size: 11pt; font-family: 'Segoe UI', sans-serif; }
+  select:focus { outline: none; border-color: #4472C4; }
+  .form-text { font-size: 10pt; color: #605E5C; margin-top: 6px; line-height: 1.5; }
+  .badge { display: inline-block; padding: 3px 8px; font-size: 9pt; font-weight: 600; text-transform: uppercase; }
+  .badge-danger { background: #FDE7E9; color: #D83B01; border: 1px solid #D83B01; }
+  .badge-success { background: #DFF6DD; color: #107C10; border: 1px solid #107C10; }
+  .badge-info { background: #DEECF9; color: #4472C4; border: 1px solid #4472C4; }
+  .badge-warning { background: #FFF4CE; color: #CA5010; border: 1px solid #CA5010; }
+  .btn { padding: 10px 20px; border: 1px solid #D2D0CE; font-size: 11pt; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+  .btn-primary { background: #4472C4; color: white; border-color: #4472C4; }
+  .btn-primary:hover { background: #2B579A; }
+  .btn-warning { background: #CA5010; color: white; border-color: #CA5010; }
+  .btn-warning:hover { background: #A44109; }
+  .btn-outline { background: white; color: #4472C4; }
+  .btn-outline:hover { background: #4472C4; color: white; }
+  .balance-display { text-align: center; padding: 12px; background: #F8F9FA; margin-top: 8px; border: 1px solid #EDEBE9; }
+  .balance-display-value { font-size: 18px; font-weight: 700; font-family: Consolas, monospace; }
+  .status-indicator { display: inline-block; padding: 4px 8px; font-size: 9pt; font-weight: 600; margin-top: 4px; }
+  .config-info-list { list-style: none; padding: 0; }
+  .config-info-item { padding: 12px; border-bottom: 1px solid #EDEBE9; display: flex; align-items: flex-start; gap: 12px; }
+  .config-info-item:last-child { border-bottom: none; }
+  .config-info-icon { font-size: 16px; flex-shrink: 0; }
+  .config-info-content { flex: 1; }
+  .config-info-label { font-weight: 600; font-size: 10pt; color: #323130; margin-bottom: 4px; }
+  .config-info-value { font-size: 10pt; color: #323130; }
+  .config-info-balance { font-size: 9pt; color: #605E5C; margin-top: 2px; }
+  @media (max-width: 1024px) { .two-col-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 class="h3 mb-0">
-                        <i class="bi bi-bank2 text-primary me-2"></i>
-                        Five-Tier Payment Allocation Setup
-                    </h1>
-                    <p class="text-muted mb-0">Configure GL accounts for sophisticated loan payment processing - {{ company.name }}</p>
-                </div>
-                <div>
-                    <a href="/coa/" class="btn btn-outline-primary btn-lg" target="_blank">
-                        <i class="bi bi-list-columns-reverse me-2"></i>
-                        View Chart of Accounts
-                        <i class="bi bi-box-arrow-up-right ms-2"></i>
-                    </a>
-                </div>
+<div class="page-wrapper">
+  <div class="unified-header">
+    <div class="header-title-section">
+      <h2>⚙️ Five-Tier Payment Allocation Setup</h2>
+      <p class="company-name">{{ company.name }}</p>
+    </div>
+    
+    <div class="balance-grid">
+      {% if config.general_loans_receivable_account %}
+      <div class="balance-item">
+        <div class="balance-label">Main Engine</div>
+        <div class="balance-value">${{ config.general_loans_receivable_account.current_balance|floatformat:2 }}</div>
+      </div>
+      {% endif %}
+      {% if config.principal_account %}
+      <div class="balance-item">
+        <div class="balance-label">Principal</div>
+        <div class="balance-value">${{ config.principal_account.current_balance|floatformat:2 }}</div>
+      </div>
+      {% endif %}
+      {% if config.interest_income_account %}
+      <div class="balance-item">
+        <div class="balance-label">Interest</div>
+        <div class="balance-value">${{ config.interest_income_account.current_balance|floatformat:2 }}</div>
+      </div>
+      {% endif %}
+      {% if config.late_fee_income_account %}
+      <div class="balance-item">
+        <div class="balance-label">Late Fee</div>
+        <div class="balance-value">${{ config.late_fee_income_account.current_balance|floatformat:2 }}</div>
+      </div>
+      {% endif %}
+      {% if config.general_loan_disbursements_account %}
+      <div class="balance-item">
+        <div class="balance-label">Disbursements</div>
+        <div class="balance-value">${{ config.general_loan_disbursements_account.current_balance|floatformat:2 }}</div>
+      </div>
+      {% endif %}
+    </div>
+    
+    <div class="header-actions">
+      <a href="/coa/" target="_blank">Chart of Accounts</a>
+    </div>
+  </div>
+
+  <div class="content-area">
+    <div class="two-col-grid">
+
+  <div class="content-area">
+    <div class="two-col-grid">
+      <div>
+        <div class="excel-card">
+          <div class="excel-card-header">⚙️ Configurable Five-Tier Payment System</div>
+          <div class="excel-card-body">
+            
+            <div class="alert-box alert-info" style="margin-bottom: 20px;">
+              <strong>Need to view available accounts?</strong><br>
+              Access your company's Chart of Accounts to see all available GL accounts with balances.
+              <a href="/coa/" target="_blank" class="btn btn-outline" style="margin-top: 8px; font-size: 10pt; padding: 6px 12px;">Chart of Accounts</a>
             </div>
 
-            <div class="row">
-                <div class="col-lg-8">
-                    <div class="card shadow">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="card-title mb-0">
-                                <i class="bi bi-gear-fill me-2"></i>
-                                Configurable Five-Tier Payment System
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <!-- COA Quick Access Info -->
-                            <div class="alert alert-primary d-flex align-items-center mb-4">
-                                <i class="bi bi-info-circle-fill me-3" style="font-size: 1.5rem;"></i>
-                                <div class="flex-fill">
-                                    <div class="fw-bold">Need to view available accounts?</div>
-                                    <div class="small">
-                                        Access your company's separated Chart of Accounts to see all available GL accounts with balances.
-                                        <a href="/coa/" target="_blank" class="btn btn-sm btn-primary ms-2">
-                                            <i class="bi bi-list-columns-reverse me-1"></i>
-                                            Open Chart of Accounts
-                                            <i class="bi bi-box-arrow-up-right ms-1"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
+            {% if config and config.general_loans_receivable_account and config.principal_account and config.interest_income_account and config.late_fee_income_account and config.general_loan_disbursements_account %}
+              <div class="alert-box alert-success">
+                <strong>✅ Complete five-tier payment allocation configured!</strong>
+                <div style="margin-top: 8px; font-size: 10pt;">
+                  <div>✅ General Loans Receivable: {{ config.general_loans_receivable_account.code }} - {{ config.general_loans_receivable_account.name }}</div>
+                  <div>✅ Principal: {{ config.principal_account.code }} - {{ config.principal_account.name }}</div>
+                  <div>✅ Interest: {{ config.interest_income_account.code }} - {{ config.interest_income_account.name }}</div>
+                  <div>✅ Late Fee: {{ config.late_fee_income_account.code }} - {{ config.late_fee_income_account.name }}</div>
+                  <div>✅ Loan Disbursements: {{ config.general_loan_disbursements_account.code }} - {{ config.general_loan_disbursements_account.name }}</div>
+                </div>
+              </div>
+            {% elif config and config.general_loans_receivable_account and config.principal_account and config.interest_income_account and config.late_fee_income_account %}
+              <div class="alert-box alert-warning">
+                <strong>⚠️ Four-Tier Complete</strong> - Add General Loan Disbursements account for full five-tier auto-matching system.
+                <div style="margin-top: 8px; font-size: 10pt;">
+                  <div>✅ General Loans Receivable: {{ config.general_loans_receivable_account.code }} - {{ config.general_loans_receivable_account.name }}</div>
+                  <div>✅ Principal: {{ config.principal_account.code }} - {{ config.principal_account.name }}</div>
+                  <div>✅ Interest: {{ config.interest_income_account.code }} - {{ config.interest_income_account.name }}</div>
+                  <div>✅ Late Fee: {{ config.late_fee_income_account.code }} - {{ config.late_fee_income_account.name }}</div>
+                  <div>⚠️ Loan Disbursements: Not configured</div>
+                </div>
+              </div>
+            {% elif config and config.general_loans_receivable_account %}
+              <div class="alert-box alert-warning">
+                <strong>⚠️ Partial Configuration</strong> - Please configure all five accounts for complete allocation system.
+              </div>
+            {% else %}
+              <div class="alert-box alert-info">
+                <strong>ℹ️ Setup Required</strong> - Configure your five-tier payment allocation system below.
+              </div>
+            {% endif %}
 
-                            {% if config and config.general_loans_receivable_account and config.principal_account and config.interest_income_account and config.late_fee_income_account and config.general_loan_disbursements_account %}
-                                <div class="alert alert-success">
-                                    <i class="bi bi-check-circle-fill me-2"></i>
-                                    <strong>Complete five-tier payment allocation configured!</strong>
-                                    <div class="mt-2 small">
-                                        <div>✅ General Loans Receivable: {{ config.general_loans_receivable_account.code }} - {{ config.general_loans_receivable_account.name }}</div>
-                                        <div>✅ Principal: {{ config.principal_account.code }} - {{ config.principal_account.name }}</div>
-                                        <div>✅ Interest: {{ config.interest_income_account.code }} - {{ config.interest_income_account.name }}</div>
-                                        <div>✅ Late Fee: {{ config.late_fee_income_account.code }} - {{ config.late_fee_income_account.name }}</div>
-                                        <div>✅ Loan Disbursements: {{ config.general_loan_disbursements_account.code }} - {{ config.general_loan_disbursements_account.name }}</div>
-                                    </div>
-                                </div>
-                            {% elif config and config.general_loans_receivable_account and config.principal_account and config.interest_income_account and config.late_fee_income_account %}
-                                <div class="alert alert-warning">
-                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                    <strong>Four-Tier Complete</strong> - Add General Loan Disbursements account for full five-tier auto-matching system.
-                                    <div class="mt-2 small">
-                                        <div>✅ General Loans Receivable: {{ config.general_loans_receivable_account.code }} - {{ config.general_loans_receivable_account.name }}</div>
-                                        <div>✅ Principal: {{ config.principal_account.code }} - {{ config.principal_account.name }}</div>
-                                        <div>✅ Interest: {{ config.interest_income_account.code }} - {{ config.interest_income_account.name }}</div>
-                                        <div>✅ Late Fee: {{ config.late_fee_income_account.code }} - {{ config.late_fee_income_account.name }}</div>
-                                        <div>⚠️ Loan Disbursements: Not configured</div>
-                                    </div>
-                                </div>
-                            {% elif config and config.general_loans_receivable_account %}
-                                <div class="alert alert-warning">
-                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                    <strong>Partial Configuration</strong> - Please configure all five accounts for complete allocation system.
-                                </div>
-                            {% else %}
-                                <div class="alert alert-info">
-                                    <i class="bi bi-info-circle-fill me-2"></i>
-                                    <strong>Setup Required</strong> - Configure your five-tier payment allocation system below.
-                                </div>
-                            {% endif %}
-
-                            <form method="post" class="mt-4">
+            <form method="post" style="margin-top: 20px;">
+            <form method="post" style="margin-top: 20px;">
                                 {% csrf_token %}
                                 
                                 <!-- General Loans Receivable Account (Main Engine) -->
-                                <div class="mb-4">
-                                    <div class="card border-danger" style="border-width: 2px;">
-                                        <div class="card-header bg-danger text-white">
-                                            <h6 class="mb-0">
-                                                <i class="bi bi-gear-fill me-2"></i>
-                                                🚀 1. General Loans Receivable Account (MAIN ENGINE)
-                                            </h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col-md-8">
-                                                    <label for="{{ form.general_loans_receivable_account.id_for_label }}" class="form-label mb-2">
-                                                        <strong>General Loans Receivable Account</strong>
-                                                        <span class="badge bg-danger ms-2">MAIN ENGINE</span>
-                                                    </label>
-                                                    {{ form.general_loans_receivable_account }}
-                                                    <div class="form-text mt-2">
-                                                        <strong>🔥 This is the main account that creates Payment records via reconciliation!</strong><br>
-                                                        <strong>Recommended:</strong> 122000 - General Loans Receivable<br>
-                                                        <em>All loan payments from bank statements flow through this account.</em>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    {% if config.general_loans_receivable_account %}
-                                                        <div class="text-center">
-                                                            <div class="text-muted small">Current Balance</div>
-                                                            <div class="h4 mb-2 text-danger">${{ config.general_loans_receivable_account.current_balance|floatformat:2 }}</div>
-                                                            <div class="small text-success">
-                                                                <i class="bi bi-check-circle-fill me-1"></i>
-                                                                Payment Engine ACTIVE
-                                                            </div>
-                                                        </div>
-                                                    {% else %}
-                                                        <div class="text-center">
-                                                            <div class="text-warning">
-                                                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                                                                <strong>Payment Engine DISABLED</strong>
-                                                            </div>
-                                                        </div>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                            {% if form.general_loans_receivable_account.errors %}
-                                                <div class="alert alert-danger mt-3">
-                                                    {{ form.general_loans_receivable_account.errors.0 }}
-                                                </div>
-                                            {% endif %}
-                                        </div>
+                                <div class="config-section">
+                                  <div class="config-header danger">
+                                    1. General Loans Receivable Account (Main Engine)
+                                  </div>
+                                  <div class="config-body">
+                                    <div class="form-group">
+                                      <label for="{{ form.general_loans_receivable_account.id_for_label }}" class="form-label">
+                                        General Loans Receivable Account <span class="badge badge-danger">MAIN ENGINE</span>
+                                      </label>
+                                      {{ form.general_loans_receivable_account }}
+                                      <div class="form-text">
+                                        <strong>This is the main account that creates Payment records via reconciliation.</strong><br>
+                                        <strong>Recommended:</strong> 122000 - General Loans Receivable<br>
+                                        All loan payments from bank statements flow through this account.
+                                      </div>
                                     </div>
+                                    {% if config.general_loans_receivable_account %}
+                                    <div class="balance-display">
+                                      <div style="font-size: 10pt; color: #605E5C; margin-bottom: 4px;">Current Balance</div>
+                                      <div class="balance-display-value" style="color: #D83B01;">${{ config.general_loans_receivable_account.current_balance|floatformat:2 }}</div>
+                                      <div class="status-indicator badge-success">Payment Engine ACTIVE</div>
+                                    </div>
+                                    {% else %}
+                                    <div class="balance-display" style="background: #FFF4CE;">
+                                      <div style="color: #CA5010; font-weight: 600;">Payment Engine DISABLED</div>
+                                    </div>
+                                    {% endif %}
+                                    {% if form.general_loans_receivable_account.errors %}
+                                    <div class="alert-box alert-danger" style="margin-top: 12px;">
+                                      {{ form.general_loans_receivable_account.errors.0 }}
+                                    </div>
+                                    {% endif %}
+                                  </div>
                                 </div>
 
                                 <!-- Principal Allocation Account -->
-                                <div class="mb-4">
-                                    <div class="card border-primary">
-                                        <div class="card-header bg-primary text-white">
-                                            <h6 class="mb-0">
-                                                <i class="bi bi-bank2 me-2"></i>
-                                                💰 2. Principal Allocation Account
-                                            </h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col-md-8">
-                                                    <label for="{{ form.principal_account.id_for_label }}" class="form-label mb-2">
-                                                        <strong>Principal Allocation Account</strong>
-                                                    </label>
-                                                    {{ form.principal_account }}
-                                                    <div class="form-text mt-2">
-                                                        Account for principal portion during manager-approved splits.<br>
-                                                        <strong>Tip:</strong> Can be same as General Loans Receivable or separate account.
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    {% if config.principal_account %}
-                                                        <div class="text-center">
-                                                            <div class="text-muted small">Current Balance</div>
-                                                            <div class="h5 mb-0 text-primary">${{ config.principal_account.current_balance|floatformat:2 }}</div>
-                                                        </div>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                            {% if form.principal_account.errors %}
-                                                <div class="alert alert-danger mt-3">
-                                                    {{ form.principal_account.errors.0 }}
-                                                </div>
-                                            {% endif %}
-                                        </div>
+                                <div class="config-section">
+                                  <div class="config-header primary">
+                                    2. Principal Allocation Account
+                                  </div>
+                                  <div class="config-body">
+                                    <div class="form-group">
+                                      <label for="{{ form.principal_account.id_for_label }}" class="form-label">
+                                        Principal Allocation Account
+                                      </label>
+                                      {{ form.principal_account }}
+                                      <div class="form-text">
+                                        Account for principal portion during manager-approved splits.<br>
+                                        <strong>Tip:</strong> Can be same as General Loans Receivable or separate account.
+                                      </div>
                                     </div>
+                                    {% if config.principal_account %}
+                                    <div class="balance-display">
+                                      <div style="font-size: 10pt; color: #605E5C; margin-bottom: 4px;">Current Balance</div>
+                                      <div class="balance-display-value" style="color: #4472C4;">${{ config.principal_account.current_balance|floatformat:2 }}</div>
+                                    </div>
+                                    {% endif %}
+                                    {% if form.principal_account.errors %}
+                                    <div class="alert-box alert-danger" style="margin-top: 12px;">
+                                      {{ form.principal_account.errors.0 }}
+                                    </div>
+                                    {% endif %}
+                                  </div>
                                 </div>
 
                                 <!-- Interest Income Account -->
-                                <div class="mb-4">
-                                    <div class="card border-success">
-                                        <div class="card-header bg-success text-white">
-                                            <h6 class="mb-0">
-                                                <i class="bi bi-percent me-2"></i>
-                                                📈 3. Interest Income Account
-                                            </h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col-md-8">
-                                                    <label for="{{ form.interest_income_account.id_for_label }}" class="form-label mb-2">
-                                                        <strong>Interest Income Account</strong>
-                                                    </label>
-                                                    {{ form.interest_income_account }}
-                                                    <div class="form-text mt-2">
-                                                        Revenue account for interest portion of payments.<br>
-                                                        <strong>Recommended:</strong> 4200 - Interest Income
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    {% if config.interest_income_account %}
-                                                        <div class="text-center">
-                                                            <div class="text-muted small">Current Balance</div>
-                                                            <div class="h5 mb-0 text-success">${{ config.interest_income_account.current_balance|floatformat:2 }}</div>
-                                                        </div>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                            {% if form.interest_income_account.errors %}
-                                                <div class="alert alert-danger mt-3">
-                                                    {{ form.interest_income_account.errors.0 }}
-                                                </div>
-                                            {% endif %}
-                                        </div>
+                                <div class="config-section">
+                                  <div class="config-header success">
+                                    3. Interest Income Account
+                                  </div>
+                                  <div class="config-body">
+                                    <div class="form-group">
+                                      <label for="{{ form.interest_income_account.id_for_label }}" class="form-label">
+                                        Interest Income Account
+                                      </label>
+                                      {{ form.interest_income_account }}
+                                      <div class="form-text">
+                                        Revenue account for interest portion of payments.<br>
+                                        <strong>Recommended:</strong> 4200 - Interest Income
+                                      </div>
                                     </div>
+                                    {% if config.interest_income_account %}
+                                    <div class="balance-display">
+                                      <div style="font-size: 10pt; color: #605E5C; margin-bottom: 4px;">Current Balance</div>
+                                      <div class="balance-display-value" style="color: #107C10;">${{ config.interest_income_account.current_balance|floatformat:2 }}</div>
+                                    </div>
+                                    {% endif %}
+                                    {% if form.interest_income_account.errors %}
+                                    <div class="alert-box alert-danger" style="margin-top: 12px;">
+                                      {{ form.interest_income_account.errors.0 }}
+                                    </div>
+                                    {% endif %}
+                                  </div>
                                 </div>
 
                                 <!-- Late Fee Income Account -->
-                                <div class="mb-4">
-                                    <div class="card border-warning">
-                                        <div class="card-header bg-warning text-dark">
-                                            <h6 class="mb-0">
-                                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                                ⚠️ 4. Late Fee Income Account
-                                            </h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col-md-8">
-                                                    <label for="{{ form.late_fee_income_account.id_for_label }}" class="form-label mb-2">
-                                                        <strong>Late Fee Income Account</strong>
-                                                    </label>
-                                                    {{ form.late_fee_income_account }}
-                                                    <div class="form-text mt-2">
-                                                        Revenue account for late fee portion of payments.<br>
-                                                        <strong>Recommended:</strong> 4250 - Late Fee Income
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    {% if config.late_fee_income_account %}
-                                                        <div class="text-center">
-                                                            <div class="text-muted small">Current Balance</div>
-                                                            <div class="h5 mb-0 text-warning">${{ config.late_fee_income_account.current_balance|floatformat:2 }}</div>
-                                                        </div>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                            {% if form.late_fee_income_account.errors %}
-                                                <div class="alert alert-danger mt-3">
-                                                    {{ form.late_fee_income_account.errors.0 }}
-                                                </div>
-                                            {% endif %}
-                                        </div>
+                                <div class="config-section">
+                                  <div class="config-header warning">
+                                    4. Late Fee Income Account
+                                  </div>
+                                  <div class="config-body">
+                                    <div class="form-group">
+                                      <label for="{{ form.late_fee_income_account.id_for_label }}" class="form-label">
+                                        Late Fee Income Account
+                                      </label>
+                                      {{ form.late_fee_income_account }}
+                                      <div class="form-text">
+                                        Revenue account for late fee portion of payments.<br>
+                                        <strong>Recommended:</strong> 4250 - Late Fee Income
+                                      </div>
                                     </div>
+                                    {% if config.late_fee_income_account %}
+                                    <div class="balance-display">
+                                      <div style="font-size: 10pt; color: #605E5C; margin-bottom: 4px;">Current Balance</div>
+                                      <div class="balance-display-value" style="color: #CA5010;">${{ config.late_fee_income_account.current_balance|floatformat:2 }}</div>
+                                    </div>
+                                    {% endif %}
+                                    {% if form.late_fee_income_account.errors %}
+                                    <div class="alert-box alert-danger" style="margin-top: 12px;">
+                                      {{ form.late_fee_income_account.errors.0 }}
+                                    </div>
+                                    {% endif %}
+                                  </div>
                                 </div>
 
-                                <!-- General Loan Disbursements Account (NEW) -->
-                                <div class="mb-4">
-                                    <div class="card border-info" style="border-width: 2px;">
-                                        <div class="card-header bg-info text-white">
-                                            <h6 class="mb-0">
-                                                <i class="bi bi-arrow-up-circle-fill me-2"></i>
-                                                💰 5. General Loan Disbursements Account (AUTO-MATCH)
-                                            </h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col-md-8">
-                                                    <label for="{{ form.general_loan_disbursements_account.id_for_label }}" class="form-label mb-2">
-                                                        <strong>General Loan Disbursements Account</strong>
-                                                        <span class="badge bg-info ms-2">AUTO-MATCH</span>
-                                                    </label>
-                                                    {{ form.general_loan_disbursements_account }}
-                                                    <div class="form-text mt-2">
-                                                        <strong>🚀 Account for automatic loan disbursement detection and matching!</strong><br>
-                                                        <strong>Recommended:</strong> 1250 - General Loan Disbursements<br>
-                                                        <em>System will auto-match transactions like "EB-зээл олгов" to this account.</em>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    {% if config.general_loan_disbursements_account %}
-                                                        <div class="text-center">
-                                                            <div class="text-muted small">Current Balance</div>
-                                                            <div class="h5 mb-0 text-info">${{ config.general_loan_disbursements_account.current_balance|floatformat:2 }}</div>
-                                                            <div class="small text-success">
-                                                                <i class="bi bi-check-circle-fill me-1"></i>
-                                                                Auto-Match ACTIVE
-                                                            </div>
-                                                        </div>
-                                                    {% else %}
-                                                        <div class="text-center">
-                                                            <div class="text-warning">
-                                                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                                                                <strong>Auto-Match DISABLED</strong>
-                                                            </div>
-                                                        </div>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                            {% if form.general_loan_disbursements_account.errors %}
-                                                <div class="alert alert-danger mt-3">
-                                                    {{ form.general_loan_disbursements_account.errors.0 }}
-                                                </div>
-                                            {% endif %}
-                                        </div>
+                                <!-- General Loan Disbursements Account -->
+                                <div class="config-section">
+                                  <div class="config-header info">
+                                    5. General Loan Disbursements Account (Auto-Match)
+                                  </div>
+                                  <div class="config-body">
+                                    <div class="form-group">
+                                      <label for="{{ form.general_loan_disbursements_account.id_for_label }}" class="form-label">
+                                        General Loan Disbursements Account <span class="badge badge-info">AUTO-MATCH</span>
+                                      </label>
+                                      {{ form.general_loan_disbursements_account }}
+                                      <div class="form-text">
+                                        <strong>Account for automatic loan disbursement detection and matching.</strong><br>
+                                        <strong>Recommended:</strong> 1250 - General Loan Disbursements<br>
+                                        System will auto-match transactions like "EB-зээл олгов" to this account.
+                                      </div>
                                     </div>
+                                    {% if config.general_loan_disbursements_account %}
+                                    <div class="balance-display">
+                                      <div style="font-size: 10pt; color: #605E5C; margin-bottom: 4px;">Current Balance</div>
+                                      <div class="balance-display-value" style="color: #4472C4;">${{ config.general_loan_disbursements_account.current_balance|floatformat:2 }}</div>
+                                      <div class="status-indicator badge-success">Auto-Match ACTIVE</div>
+                                    </div>
+                                    {% else %}
+                                    <div class="balance-display" style="background: #FFF4CE;">
+                                      <div style="color: #CA5010; font-weight: 600;">Auto-Match DISABLED</div>
+                                    </div>
+                                    {% endif %}
+                                    {% if form.general_loan_disbursements_account.errors %}
+                                    <div class="alert-box alert-danger" style="margin-top: 12px;">
+                                      {{ form.general_loan_disbursements_account.errors.0 }}
+                                    </div>
+                                    {% endif %}
+                                  </div>
                                 </div>
 
                                 <!-- Save Button -->
-                                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                                    <button type="submit" class="btn btn-primary btn-lg px-4">
-                                        <i class="bi bi-check-lg me-2"></i>
-                                        Save Five-Tier Configuration
-                                    </button>
+                                <div style="text-align: right; margin-top: 20px;">
+                                  <button type="submit" class="btn btn-primary">
+                                    Save Configuration
+                                  </button>
                                 </div>
+                            </form>
                             </form>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Current Configuration Panel -->
-                <div class="col-lg-4">
+                <div>
                     {% if config %}
-                    <div class="card shadow">
-                        <div class="card-header bg-info text-white">
-                            <h6 class="mb-0">
-                                <i class="bi bi-info-circle-fill me-2"></i>
-                                Current Configuration
-                            </h6>
-                        </div>
-                        <div class="card-body">
+                    <div class="excel-card">
+                        <div class="excel-card-header">Current Configuration</div>
+                        <div class="excel-card-body">
+                            <ul class="config-info-list">
                             {% if config.general_loans_receivable_account %}
-                            <div class="mb-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="bi bi-gear-fill text-danger me-2"></i>
-                                    <strong>Main Engine:</strong>
-                                </div>
-                                <div class="ps-3">
-                                    <div class="fw-bold">{{ config.general_loans_receivable_account.code }} - {{ config.general_loans_receivable_account.name }}</div>
-                                    <div class="text-muted small">Balance: ${{ config.general_loans_receivable_account.current_balance|floatformat:2 }}</div>
-                                    <div class="badge bg-success small mt-1">Payment Engine Active</div>
-                                </div>
-                            </div>
+                            <li class="config-info-item">
+                              <div class="config-info-icon">⚙️</div>
+                              <div class="config-info-content">
+                                <div class="config-info-label">Main Engine:</div>
+                                <div class="config-info-value">{{ config.general_loans_receivable_account.code }} - {{ config.general_loans_receivable_account.name }}</div>
+                                <div class="config-info-balance">Balance: ${{ config.general_loans_receivable_account.current_balance|floatformat:2 }}</div>
+                                <div class="badge badge-success" style="margin-top: 4px;">Payment Engine Active</div>
+                              </div>
+                            </li>
                             {% endif %}
                             
                             {% if config.principal_account %}
-                            <div class="mb-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="bi bi-bank2 text-primary me-2"></i>
-                                    <strong>Principal:</strong>
-                                </div>
-                                <div class="ps-3">
-                                    <div>{{ config.principal_account.code }} - {{ config.principal_account.name }}</div>
-                                    <div class="text-muted small">Balance: ${{ config.principal_account.current_balance|floatformat:2 }}</div>
-                                </div>
-                            </div>
+                            <li class="config-info-item">
+                              <div class="config-info-icon">💰</div>
+                              <div class="config-info-content">
+                                <div class="config-info-label">Principal:</div>
+                                <div class="config-info-value">{{ config.principal_account.code }} - {{ config.principal_account.name }}</div>
+                                <div class="config-info-balance">Balance: ${{ config.principal_account.current_balance|floatformat:2 }}</div>
+                              </div>
+                            </li>
                             {% endif %}
                             
                             {% if config.interest_income_account %}
-                            <div class="mb-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="bi bi-percent text-success me-2"></i>
-                                    <strong>Interest Income:</strong>
-                                </div>
-                                <div class="ps-3">
-                                    <div>{{ config.interest_income_account.code }} - {{ config.interest_income_account.name }}</div>
-                                    <div class="text-muted small">Balance: ${{ config.interest_income_account.current_balance|floatformat:2 }}</div>
-                                </div>
-                            </div>
+                            <li class="config-info-item">
+                              <div class="config-info-icon">�</div>
+                              <div class="config-info-content">
+                                <div class="config-info-label">Interest Income:</div>
+                                <div class="config-info-value">{{ config.interest_income_account.code }} - {{ config.interest_income_account.name }}</div>
+                                <div class="config-info-balance">Balance: ${{ config.interest_income_account.current_balance|floatformat:2 }}</div>
+                              </div>
+                            </li>
                             {% endif %}
                             
                             {% if config.late_fee_income_account %}
-                            <div class="mb-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
-                                    <strong>Late Fee Income:</strong>
-                                </div>
-                                <div class="ps-3">
-                                    <div>{{ config.late_fee_income_account.code }} - {{ config.late_fee_income_account.name }}</div>
-                                    <div class="text-muted small">Balance: ${{ config.late_fee_income_account.current_balance|floatformat:2 }}</div>
-                                </div>
-                            </div>
+                            <li class="config-info-item">
+                              <div class="config-info-icon">⚠️</div>
+                              <div class="config-info-content">
+                                <div class="config-info-label">Late Fee Income:</div>
+                                <div class="config-info-value">{{ config.late_fee_income_account.code }} - {{ config.late_fee_income_account.name }}</div>
+                                <div class="config-info-balance">Balance: ${{ config.late_fee_income_account.current_balance|floatformat:2 }}</div>
+                              </div>
+                            </li>
                             {% endif %}
                             
                             {% if config.general_loan_disbursements_account %}
-                            <div class="mb-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <i class="bi bi-arrow-up-circle-fill text-info me-2"></i>
-                                    <strong>Loan Disbursements:</strong>
-                                </div>
-                                <div class="ps-3">
-                                    <div>{{ config.general_loan_disbursements_account.code }} - {{ config.general_loan_disbursements_account.name }}</div>
-                                    <div class="text-muted small">Balance: ${{ config.general_loan_disbursements_account.current_balance|floatformat:2 }}</div>
-                                    <div class="badge bg-success small mt-1">Auto-Match Active</div>
-                                </div>
-                            </div>
+                            <li class="config-info-item">
+                              <div class="config-info-icon">💸</div>
+                              <div class="config-info-content">
+                                <div class="config-info-label">Loan Disbursements:</div>
+                                <div class="config-info-value">{{ config.general_loan_disbursements_account.code }} - {{ config.general_loan_disbursements_account.name }}</div>
+                                <div class="config-info-balance">Balance: ${{ config.general_loan_disbursements_account.current_balance|floatformat:2 }}</div>
+                                <div class="badge badge-success" style="margin-top: 4px;">Auto-Match Active</div>
+                              </div>
+                            </li>
                             {% endif %}
+                            </ul>
                             
-                            <div class="text-muted mt-3 pt-3 border-top">
-                                <small>
-                                    <i class="bi bi-clock me-1"></i>
-                                    Last updated: {% if config.updated_at %}{{ config.updated_at|date:"M d, Y g:i A" }}{% else %}Never{% endif %}
-                                </small>
+                            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #EDEBE9; font-size: 10pt; color: #605E5C;">
+                              Last updated: {% if config.updated_at %}{{ config.updated_at|date:"M d, Y g:i A" }}{% else %}Never{% endif %}
                             </div>
                         </div>
                     </div>
                     
                     <!-- Split Approval Reset Section -->
-                    <div class="card shadow mt-4 border-warning">
-                        <div class="card-header bg-warning text-dark">
-                            <h6 class="mb-0">
-                                <i class="bi bi-arrow-counterclockwise me-2"></i>
-                                Unapprove Split Transactions
-                            </h6>
+                    <div class="excel-card" style="border: 2px solid #CA5010;">
+                        <div class="excel-card-header" style="background: #FFF4CE; color: #323130; border-bottom-color: #CA5010;">
+                          Unapprove Split Transactions
                         </div>
-                        <div class="card-body">
-                            <div class="alert alert-warning" role="alert">
-                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <div class="excel-card-body">
+                            <div class="alert-box alert-warning">
                                 <strong>Reset Split Approvals</strong>
-                                <p class="mb-2 mt-2">
+                                <p style="margin-top: 8px; margin-bottom: 8px;">
                                     This will unapprove all split transactions and reset the GL account balances for:
                                 </p>
-                                <ul class="mb-2">
+                                <ul style="margin-left: 20px; margin-bottom: 8px; font-size: 10pt;">
                                     <li><strong>Principal Allocation Account</strong> - Balance will be recalculated</li>
                                     <li><strong>Interest Income Account</strong> - Balance will be recalculated</li>
                                     <li><strong>Late Fee Income Account</strong> - Balance will be recalculated</li>
                                 </ul>
-                                <p class="mb-0">
-                                    <small class="text-muted">
-                                        <i class="bi bi-info-circle me-1"></i>
-                                        Note: General Loans Receivable Account will NOT be affected by this reset.
-                                        All payments will become approval-ready again.
-                                    </small>
+                                <p style="font-size: 10pt; color: #605E5C; margin-bottom: 0;">
+                                    Note: General Loans Receivable Account will NOT be affected by this reset.
+                                    All payments will become approval-ready again.
                                 </p>
                             </div>
                             
-                            <form method="post" action="{% url 'loan_reconciliation_bridge:reset_split_approvals' %}" class="mb-0">
+                            <form method="post" action="{% url 'loan_reconciliation_bridge:reset_split_approvals' %}" style="margin-top: 12px;">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-warning" 
-                                        onclick="return confirm('⚠️ Are you sure you want to reset all split approvals? This will:\n\n• Delete all SPLIT-PAY journal entries\n• Reset GL account balances (Principal, Interest, Late Fee)\n• Make all payments approval-ready again\n\nThis action cannot be undone!')">
-                                    <i class="bi bi-arrow-counterclockwise me-2"></i>
+                                <button type="submit" class="btn btn-warning" style="width: 100%;"
+                                        onclick="return confirm('Are you sure you want to reset all split approvals? This will:\n\n• Delete all SPLIT-PAY journal entries\n• Reset GL account balances (Principal, Interest, Late Fee)\n• Make all payments approval-ready again\n\nThis action cannot be undone!')">
                                     Reset All Split Approvals
                                 </button>
                             </form>
@@ -450,52 +449,42 @@
                     </div>
                     
                     <!-- Help Panel -->
-                    <div class="card shadow mt-4">
-                        <div class="card-header bg-secondary text-white">
-                            <h6 class="mb-0">
-                                <i class="bi bi-question-circle-fill me-2"></i>
-                                System Overview
-                            </h6>
-                        </div>
-                        <div class="card-body small">
-                            <div class="mb-3 p-3 bg-light rounded">
-                                <div class="fw-bold text-primary mb-2">
-                                    <i class="bi bi-list-columns-reverse me-1"></i>
-                                    Chart of Accounts Access
-                                </div>
-                                <div class="mb-2">View your company's separated COA with account balances:</div>
-                                <a href="/coa/" target="_blank" class="btn btn-sm btn-outline-primary w-100">
-                                    <i class="bi bi-list-columns-reverse me-1"></i>
-                                    Open Chart of Accounts
-                                    <i class="bi bi-box-arrow-up-right ms-1"></i>
+                    <div class="excel-card">
+                        <div class="excel-card-header">System Overview</div>
+                        <div class="excel-card-body" style="font-size: 10pt;">
+                            <div class="alert-box alert-info" style="margin-bottom: 16px;">
+                                <div style="font-weight: 600; margin-bottom: 8px;">Chart of Accounts Access</div>
+                                <div style="margin-bottom: 8px;">View your company's separated COA with account balances:</div>
+                                <a href="/coa/" target="_blank" class="btn btn-outline" style="width: 100%; font-size: 10pt; padding: 8px;">
+                                  Chart of Accounts
                                 </a>
                             </div>
                             
-                            <div class="border-top pt-3">
-                                <div class="mb-2">
-                                    <strong>🚀 Main Engine:</strong> Creates Payment records from bank reconciliation
+                            <div style="border-top: 1px solid #EDEBE9; padding-top: 16px;">
+                                <div style="margin-bottom: 8px;">
+                                    <strong>Main Engine:</strong> Creates Payment records from bank reconciliation
                                 </div>
-                                <div class="mb-2">
-                                    <strong>💰 Principal:</strong> Receives principal portion during splits
+                                <div style="margin-bottom: 8px;">
+                                    <strong>Principal:</strong> Receives principal portion during splits
                                 </div>
-                                <div class="mb-2">
-                                    <strong>📈 Interest:</strong> Receives interest portion during splits
+                                <div style="margin-bottom: 8px;">
+                                    <strong>Interest:</strong> Receives interest portion during splits
                                 </div>
-                                <div class="mb-2">
-                                    <strong>⚠️ Late Fee:</strong> Receives late fee portion during splits
+                                <div style="margin-bottom: 8px;">
+                                    <strong>Late Fee:</strong> Receives late fee portion during splits
                                 </div>
-                                <div class="mb-0">
-                                    <strong>🎯 Disbursements:</strong> Auto-matches loan disbursement transactions
+                                <div style="margin-bottom: 0;">
+                                    <strong>Disbursements:</strong> Auto-matches loan disbursement transactions
                                 </div>
                             </div>
                         </div>
                     </div>
                     {% else %}
-                    <div class="card shadow">
-                        <div class="card-body text-center">
-                            <i class="bi bi-gear text-muted" style="font-size: 3rem;"></i>
-                            <h6 class="mt-3">No Configuration Found</h6>
-                            <p class="text-muted small">Please configure your four-tier payment allocation system using the form.</p>
+                    <div class="excel-card">
+                        <div class="excel-card-body" style="text-align: center; padding: 40px 20px;">
+                            <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;">⚙️</div>
+                            <h6 style="font-weight: 600; margin-bottom: 8px;">No Configuration Found</h6>
+                            <p style="font-size: 10pt; color: #8A8886;">Please configure your five-tier payment allocation system using the form.</p>
                         </div>
                     </div>
                     {% endif %}

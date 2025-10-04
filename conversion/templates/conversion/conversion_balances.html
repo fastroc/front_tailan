@@ -5,84 +5,558 @@
 
 {% block extra_css %}
 <style>
-  .cb-toolbar .btn{border-radius:.35rem}
-  .cb-box{border:1px solid #e5e7eb;border-radius:.5rem;background:#f8fafc}
-  .cb-head{background:#eef2ff;border-bottom:1px solid #e5e7eb}
-  .cb-grid thead th{background:#f3f4f6;position:sticky;top:0;z-index:1}
-  .cb-help .accordion-button{font-weight:600}
-  .row-drag{cursor:grab;color:#94a3b8}
-  .cb-info-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* EXCEL-LIKE MINIMAL DESIGN - MATCHING COMPANY PAGE */
+  body {
+    font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+    font-size: 11pt;
+    background: #f0f0f0;
+  }
+  
+  .page-wrapper {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+  
+  /* Unified Header Section - Modern Excel Style */
+  .unified-header {
+    background: linear-gradient(135deg, #4472C4 0%, #2B579A 100%);
+    border-bottom: 3px solid #1F4788;
+    padding: 16px 24px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .header-title-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+  
+  .header-title-section h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     color: white;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
+    line-height: 1.2;
+  }
+  
+  .header-title-section h2 i {
+    font-size: 20px;
+    color: white;
+    opacity: 0.95;
+  }
+  
+  .company-name {
+    font-size: 12px;
+    opacity: 0.85;
+    color: rgba(255, 255, 255, 0.95);
+    margin: 0;
+    font-weight: 400;
+  }
+  
+  /* Balance Grid - Compact Cards */
+  .balance-grid {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    flex: 1;
+    justify-content: flex-end;
+  }
+  
+  .balance-item {
+    flex: 0 0 auto;
+    padding: 10px 16px;
+    background: white;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .balance-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  }
+  
+  .balance-item:first-child {
+    border-left: 3px solid #4472C4;
+  }
+  
+  .balance-item:nth-child(2) {
+    border-left: 3px solid #4472C4;
+  }
+  
+  .balance-item:nth-child(3) {
+    border-left: 3px solid #CA5010;
+  }
+  
+  .balance-item:last-child {
+    border-left: 3px solid #D83B01;
+  }
+  
+  .balance-label {
+    font-size: 9px;
+    color: #605E5C;
+    margin-bottom: 4px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: 'Segoe UI', sans-serif;
+    text-align: center;
+  }
+  
+  .balance-value {
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Segoe UI', sans-serif;
+    letter-spacing: -0.3px;
+    text-align: center;
+  }
+  
+  .balance-value.text-primary {
+    color: #4472C4 !important;
+  }
+  
+  .balance-value.text-success {
+    color: #4472C4 !important;
+  }
+  
+  .balance-value.text-warning {
+    color: #CA5010 !important;
+  }
+  
+  .balance-value.text-danger {
+    color: #D83B01 !important;
+  }
+  
+  /* Header Actions */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .header-actions .btn-primary {
+    background: white;
+    color: #4472C4;
+    border: none;
+    border-radius: 0;
+    padding: 10px 20px;
+    font-size: 11pt;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    transition: all 0.2s;
+  }
+  
+  .header-actions .btn-primary:hover {
+    background: #F3F9FF;
+    color: #2B579A;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  }
+  
+  /* Excel-Style Content Area */
+  .content-area {
+    background: white;
+    padding: 20px 24px;
+  }
+  
+  /* Info Banner */
+  .info-banner {
+    background: linear-gradient(135deg, #E6F2FF 0%, #D4E9FF 100%);
+    border-left: 3px solid #4472C4;
+    border-radius: 0;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .info-banner h5 {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #323130;
+    margin: 0 0 4px 0;
+  }
+  
+  .info-banner p {
+    font-size: 11pt;
+    color: #605E5C;
+    margin: 0;
+  }
+  
+  /* Period Tabs */
+  .period-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #D2D0CE;
+  }
+  
+  .period-tab {
+    padding: 10px 20px;
+    background: white;
+    border: 1px solid #D2D0CE;
+    border-bottom: none;
+    border-radius: 0;
+    color: #605E5C;
+    text-decoration: none;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 11pt;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  
+  .period-tab:hover {
+    background: #F3F2F1;
+    color: #323130;
+  }
+  
+  .period-tab.active {
+    background: #4472C4;
+    color: white;
+    border-color: #4472C4;
+    font-weight: 600;
+  }
+  
+  /* Grid Box */
+  .grid-box {
+    background: white;
+    border: 1px solid #D2D0CE;
+    border-radius: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+  }
+  
+  .grid-header {
+    background: #F3F2F1;
+    border-bottom: 2px solid #D2D0CE;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .grid-header-text {
+    font-size: 11pt;
+    color: #323130;
+    font-weight: 500;
+  }
+  
+  .grid-header-actions {
+    display: flex;
+    gap: 16px;
+  }
+  
+  .grid-header-actions a {
+    font-size: 11pt;
+    color: #4472C4;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  
+  .grid-header-actions a:hover {
+    color: #2B579A;
+  }
+  
+  /* Excel-Style Table */
+  .cb-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 11pt;
+  }
+  
+  .cb-grid thead th {
+    background: #F3F2F1;
+    color: #323130;
+    font-weight: 600;
+    padding: 10px 12px;
+    border-bottom: 2px solid #D2D0CE;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    text-align: left;
+  }
+  
+  .cb-grid tbody tr {
+    border-bottom: 1px solid #EDEBE9;
+  }
+  
+  .cb-grid tbody tr:hover {
+    background: #F8F9FA;
+  }
+  
+  .cb-grid td {
+    padding: 8px 12px;
+    color: #323130;
+  }
+  
+  .cb-grid tfoot tr {
+    border-top: 2px solid #D2D0CE;
+  }
+  
+  .cb-grid tfoot td {
+    padding: 10px 12px;
+    font-weight: 600;
+    color: #323130;
+  }
+  
+  .row-drag {
+    cursor: grab;
+    color: #8A8886;
+    font-size: 14px;
+  }
+  
+  /* Form Controls */
+  .form-select, .form-control {
+    border: 1px solid #8A8886;
+    border-radius: 0;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 11pt;
+    padding: 6px 10px;
+  }
+  
+  .form-select:focus, .form-control:focus {
+    border-color: #4472C4;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(68, 114, 196, 0.2);
+  }
+  
+  /* Buttons */
+  .btn {
+    border-radius: 0;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 11pt;
+    font-weight: 500;
+    padding: 8px 20px;
+    transition: all 0.2s;
+  }
+  
+  .btn-primary {
+    background: #4472C4;
+    border: none;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background: #2B579A;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  }
+  
+  .btn-success {
+    background: #4472C4;
+    border: none;
+    color: white;
+  }
+  
+  .btn-success:hover {
+    background: #2B579A;
+  }
+  
+  .btn-warning {
+    background: #CA5010;
+    border: none;
+    color: white;
+  }
+  
+  .btn-warning:hover {
+    background: #A74109;
+  }
+  
+  .btn-outline-primary {
+    background: white;
+    border: 1px solid #4472C4;
+    color: #4472C4;
+  }
+  
+  .btn-outline-primary:hover {
+    background: #4472C4;
+    color: white;
+  }
+  
+  .btn-outline-secondary {
+    background: white;
+    border: 1px solid #8A8886;
+    color: #605E5C;
+  }
+  
+  .btn-outline-secondary:hover {
+    background: #F3F2F1;
+    border-color: #605E5C;
+  }
+  
+  .btn-outline-danger {
+    background: white;
+    border: 1px solid #D83B01;
+    color: #D83B01;
+  }
+  
+  .btn-outline-danger:hover {
+    background: #D83B01;
+    color: white;
+  }
+  
+  /* Help Box */
+  .help-box {
+    background: white;
+    border: 1px solid #D2D0CE;
+    border-radius: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  }
+  
+  .help-header {
+    padding: 16px 20px;
+    font-weight: 600;
+    border-bottom: 2px solid #D2D0CE;
+    color: #323130;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .accordion-button {
+    background: white;
+    border-radius: 0;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 11pt;
+    font-weight: 600;
+    color: #323130;
+    padding: 12px 16px;
+  }
+  
+  .accordion-button:not(.collapsed) {
+    background: #F3F2F1;
+    color: #4472C4;
+  }
+  
+  .accordion-button:focus {
+    box-shadow: none;
+    border-color: #D2D0CE;
+  }
+  
+  .accordion-body {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 11pt;
+    color: #605E5C;
+    padding: 16px;
+    line-height: 1.5;
+  }
+  
+  /* Warning Messages */
+  .text-warning {
+    color: #CA5010 !important;
+  }
+  
+  /* Grid Actions */
+  .grid-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px;
+    border-top: 2px solid #D2D0CE;
+    background: #F8F9FA;
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4" id="cbRoot">
-  <!-- Header with breadcrumb -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-1">
-          <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
-          <li class="breadcrumb-item"><a href="{% url 'company:company_detail' company.id %}">{{ company.name }}</a></li>
-          <li class="breadcrumb-item active">Conversion Balances</li>
-        </ol>
-      </nav>
-      <h4 class="mb-0">Conversion Balances</h4>
+<div class="page-wrapper">
+  <!-- Unified Header - Excel Style -->
+  <div class="unified-header">
+    <div class="header-title-section">
+      <h2>
+        <i class="bi bi-arrow-repeat"></i>
+        Conversion Balances
+      </h2>
+      <p class="company-name">{{ company.name }} • As at {{ as_at|date:'d M Y' }}</p>
     </div>
-    <div class="cb-toolbar d-flex gap-2">
-      <a href="{% url 'conversion:comparatives' company.id %}" class="btn btn-outline-primary btn-sm">
-        <i class="fas fa-plus me-1"></i>Add Comparative Balances
+    
+    <!-- Balance Grid -->
+    <div class="balance-grid">
+      <div class="balance-item">
+        <div class="balance-label">Total Debits</div>
+        <div class="balance-value text-primary" id="headerDr">$0.00</div>
+      </div>
+      <div class="balance-item">
+        <div class="balance-label">Total Credits</div>
+        <div class="balance-value text-success" id="headerCr">$0.00</div>
+      </div>
+      <div class="balance-item">
+        <div class="balance-label">Difference</div>
+        <div class="balance-value text-warning" id="headerDiff">$0.00</div>
+      </div>
+      <div class="balance-item">
+        <div class="balance-label">Conv. Date</div>
+        <div class="balance-value text-danger">{{ conv_date.conversion_date|date:"d M" }}</div>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <a href="{% url 'conversion:comparatives' company.id %}" class="btn-primary">
+        <i class="bi bi-plus-lg"></i>Comparatives
       </a>
-      <a href="{% url 'conversion:date' company.id %}" class="btn btn-outline-secondary btn-sm">
-        <i class="fas fa-calendar me-1"></i>Conversion Date
+      <a href="{% url 'dashboard' %}" class="btn-primary">
+        <i class="bi bi-speedometer2"></i>Dashboard
       </a>
     </div>
   </div>
+  
+  <!-- Content Area -->
+  <div class="content-area">
 
-  <!-- Info card -->
-  <div class="cb-info-card">
-    <div class="row align-items-center">
-      <div class="col-md-8">
-        <h5 class="mb-1">📊 Opening Balance Setup</h5>
-        <p class="mb-0">Enter your account balances as they existed in your previous system. This ensures accurate financial reporting from day one.</p>
-      </div>
-      <div class="col-md-4 text-md-end">
-        <div class="fs-6">
-          <strong>Conversion Date:</strong><br>
-          {{ conv_date.conversion_date|date:"d M Y" }}
-        </div>
-      </div>
+  <!-- Info Banner -->
+  <div class="info-banner">
+    <div style="flex: 1;">
+      <h5>📊 Opening Balance Setup</h5>
+      <p>Enter your account balances as they existed in your previous system. This ensures accurate financial reporting from day one.</p>
     </div>
   </div>
 
-  <!-- Period tabs -->
-  <ul class="nav nav-tabs mb-3">
+  <!-- Period Tabs -->
+  <div class="period-tabs">
     {% for p in periods %}
-      <li class="nav-item">
-        <a class="nav-link {% if p.active %}active{% endif %}" 
-           href="{% url 'conversion:balances' company.id %}?start={{ p.start }}&end={{ p.end }}">
-          {{ p.label }}
-        </a>
-      </li>
+      <a class="period-tab {% if p.active %}active{% endif %}" 
+         href="{% url 'conversion:balances' company.id %}?start={{ p.start }}&end={{ p.end }}">
+        {{ p.label }}
+      </a>
     {% endfor %}
-  </ul>
+  </div>
 
   <div class="row g-3">
     <div class="col-lg-8">
-      <div class="cb-box">
-        <div class="cb-head px-3 py-2 d-flex justify-content-between align-items-center">
-          <div class="small text-muted">
+      <div class="grid-box">
+        <div class="grid-header">
+          <div class="grid-header-text">
             Enter opening balances as at <strong>{{ as_at|date:'d M Y' }}</strong>
           </div>
-          <div class="d-flex gap-3 small">
-            <a href="#" class="text-decoration-underline" onclick="showAll();return false;">Show all accounts</a>
-            <a href="#" class="text-decoration-underline" onclick="removeZeros();return false;">Remove zero balances</a>
+          <div class="grid-header-actions">
+            <a href="#" onclick="showAll();return false;">Show all accounts</a>
+            <a href="#" onclick="removeZeros();return false;">Remove zero balances</a>
           </div>
         </div>
 
@@ -123,7 +597,7 @@
                 </td>
                 <td>
                   <button class="btn btn-outline-danger btn-sm" onclick="removeRow(this)" title="Remove row">
-                    <i class="fas fa-times"></i>
+                    <i class="bi bi-x"></i>
                   </button>
                 </td>
               </tr>
@@ -134,39 +608,39 @@
                 <td></td>
                 <td>
                   <button class="btn btn-outline-primary btn-sm" onclick="addRow()">
-                    <i class="fas fa-plus me-1"></i>Add a new line
+                    <i class="bi bi-plus me-1"></i>Add a new line
                   </button>
                 </td>
                 <td class="text-end fw-semibold">Total Debits</td>
                 <td class="text-end fw-semibold" id="totCrLabel">Total Credits</td>
                 <td></td>
               </tr>
-              <tr class="table-light">
+              <tr style="background: #F3F2F1;">
                 <td></td>
                 <td></td>
                 <td class="text-end fw-bold" id="totDr">$0.00</td>
                 <td class="text-end fw-bold" id="totCr">$0.00</td>
                 <td></td>
               </tr>
-              <tr id="diffRow" style="display: none;">
+              <tr id="diffRow" style="display: none; background: #FFF4CE;">
                 <td></td>
                 <td colspan="3">
-                  <div class="small text-warning">
+                  <div style="color: #CA5010; font-weight: 600;">
                     <strong>⚠️ Out of Balance</strong> — Debits and credits must be equal
                   </div>
                 </td>
-                <td class="text-end fw-semibold text-warning" id="diff">$0.00</td>
+                <td class="text-end fw-semibold" style="color: #CA5010;" id="diff">$0.00</td>
               </tr>
             </tfoot>
           </table>
         </div>
 
-        <div class="d-flex justify-content-center gap-2 p-3">
+        <div class="grid-actions">
           <button class="btn btn-success px-4" onclick="saveBalances()" id="saveBtn">
-            <i class="fas fa-save me-1"></i>Save Balances
+            <i class="bi bi-save me-1"></i>Save Balances
           </button>
           <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary px-4">
-            <i class="fas fa-times me-1"></i>Cancel
+            <i class="bi bi-x me-1"></i>Cancel
           </a>
         </div>
       </div>
@@ -174,11 +648,12 @@
 
     <!-- Right help column -->
     <div class="col-lg-4">
-      <div class="cb-box p-0">
-        <div class="p-3 fw-semibold border-bottom">
-          <i class="fas fa-question-circle text-warning me-2"></i>Starting with the right numbers
+      <div class="help-box">
+        <div class="help-header">
+          <i class="bi bi-question-circle" style="color: #CA5010;"></i>
+          Starting with the right numbers
         </div>
-        <div class="accordion cb-help" id="helpAcc">
+        <div class="accordion" id="helpAcc">
           <div class="accordion-item">
             <h2 class="accordion-header">
               <button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#h0">
@@ -210,7 +685,9 @@
       </div>
     </div>
   </div>
-</div>
+  
+  </div><!-- /.content-area -->
+</div><!-- /.page-wrapper -->
 
 <script>
   function fmt(n) {
@@ -234,24 +711,32 @@
       }
     });
 
+    // Update table totals
     document.getElementById('totDr').textContent = fmt(dr);
     document.getElementById('totCr').textContent = fmt(cr);
+    
+    // Update header balance cards
+    document.getElementById('headerDr').textContent = fmt(dr);
+    document.getElementById('headerCr').textContent = fmt(cr);
     
     const difference = Math.abs(dr - cr);
     const diffRow = document.getElementById('diffRow');
     const saveBtn = document.getElementById('saveBtn');
+    
+    // Update header difference
+    document.getElementById('headerDiff').textContent = fmt(difference);
     
     if (difference > 0.01) {
       document.getElementById('diff').textContent = fmt(difference);
       diffRow.style.display = '';
       saveBtn.classList.add('btn-warning');
       saveBtn.classList.remove('btn-success');
-      saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Out of Balance';
+      saveBtn.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>Out of Balance';
     } else {
       diffRow.style.display = 'none';
       saveBtn.classList.add('btn-success');
       saveBtn.classList.remove('btn-warning');
-      saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save Balances';
+      saveBtn.innerHTML = '<i class="bi bi-save me-1"></i>Save Balances';
     }
   }
 
@@ -270,7 +755,7 @@
       </td>
       <td class='text-end'><input type='number' step='0.01' min='0' class='form-control form-control-sm text-end debit'></td>
       <td class='text-end'><input type='number' step='0.01' min='0' class='form-control form-control-sm text-end credit'></td>
-      <td><button class='btn btn-outline-danger btn-sm' onclick='removeRow(this)' title='Remove row'><i class='fas fa-times'></i></button></td>
+      <td><button class='btn btn-outline-danger btn-sm' onclick='removeRow(this)' title='Remove row'><i class='bi bi-x'></i></button></td>
     `;
     tr.querySelectorAll('input').forEach(el => el.addEventListener('input', recalc));
     tb.appendChild(tr);

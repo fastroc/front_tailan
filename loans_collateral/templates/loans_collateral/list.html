@@ -6,43 +6,70 @@
 
 {% block extra_css %}
 <style>
+    /* EXCEL-STYLE DESIGN */
+    body {
+        font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+        font-size: 11pt;
+        background: #f0f0f0;
+    }
+    
+    .btn-primary {
+        background: #4472C4;
+        border: none;
+        border-radius: 0;
+        font-family: 'Segoe UI', sans-serif;
+        font-weight: 500;
+        color: white;
+        padding: 8px 20px;
+    }
+    
+    .btn-primary:hover {
+        background: #365a9b;
+        color: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+    
     .collateral-card {
-        transition: transform 0.2s, box-shadow 0.2s;
-        border: 1px solid #e9ecef;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        border: 1px solid #D2D0CE;
+        border-radius: 0;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
     }
     
     .collateral-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 0.5rem 1rem r            <a href="{% url 'loans_collateral:collateral_create' %}" class="btn btn-primary">
-                <i class="fas fa-plus me-1"></i>
-                Add First Collateral
-            </a>0, 0, 0, 0.15);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
     
     .status-badge {
-        padding: 0.375rem 0.75rem;
-        border-radius: 1rem;
-        font-size: 0.75rem;
+        padding: 4px 12px;
+        border-radius: 0;
+        font-size: 11px;
         font-weight: 600;
         text-transform: uppercase;
+        font-family: 'Segoe UI', sans-serif;
     }
     
-    .status-pending { background-color: #fff3cd; color: #856404; }
-    .status-verified { background-color: #d1ecf1; color: #0c5460; }
-    .status-valued { background-color: #cff4fc; color: #055160; }
-    .status-approved { background-color: #d4edda; color: #155724; }
-    .status-rejected { background-color: #f8d7da; color: #721c24; }
-    .status-released { background-color: #e2e3e5; color: #383d41; }
+    .status-pending { background-color: #FFF4CE; color: #8A6D00; border: 1px solid #F7E6A1; }
+    .status-verified { background-color: #D1ECF1; color: #0C5460; border: 1px solid #BEE5EB; }
+    .status-valued { background-color: #CFF4FC; color: #055160; border: 1px solid #B6EFFB; }
+    .status-approved { background-color: #D4EDDA; color: #155724; border: 1px solid #C3E6CB; }
+    .status-rejected { background-color: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB; }
+    .status-released { background-color: #E2E3E5; color: #383D41; border: 1px solid #D6D8DB; }
     
     .value-display {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 0.375rem;
-        padding: 0.75rem;
+        background: #F3F2F1;
+        border: 1px solid #EDEBE9;
+        border-radius: 0;
+        padding: 12px;
     }
     
     .filter-card {
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
+        background: white;
+        border: 1px solid #D2D0CE;
+        border-radius: 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
     }
     
     .collateral-icon {
@@ -51,44 +78,53 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 50%;
-        font-size: 1.25rem;
+        border-radius: 4px;
+        font-size: 18px;
     }
     
-    .icon-real-estate { background: #e3f2fd; color: #1976d2; }
-    .icon-vehicle { background: #f3e5f5; color: #7b1fa2; }
-    .icon-equipment { background: #fff3e0; color: #f57c00; }
-    .icon-securities { background: #e8f5e8; color: #388e3c; }
-    .icon-inventory { background: #fce4ec; color: #c2185b; }
-    .icon-other { background: #f5f5f5; color: #616161; }
+    .icon-real-estate { background: linear-gradient(135deg, #4472C4, #2B579A); color: white; }
+    .icon-vehicle { background: linear-gradient(135deg, #7B1FA2, #6A1B9A); color: white; }
+    .icon-equipment { background: linear-gradient(135deg, #F57C00, #E65100); color: white; }
+    .icon-securities { background: linear-gradient(135deg, #107C10, #0B5A0B); color: white; }
+    .icon-inventory { background: linear-gradient(135deg, #C2185B, #AD1457); color: white; }
+    .icon-other { background: linear-gradient(135deg, #605E5C, #484644); color: white; }
 </style>
 {% endblock %}
 
 {% block content %}
 {% csrf_token %}
-<div class="container-fluid">
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{% url 'loans_collateral:dashboard' %}" class="text-decoration-none">Collateral</a></li>
-            <li class="breadcrumb-item active" aria-current="page">All Items</li>
-        </ol>
-    </nav>
+<div class="container-fluid" style="background: #f0f0f0;">
+    <!-- Page Header - Excel Style -->
+    <div style="background: white; border: 1px solid #D2D0CE; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); padding: 20px 24px; margin-bottom: 20px;">
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb" style="background: none; padding: 0; margin: 0;">
+                <li class="breadcrumb-item"><a href="{% url 'loans_collateral:dashboard' %}" style="color: #4472C4; text-decoration: none;">Collateral</a></li>
+                <li class="breadcrumb-item" style="color: #605E5C;">All Items</li>
+            </ol>
+        </nav>
 
-    <!-- Page Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0">
-                <i class="fas fa-shield-alt text-primary me-2"></i>
-                All Collateral Items
-            </h1>
-            <p class="text-muted mb-0">Manage and monitor all registered collateral items</p>
-        </div>
-        <div>
-            <a href="{% url 'loans_collateral:collateral_create' %}" class="btn btn-primary">
-                <i class="fas fa-plus me-1"></i>
-                Add New Collateral
-            </a>
+        <div class="d-flex justify-content-between align-items-center">
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #4472C4, #2B579A); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: white;">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div>
+                        <h1 style="margin: 0; font-size: 24px; font-weight: 600; font-family: 'Segoe UI', sans-serif; color: #323130;">
+                            Collateral Management
+                        <h1 style="margin: 0; font-size: 24px; font-weight: 600; font-family: 'Segoe UI', sans-serif; color: #323130;">
+                            Collateral Management
+                        </h1>
+                        <p style="margin: 0; font-size: 13px; color: #605E5C;">Manage and monitor all registered collateral items</p>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <a href="{% url 'loans_collateral:collateral_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>
+                    Add New Collateral
+                </a>
+            </div>
         </div>
     </div>
 

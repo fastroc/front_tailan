@@ -19,17 +19,19 @@
     
     <style>
         :root {
-            --bs-primary: #1e3a8a;
-            --bs-primary-rgb: 30, 58, 138;
-            --bs-secondary: #6b7280;
-            --bs-success: #059669;
-            --bs-info: #0284c7;
-            --bs-warning: #d97706;
-            --bs-danger: #dc2626;
-            --bs-light: #f8fafc;
-            --bs-dark: #111827;
-            --sidebar-width: 280px;
-            --navbar-height: 70px;
+            /* Excel Color Palette - Excel Blue Theme */
+            --excel-blue: #4472C4;
+            --excel-dark-blue: #2B579A;
+            --excel-light-blue: #D6DCEB;
+            --excel-silver: #E7E6E6;
+            --excel-dark-silver: #A6A6A6;
+            --excel-gray: #F3F2F1;
+            --excel-dark-gray: #E1DFDD;
+            --excel-text: #323130;
+            --excel-text-secondary: #605E5C;
+            --excel-border: #D2D0CE;
+            --sidebar-width: 250px;
+            --navbar-height: 48px;
         }
 
         * {
@@ -39,174 +41,258 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background-color: #f8fafc;
-            color: #374151;
-            line-height: 1.6;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+            background-color: var(--excel-gray);
+            color: var(--excel-text);
+            line-height: 1.5;
+            font-size: 14px;
         }
 
-        /* Setup Section Styling */
-        .setup-section {
-            background: rgba(220, 38, 38, 0.05);
-            border: 1px solid rgba(220, 38, 38, 0.2);
-            border-radius: 8px;
-            margin: 16px 0;
-            padding: 16px 12px;
-        }
-        
-        .setup-section .sidebar-title {
-            color: #dc2626;
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
-        
-        .setup-section .sidebar-link {
-            background: rgba(220, 38, 38, 0.02);
-            border-left: 3px solid transparent;
-            transition: all 0.2s ease;
-        }
-        
-        .setup-section .sidebar-link:hover {
-            background: rgba(220, 38, 38, 0.1);
-            border-left-color: #dc2626;
-            transform: translateX(2px);
-        }
-        
-        .setup-section .badge {
-            font-size: 0.7rem;
-            font-weight: 600;
-            min-width: 20px;
-            height: 20px;
+        /* Excel-Style Top Navbar */
+        .navbar-professional {
+            background: var(--excel-blue);
+            height: var(--navbar-height);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+            border: none;
+            padding: 0 16px;
             display: flex;
             align-items: center;
-            justify-content: center;
-        }
-        
-        /* Professional card styling */
-        .navbar-professional {
-            background: linear-gradient(135deg, var(--bs-primary) 0%, #1e40af 100%);
-            height: var(--navbar-height);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border: none;
         }
 
         .navbar-brand-professional {
             font-weight: 600;
-            font-size: 1.25rem;
+            font-size: 16px;
             color: white !important;
             text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .navbar-brand-professional i {
+            font-size: 20px;
         }
 
         .nav-link-professional {
-            color: rgba(255, 255, 255, 0.9) !important;
-            font-weight: 500;
-            padding: 0.75rem 1rem;
-            border-radius: 0.375rem;
-            transition: all 0.2s ease;
+            color: rgba(255, 255, 255, 0.95) !important;
+            font-weight: 400;
+            padding: 8px 12px;
+            border-radius: 2px;
+            transition: all 0.15s ease;
+            font-size: 13px;
         }
 
         .nav-link-professional:hover {
             color: white !important;
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: var(--excel-dark-blue);
         }
 
-        /* Professional Sidebar */
+        /* Excel-Style Sidebar */
         .sidebar-professional {
             position: fixed;
             top: var(--navbar-height);
             left: 0;
             width: var(--sidebar-width);
             height: calc(100vh - var(--navbar-height));
-            background: white;
-            box-shadow: 1px 0 3px rgba(0, 0, 0, 0.1);
+            background: #FAFAFA;
+            border-right: 1px solid var(--excel-border);
             z-index: 1000;
             overflow-y: auto;
+            overflow-x: hidden;
         }
 
         .sidebar-nav {
-            padding: 1.5rem 0;
+            padding: 8px 0;
         }
 
         .sidebar-section {
-            margin-bottom: 2rem;
+            margin-bottom: 4px;
         }
 
         .sidebar-title {
-            font-size: 0.75rem;
+            font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
-            color: #6b7280;
-            margin-bottom: 0.75rem;
-            padding: 0 1.5rem;
-            letter-spacing: 0.05em;
+            color: var(--excel-text-secondary);
+            margin: 12px 0 4px 0;
+            padding: 0 12px;
+            letter-spacing: 0.5px;
         }
 
         .sidebar-link {
             display: flex;
             align-items: center;
-            padding: 0.75rem 1.5rem;
-            color: #374151;
+            padding: 8px 12px;
+            color: var(--excel-text);
             text-decoration: none;
-            font-weight: 500;
-            transition: all 0.2s ease;
+            font-weight: 400;
+            font-size: 13px;
+            transition: all 0.1s ease;
             border-left: 3px solid transparent;
+            margin: 1px 0;
         }
 
         .sidebar-link:hover {
-            background-color: #f3f4f6;
-            color: var(--bs-primary);
-            border-left-color: var(--bs-primary);
+            background-color: var(--excel-dark-gray);
+            color: var(--excel-text);
         }
 
         .sidebar-link.active {
-            background-color: rgba(30, 58, 138, 0.1);
-            color: var(--bs-primary);
-            border-left-color: var(--bs-primary);
+            background-color: var(--excel-light-blue);
+            color: var(--excel-dark-blue);
+            border-left-color: var(--excel-blue);
+            font-weight: 600;
         }
 
         .sidebar-link i {
-            width: 20px;
-            margin-right: 0.75rem;
+            width: 18px;
+            margin-right: 10px;
             text-align: center;
+            font-size: 14px;
+        }
+
+        /* Setup Section - Excel Warning Style */
+        .setup-section {
+            background: #FFF4CE;
+            border: 1px solid #FFD335;
+            border-radius: 2px;
+            margin: 8px 8px;
+            padding: 8px;
+        }
+        
+        .setup-section .sidebar-title {
+            color: #D83B01;
+            font-weight: 600;
+            margin-bottom: 8px;
+            padding: 0 4px;
+        }
+        
+        .setup-section .sidebar-link {
+            background: rgba(255, 255, 255, 0.5);
+            border-left: 3px solid transparent;
+            padding: 6px 8px;
+            margin: 2px 0;
+            border-radius: 2px;
+        }
+        
+        .setup-section .sidebar-link:hover {
+            background: rgba(255, 255, 255, 0.8);
+            border-left-color: #D83B01;
+        }
+        
+        .setup-section .badge {
+            font-size: 10px;
+            font-weight: 600;
+            min-width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #D83B01;
+            border-radius: 2px;
         }
 
         /* Main Content Area */
         .main-content {
             margin-left: var(--sidebar-width);
             margin-top: var(--navbar-height);
-            padding: 2rem;
+            padding: 16px;
             min-height: calc(100vh - var(--navbar-height));
+            width: calc(100% - var(--sidebar-width));
+            max-width: calc(100% - var(--sidebar-width));
+            box-sizing: border-box;
+            overflow-x: hidden;
         }
 
-        /* Professional Cards */
+        /* Excel-Style Cards */
         .card-professional {
-            border: none;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border-radius: 0.5rem;
-            transition: all 0.2s ease;
+            border: 1px solid var(--excel-border);
+            box-shadow: 0 1.6px 3.6px 0 rgba(0,0,0,0.132), 0 0.3px 0.9px 0 rgba(0,0,0,0.108);
+            border-radius: 2px;
+            transition: all 0.15s ease;
+            background: white;
         }
 
         .card-professional:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            transform: translateY(-1px);
+            box-shadow: 0 3.2px 7.2px 0 rgba(0,0,0,0.132), 0 0.6px 1.8px 0 rgba(0,0,0,0.108);
         }
 
-        /* Professional Buttons */
+        /* Excel-Style Buttons */
         .btn-professional {
-            font-weight: 500;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.375rem;
-            transition: all 0.2s ease;
+            font-weight: 400;
+            padding: 8px 16px;
+            border-radius: 2px;
+            transition: all 0.1s ease;
+            font-size: 13px;
+            border: 1px solid transparent;
         }
 
-        /* Professional Footer */
+        .btn-primary {
+            background: var(--excel-blue) !important;
+            border-color: var(--excel-blue) !important;
+            color: white !important;
+        }
+
+        .btn-primary:hover {
+            background: var(--excel-dark-blue) !important;
+            border-color: var(--excel-dark-blue) !important;
+        }
+
+        /* Excel-Style Footer - Status Bar */
+        .footer-excel {
+            position: fixed;
+            bottom: 0;
+            left: var(--sidebar-width);
+            right: 0;
+            height: 24px;
+            background: var(--excel-gray);
+            border-top: 1px solid var(--excel-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            font-size: 11px;
+            color: var(--excel-text);
+            z-index: 1000;
+        }
+        
+        .footer-excel-left,
+        .footer-excel-center,
+        .footer-excel-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .footer-separator {
+            color: var(--excel-border);
+        }
+        
+        /* Adjust main content for footer */
+        .main-content-wrapper {
+            padding-bottom: 24px;
+        }
+        
         .footer-professional {
-            margin-left: var(--sidebar-width);
-            background: white;
-            border-top: 1px solid #e5e7eb;
-            padding: 1.5rem 2rem;
-            color: #6b7280;
-            font-size: 0.875rem;
+            display: none; /* Hide old footer */
+        }
+
+        /* Excel-Style Scrollbar */
+        .sidebar-professional::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar-professional::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar-professional::-webkit-scrollbar-thumb {
+            background: var(--excel-border);
+            border-radius: 3px;
+        }
+
+        .sidebar-professional::-webkit-scrollbar-thumb:hover {
+            background: var(--excel-text-secondary);
         }
 
         /* Responsive Design */
@@ -220,9 +306,12 @@
                 transform: translateX(0);
             }
             
-            .main-content,
-            .footer-professional {
+            .main-content {
                 margin-left: 0;
+            }
+            
+            .footer-excel {
+                left: 0;
             }
         }
 
@@ -263,10 +352,12 @@
 <body>
     <!-- Top Navigation -->
     <nav class="navbar navbar-expand-lg navbar-professional fixed-top">
-        <div class="container-fluid px-4">
+        <div class="container-fluid px-3">
             <a class="navbar-brand-professional" href="/">
-                <i class="bi bi-calculator me-2"></i>
-                Professional Accounting
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                    <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/>
+                </svg>
+                Accounting Pro
             </a>
             
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -418,16 +509,16 @@
             <div class="sidebar-section">
                 <div class="sidebar-title">Banking</div>
                 <a href="/bank_accounts/" class="sidebar-link">
-                    <i class="bi bi-bank"></i>
-                    Bank Accounts
-                </a>
-                <a href="/reconciliation/" class="sidebar-link">
                     <i class="bi bi-arrow-repeat"></i>
                     Bank Reconciliation
                 </a>
                 <a href="/bank-rules/" class="sidebar-link">
                     <i class="bi bi-bullseye"></i>
                     Bank Rules
+                </a>
+                <a href="/analytics/dashboard/" class="sidebar-link">
+                    <i class="bi bi-graph-up"></i>
+                    🧠 AI Analytics
                 </a>
                 <a href="/loan-bridge/setup/" class="sidebar-link">
                     <i class="bi bi-link-45deg"></i>
@@ -622,6 +713,24 @@
             });
         });
     </script>
+    
+    <!-- Excel-Style Footer -->
+    <footer class="footer-excel">
+        <div class="footer-excel-left">
+            <span>© 2024 Accounting Pro</span>
+            <span class="footer-separator">|</span>
+            <span>Version 1.0</span>
+        </div>
+        <div class="footer-excel-center">
+            {% if active_company %}
+            <i class="bi bi-building" style="font-size: 10px;"></i>
+            <span>{{ active_company.name }}</span>
+            {% endif %}
+        </div>
+        <div class="footer-excel-right">
+            <span>Ready</span>
+        </div>
+    </footer>
     
     <!-- jQuery and Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>

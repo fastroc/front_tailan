@@ -2,23 +2,92 @@
 
 {% block title %}Loans{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* EXCEL-STYLE DESIGN */
+    body {
+        font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+        font-size: 11pt;
+        background: #f0f0f0;
+    }
+    
+    .btn-primary {
+        background: #4472C4;
+        border: none;
+        border-radius: 0;
+        font-family: 'Segoe UI', sans-serif;
+        font-weight: 500;
+        color: white;
+        padding: 8px 20px;
+    }
+    
+    .btn-primary:hover {
+        background: #365a9b;
+        color: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+    
+    .excel-table {
+        background: white;
+        border: 1px solid #D2D0CE;
+        border-radius: 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    }
+    
+    .excel-table table {
+        margin: 0;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 11pt;
+    }
+    
+    .excel-table thead th {
+        background: #F3F2F1;
+        color: #323130;
+        font-weight: 600;
+        border: 1px solid #D2D0CE;
+        padding: 12px;
+        text-align: left;
+    }
+    
+    .excel-table tbody td {
+        border: 1px solid #D2D0CE;
+        padding: 12px;
+        color: #323130;
+    }
+    
+    .excel-table tbody tr:hover {
+        background: #F3F2F1;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h1 class="h3 mb-0 text-gray-800">
-                <i class="fas fa-handshake text-primary me-2"></i>
-                Loans
-            </h1>
+<div class="container-fluid" style="background: #f0f0f0;">
+    <!-- Page Header - Excel Style -->
+    <div style="background: white; border: 1px solid #D2D0CE; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); padding: 20px 24px; margin-bottom: 20px;">
+        <div class="d-flex justify-content-between align-items-center">
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #4472C4, #2B579A); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: white;">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <div>
+                        <h1 style="margin: 0; font-size: 24px; font-weight: 600; font-family: 'Segoe UI', sans-serif; color: #323130;">
+                            Loans
+                        </h1>
+                        <p style="margin: 0; font-size: 13px; color: #605E5C;">Manage all active and inactive loans</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
     <div class="row">
         <div class="col-12">
-            <div class="card shadow">
-                <div class="card-body">
+            <div class="excel-table">
+                <div style="padding: 20px;">
                     <div class="table-responsive">
-                        <table class="table table-bordered">
+                        <table class="table table-bordered mb-0">
                             <thead>
                                 <tr>
                                     <th>Loan Number</th>
@@ -41,7 +110,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="5" class="text-center">No loans found</td>
+                                    <td colspan="5" class="text-center" style="color: #605E5C;">No loans found</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

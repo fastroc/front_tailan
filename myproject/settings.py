@@ -65,6 +65,8 @@ INSTALLED_APPS = [
     "bank_accounts",
     "reconciliation",
     "bank_rules",  # 🎯 NEW: Rule-based transaction matching (modular, can be disabled)
+    "smart_learning",  # 🧠 NEW: AI Pattern Learning & Machine Learning
+    "analytics",  # 📊 NEW: Performance Analytics & Business Intelligence
     "journal",
     "assets",  # Fixed Assets management
     "reports",  # New modular reports app
@@ -82,8 +84,9 @@ INSTALLED_APPS = [
 ]
 
 # Add debug toolbar only in development
-if DEBUG:
-    INSTALLED_APPS += ["debug_toolbar"]
+# TEMPORARILY DISABLED: Django Debug Toolbar causing NoneType SQL parsing errors
+# if DEBUG:
+#     INSTALLED_APPS += ["debug_toolbar"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -99,11 +102,12 @@ MIDDLEWARE = [
 ]
 
 # Add debug toolbar and template error detection middleware only in development
-if DEBUG:
-    MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]
-    MIDDLEWARE += [
-        "core.template_error_middleware.SilentTemplateErrorDetectionMiddleware"
-    ]
+# TEMPORARILY DISABLED: Django Debug Toolbar causing NoneType SQL parsing errors
+# if DEBUG:
+#     MIDDLEWARE += ["debug_toolbar.middleware.DebugToolbarMiddleware"]
+MIDDLEWARE += [
+    "core.template_error_middleware.SilentTemplateErrorDetectionMiddleware"
+]
 
 ROOT_URLCONF = "myproject.urls"
 

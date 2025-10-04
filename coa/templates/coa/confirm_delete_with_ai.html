@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}⚠️ Confirm Account Deletion - AI Data Warning{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            
+            <!-- Warning Card -->
+            <div class="card border-warning shadow-lg">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        ⚠️ AI Learning Data Warning
+                    </h4>
+                </div>
+                
+                <div class="card-body">
+                    <div class="alert alert-warning" role="alert">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-robot"></i>
+                            This account is being used by the AI Learning System!
+                        </h5>
+                        <hr>
+                        <p class="mb-0">
+                            <strong>Account:</strong> {{ account.code }} - {{ account.name }}
+                        </p>
+                    </div>
+                    
+                    <!-- AI Data Summary -->
+                    <div class="row text-center mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h2 class="text-primary">{{ ai_patterns_count }}</h2>
+                                    <p class="mb-0">
+                                        <i class="fas fa-brain"></i>
+                                        Learned Pattern{{ ai_patterns_count|pluralize }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h2 class="text-info">{{ ai_history_count }}</h2>
+                                    <p class="mb-0">
+                                        <i class="fas fa-history"></i>
+                                        Training Record{{ ai_history_count|pluralize }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- AI Patterns Details -->
+                    {% if ai_patterns %}
+                    <div class="mb-4">
+                        <h5><i class="fas fa-list"></i> Learned Patterns:</h5>
+                        <div class="list-group">
+                            {% for pattern in ai_patterns %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ pattern.name }}</h6>
+                                    <small class="text-muted">{{ pattern.confidence }}% confident</small>
+                                </div>
+                                <p class="mb-1">
+                                    <small class="text-muted">
+                                        "{{ pattern.description }}"
+                                    </small>
+                                </p>
+                                <small>
+                                    <i class="fas fa-check-circle text-success"></i>
+                                    Used {{ pattern.times_seen }} time{{ pattern.times_seen|pluralize }}
+                                </small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Options -->
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle"></i> What would you like to do?</h5>
+                        <p>Deleting this account will affect the AI's ability to suggest matches for these transaction types.</p>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <form method="post" action="{% url 'coa:delete_account' account.id %}">
+                        {% csrf_token %}
+                        
+                        <div class="row g-3">
+                            <!-- Option 1: Cancel -->
+                            <div class="col-md-4">
+                                <div class="card h-100 border-success">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-success">
+                                            <i class="fas fa-shield-alt"></i>
+                                            Keep Account
+                                        </h5>
+                                        <p class="card-text small">
+                                            Recommended: Keep the account and preserve all AI learning
+                                        </p>
+                                        <a href="{% url 'coa:chart_of_accounts' %}" class="btn btn-success btn-block">
+                                            <i class="fas fa-arrow-left"></i>
+                                            Keep & Go Back
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Option 2: Delete Account Only -->
+                            <div class="col-md-4">
+                                <div class="card h-100 border-warning">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-warning">
+                                            <i class="fas fa-trash"></i>
+                                            Delete Account
+                                        </h5>
+                                        <p class="card-text small">
+                                            This will fail because AI data protects the account
+                                        </p>
+                                        <button type="submit" class="btn btn-warning btn-block" disabled>
+                                            <i class="fas fa-ban"></i>
+                                            Cannot Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Option 3: Delete Everything -->
+                            <div class="col-md-4">
+                                <div class="card h-100 border-danger">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title text-danger">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            Delete All
+                                        </h5>
+                                        <p class="card-text small">
+                                            Delete account AND all AI learning data (cannot be undone!)
+                                        </p>
+                                        <input type="hidden" name="delete_ai_data" value="yes">
+                                        <button type="submit" class="btn btn-danger btn-block" 
+                                                onclick="return confirm('⚠️ Are you absolutely sure? This will delete the account AND all AI learning data. This cannot be undone!')">
+                                            <i class="fas fa-trash-alt"></i>
+                                            Delete Everything
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                    
+                    <!-- Help Text -->
+                    <div class="mt-4">
+                        <h6><i class="fas fa-question-circle"></i> Need Help?</h6>
+                        <ul class="small">
+                            <li><strong>Keep Account:</strong> Recommended if the AI is working well. Keeps all learned patterns.</li>
+                            <li><strong>Delete Everything:</strong> Use this if you're cleaning up duplicate accounts. You'll lose AI learning for this account.</li>
+                            <li><strong>Alternative:</strong> Consider merging/transferring transactions to another account instead of deleting.</li>
+                        </ul>
+                    </div>
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}

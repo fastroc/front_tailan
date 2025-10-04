@@ -10,6 +10,7 @@ urlpatterns = [
     path("account/create/", views.create_account_view, name="create_account"),
     path("account/<int:account_id>/edit/", views.edit_account_view, name="edit_account"),
     path("account/<int:account_id>/delete/", views.delete_account_view, name="delete_account"),
+    path("account/<int:account_id>/confirm-delete-ai/", views.confirm_delete_with_ai, name="confirm_delete_with_ai"),
     
     # Excel Upload for Accounts
     path("upload/", views.account_excel_upload_view, name="account_excel_upload"),

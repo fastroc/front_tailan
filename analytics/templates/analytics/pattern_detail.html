@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Pattern Details - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{% url 'analytics:dashboard' %}" class="btn btn-sm btn-outline-secondary mb-2">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+            <h2 class="mb-0">🧠 AI Pattern Details</h2>
+            <p class="text-muted mb-0">{{ pattern.description_pattern }}</p>
+        </div>
+    </div>
+
+    <!-- Pattern Info -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3">Pattern Information</h6>
+                    <div class="mb-3">
+                        <small class="text-muted">Description Pattern</small>
+                        <p class="mb-0 fw-bold">{{ pattern.description_pattern }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Match Type</small>
+                        <p class="mb-0">
+                            <span class="badge bg-info">{{ pattern.get_match_type_display }}</span>
+                        </p>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Suggested Who</small>
+                        <p class="mb-0">{{ pattern.suggested_who|default:"-" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Suggested Account</small>
+                        <p class="mb-0">{{ pattern.suggested_coa.account_display|default:"-" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Status</small>
+                        <p class="mb-0">
+                            {% if pattern.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3">Performance Metrics</h6>
+                    {% if analytics %}
+                        <div class="mb-3">
+                            <small class="text-muted">Accuracy Rate</small>
+                            <h3 class="mb-0 text-success">{{ analytics.accuracy_rate|floatformat:1 }}%</h3>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">Times Used</small>
+                            <h4 class="mb-0">{{ analytics.times_used }}</h4>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">Times Accepted</small>
+                            <h4 class="mb-0 text-success">{{ analytics.times_accepted }}</h4>
+                        </div>
+                        <div class="mb-3">
+                            <small class="text-muted">Times Rejected</small>
+                            <h4 class="mb-0 text-danger">{{ analytics.times_rejected }}</h4>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No analytics data yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3">Training Status</h6>
+                    <div class="mb-3">
+                        <small class="text-muted">Times Used</small>
+                        <h4 class="mb-0">{{ pattern.times_used }}</h4>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Times Accepted</small>
+                        <h4 class="mb-0 text-success">{{ pattern.times_accepted }}</h4>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Success Rate</small>
+                        <h4 class="mb-0">{{ pattern.success_rate_display }}</h4>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Health Status</small>
+                        <p class="mb-0">
+                            <span class="badge bg-{{ pattern.health_status }}">
+                                {{ pattern.get_health_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Training Status</small>
+                        <p class="mb-0">
+                            {% if pattern.is_well_trained %}
+                                <span class="badge bg-success">Well Trained</span>
+                            {% else %}
+                                <span class="badge bg-warning">Needs More Training</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Match History -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 pt-3">
+                    <h6 class="mb-0">📊 Match History</h6>
+                </div>
+                <div class="card-body">
+                    {% if match_history %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Description</th>
+                                        <th>Amount</th>
+                                        <th>Confidence</th>
+                                        <th>Was Accepted</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for match in match_history %}
+                                    <tr>
+                                        <td class="text-muted small">{{ match.matched_at|date:"M d, Y H:i" }}</td>
+                                        <td>{{ match.transaction_description|truncatechars:50 }}</td>
+                                        <td>{{ match.amount|floatformat:2 }}</td>
+                                        <td>
+                                            <span class="badge bg-info">{{ match.confidence_score|floatformat:0 }}%</span>
+                                        </td>
+                                        <td>
+                                            {% if match.was_accepted %}
+                                                <span class="badge bg-success">✓ Yes</span>
+                                            {% elif match.was_accepted == False %}
+                                                <span class="badge bg-danger">✗ No</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Pending</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-history fa-3x mb-3 opacity-25"></i>
+                            <p>No match history yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 pt-3">
+                    <h6 class="mb-0">💬 User Feedback</h6>
+                </div>
+                <div class="card-body">
+                    {% if feedback %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>User</th>
+                                        <th>Feedback</th>
+                                        <th>Comments</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for fb in feedback %}
+                                    <tr>
+                                        <td class="text-muted small">{{ fb.created_at|date:"M d, Y H:i" }}</td>
+                                        <td>{{ fb.user.username }}</td>
+                                        <td>
+                                            {% if fb.was_correct %}
+                                                <span class="badge bg-success">✓ Correct</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">✗ Incorrect</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ fb.comments|default:"-"|truncatechars:60 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-comments fa-3x mb-3 opacity-25"></i>
+                            <p>No feedback yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

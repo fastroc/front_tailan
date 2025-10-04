@@ -6,7 +6,8 @@ from . import ajax_split_views
 app_name = "reconciliation"
 
 urlpatterns = [
-    path("", views.dashboard, name="dashboard"),
+    # REMOVED: Dashboard is now handled by /bank_accounts/
+    # path("", views.dashboard, name="dashboard"),
     # Redirect old complex reconciliation to simple mode
     path(
         "account/<str:account_id>/",
@@ -76,6 +77,18 @@ urlpatterns = [
         "ajax/simple-save-all/",
         ajax_views.simple_save_all_transactions,
         name="simple_save_all_transactions",
+    ),
+    # NEW: Save single transaction reconciliation
+    path(
+        "save-transaction/<int:transaction_id>/",
+        ajax_views.save_transaction_reconciliation,
+        name="save_transaction_reconciliation",
+    ),
+    # NEW: Get reconciled transactions
+    path(
+        "api/reconciled-transactions/<int:account_id>/",
+        ajax_views.get_reconciled_transactions,
+        name="get_reconciled_transactions",
     ),
     # Split transaction AJAX endpoints
     path(

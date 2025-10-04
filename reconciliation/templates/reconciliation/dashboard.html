@@ -1,806 +1,597 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% load humanize %}
 
 {% block title %}Reconciliation Dashboard - {{ block.super }}{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* Reconciliation specific styles aligned with main design system */
-    .reconciliation-container {
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-        min-height: calc(100vh - var(--navbar-height));
-    }
-
-    .card-reconciliation {
-        border: none;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        border-radius: 1rem;
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-        margin-bottom: 2rem;
-        transition: all 0.3s ease;
-        border: 1px solid rgba(59, 130, 246, 0.1);
-    }
-
-    .card-reconciliation:hover {
-        box-shadow: 0 8px 35px rgba(59, 130, 246, 0.15);
-        transform: translateY(-4px);
-    }
-
-    .transaction-item {
-        padding: 1rem;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.375rem;
-        background: #ffffff;
-        margin-bottom: 0.5rem;
-        transition: all 0.2s ease;
-    }
-
-    .transaction-item:hover {
-        border-color: var(--primary-color);
-        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
-    }
-
-    .amount-debit {
-        color: #dc2626;
-        font-weight: 600;
-    }
-
-    .amount-credit {
-        color: #059669;
-        font-weight: 600;
-    }
-
-    .btn-reconcile {
-        background: linear-gradient(135deg, var(--bs-primary) 0%, #1e40af 100%);
-        border: none;
-        color: white;
-        font-weight: 500;
-        padding: 0.75rem 1.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.875rem;
-        transition: all 0.2s ease;
-        min-width: 120px;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .btn-reconcile:hover {
-        color: white;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
-        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-    }
-
-    .btn-reconcile:disabled {
-        background: #9ca3af;
-        transform: none;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        cursor: not-allowed;
-        opacity: 0.6;
-    }
-
-    .btn-reconcile:focus {
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
-        outline: none;
-    }
-
-    /* Secondary button styling aligned with professional design */
-    .btn-secondary {
-        background: #6b7280;
-        border: none;
-        color: white;
-        font-weight: 500;
-        padding: 0.75rem 1.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.875rem;
-        transition: all 0.2s ease;
-        min-width: 120px;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .btn-secondary:hover {
-        background: #374151;
-        color: white;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(107, 114, 128, 0.25);
-    }
-
-    /* Success button styling */
-    .btn-success {
-        background: #059669;
-        border: none;
-        color: white;
-        font-weight: 500;
-        padding: 0.75rem 1.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.875rem;
-        transition: all 0.2s ease;
-        min-width: 120px;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .btn-success:disabled {
-        opacity: 0.8;
-        cursor: not-allowed;
-        transform: none;
-    }
-
-    .match-form {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.5rem;
-        padding: 1.5rem;
-        margin-top: 1rem;
-    }
-
-    .form-label {
-        font-weight: 500;
-        color: #374151;
-        margin-bottom: 0.5rem;
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.025em;
-    }
-
-    .form-control {
-        border: 1px solid #d1d5db;
-        border-radius: 0.375rem;
-        padding: 0.625rem;
-        transition: all 0.2s ease;
-        font-size: 0.875rem;
-    }
-
-    .form-control:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-
-    .status-unreconciled {
-        background: #fef3c7;
-        color: #92400e;
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 500;
-    }
-
-    .status-reconciled {
-        background: #d1fae5;
-        color: #065f46;
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 500;
-    }
-
-    .page-header {
-        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
-        color: white;
-        padding: 2rem 0;
-        margin-bottom: 2rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .stats-card {
-        background: white;
-        border-radius: 0.5rem;
-        padding: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        text-align: center;
-        transition: all 0.2s ease;
-    }
-
-    .stats-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .stats-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--primary-color);
-        margin-bottom: 0.5rem;
-    }
-
-    .stats-label {
-        color: #6b7280;
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-
-    /* Toast notification styles */
-    .toast-container {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 1050;
-    }
-
-    .toast {
-        min-width: 300px;
-        background: white;
-        border: none;
-        border-radius: 0.5rem;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-    }
-
-    .toast-success .toast-header {
-        background: #d1fae5;
-        color: #065f46;
-        border-bottom: 1px solid #a7f3d0;
-    }
-
-    /* Help section styles */
-    .help-section {
-        background: #f0f9ff;
-        border: 1px solid #bae6fd;
-        border-radius: 0.5rem;
-        padding: 1rem;
-        margin-top: 1rem;
-    }
-
-    .help-title {
-        color: #0369a1;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-        font-size: 0.875rem;
-    }
-
-    .help-text {
-        color: #0c4a6e;
-        font-size: 0.8rem;
-        line-height: 1.4;
-        margin-bottom: 0.5rem;
-    }
-
-    /* Progress indicator */
-    .progress-container {
-        margin-top: 1rem;
-        padding: 1rem;
-        background: #f8fafc;
-        border-radius: 0.375rem;
-        border: 1px solid #e2e8f0;
-    }
-
-    .progress-step {
-        display: flex;
-        align-items: center;
-        margin-bottom: 0.5rem;
-        font-size: 0.875rem;
-    }
-
-    .progress-step.completed {
-        color: #059669;
-    }
-
-    .progress-step.active {
-        color: var(--primary-color);
-        font-weight: 500;
-    }
-
-    .progress-step i {
-        margin-right: 0.5rem;
-        width: 16px;
-    }
-
-    /* Bank Account Item Styles */
-    .bank-account-item {
-        padding: 1.5rem;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.75rem;
-        background: #ffffff;
-        transition: all 0.2s ease;
-        margin-bottom: 1rem;
-    }
-
-    .bank-account-item:hover {
-        border-color: var(--bs-primary);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
-        transform: translateY(-2px);
-    }
-
-    .account-info h6 {
-        color: #1f2937;
-        font-weight: 600;
-        font-size: 1rem;
-    }
-
-    .account-balance strong {
-        font-size: 1.1rem;
-        font-weight: 600;
-    }
-
-    .progress {
-        border-radius: 6px;
-        background-color: #e5e7eb;
-        height: 8px;
-    }
-
-    .progress-bar {
-        border-radius: 6px;
-        transition: width 0.6s ease;
-    }
-
-    .badge {
-        font-size: 0.75rem;
-        font-weight: 500;
-        padding: 0.375rem 0.75rem;
-        border-radius: 0.375rem;
-    }
-
-    /* Button alignment and spacing */
-    .col-md-2.text-end {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-    }
+  /* EXCEL-LIKE MINIMAL DESIGN - MATCHING CONVERSION PAGE */
+  body {
+    font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+    font-size: 11pt;
+    background: #f0f0f0;
+  }
+  
+  .page-wrapper {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+  
+  /* Unified Header Section - Modern Excel Style */
+  .unified-header {
+    background: linear-gradient(135deg, #4472C4 0%, #2B579A 100%);
+    border-bottom: 3px solid #1F4788;
+    padding: 16px 24px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .header-title-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+  
+  .header-title-section h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: white;
+    line-height: 1.2;
+  }
+  
+  .header-title-section h2 i {
+    font-size: 20px;
+    color: white;
+    opacity: 0.95;
+  }
+  
+  .company-name {
+    font-size: 12px;
+    opacity: 0.85;
+    color: rgba(255, 255, 255, 0.95);
+    margin: 0;
+    font-weight: 400;
+  }
+  
+  /* Balance Grid - Compact Cards */
+  .balance-grid {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    flex: 1;
+    justify-content: flex-end;
+  }
+  
+  .balance-item {
+    flex: 0 0 auto;
+    padding: 10px 16px;
+    background: white;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .balance-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  }
+  
+  .balance-item:first-child {
+    border-left: 3px solid #4472C4;
+  }
+  
+  .balance-item:nth-child(2) {
+    border-left: 3px solid #4472C4;
+  }
+  
+  .balance-item:nth-child(3) {
+    border-left: 3px solid #CA5010;
+  }
+  
+  .balance-item:last-child {
+    border-left: 3px solid #D83B01;
+  }
+  
+  .balance-label {
+    font-size: 9px;
+    color: #605E5C;
+    margin-bottom: 4px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: 'Segoe UI', sans-serif;
+    text-align: center;
+  }
+  
+  .balance-value {
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Segoe UI', sans-serif;
+    letter-spacing: -0.3px;
+    text-align: center;
+  }
+  
+  .balance-value.text-primary {
+    color: #4472C4 !important;
+  }
+  
+  .balance-value.text-success {
+    color: #4472C4 !important;
+  }
+  
+  .balance-value.text-warning {
+    color: #CA5010 !important;
+  }
+  
+  .balance-value.text-danger {
+    color: #D83B01 !important;
+  }
+  
+  /* Header Actions */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .header-actions .btn-primary {
+    background: white;
+    color: #4472C4;
+    border: none;
+    border-radius: 0;
+    padding: 10px 20px;
+    font-size: 11pt;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    transition: all 0.2s;
+  }
+  
+  .header-actions .btn-primary:hover {
+    background: #F3F9FF;
+    color: #2B579A;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  }
+  
+  /* Excel-Style Content Area */
+  .content-area {
+    background: white;
+    padding: 20px 24px;
+  }
+  
+  /* Account Cards Grid */
+  .accounts-grid {
+    display: block;
+    margin-top: 20px;
+    border: 1px solid #D2D0CE;
+    background: white;
+  }
+  
+  .account-card {
+    background: white;
+    border-bottom: 2px solid #EDEBE9;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    transition: all 0.2s;
+    position: relative;
+  }
+  
+  .account-card:last-child {
+    border-bottom: none;
+  }
+  
+  .account-card:hover {
+    background: #F8F9FA;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transform: translateX(2px);
+    border-left: 4px solid #4472C4;
+  }
+  
+  .account-header {
+    display: grid;
+    grid-template-columns: 280px 1fr 140px 120px 120px 200px;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: white;
+    border-bottom: 1px solid #EDEBE9;
+  }
+  
+  .account-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #4472C4 0%, #2B579A 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    border-radius: 0;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(68, 114, 196, 0.3);
+  }
+  
+  .account-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .account-name {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: #323130;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .account-type {
+    font-size: 10px;
+    color: #8A8886;
+    margin: 0;
+    font-family: 'Consolas', monospace;
+  }
+  
+  .account-balance {
+    font-size: 13px;
+    font-weight: 700;
+    color: #323130;
+    text-align: right;
+    font-family: 'Consolas', 'Courier New', monospace;
+    white-space: nowrap;
+  }
+  
+  /* Excel Table-Style Stats */
+  .account-stats-table {
+    background: white;
+    display: contents;
+  }
+  
+  .stats-row {
+    display: grid;
+    grid-template-columns: 280px 1fr 140px 120px 120px 200px;
+    border-bottom: 1px solid #EDEBE9;
+    align-items: center;
+  }
+  
+  .stats-cell {
+    padding: 10px 16px;
+    text-align: center;
+    border-right: 1px solid #F3F2F1;
+  }
+  
+  .stats-cell:first-child {
+    text-align: left;
+    font-size: 10px;
+    color: #605E5C;
+    font-weight: 600;
+    grid-column: 1 / 3;
+  }
+  
+  .stats-cell:last-child {
+    border-right: none;
+  }
+  
+  .stat-label {
+    font-size: 9px;
+    color: #8A8886;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  
+  .stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    font-family: 'Segoe UI', sans-serif;
+    line-height: 1;
+    color: #323130;
+  }
+  
+  .stat-value.reconciled {
+    color: #107C10;
+    text-shadow: 0 1px 2px rgba(16, 124, 16, 0.1);
+  }
+  
+  .stat-value.unreconciled {
+    color: #D83B01;
+    text-shadow: 0 1px 2px rgba(216, 59, 1, 0.1);
+  }
+  
+  /* Progress Bar */
+  .reconciliation-progress {
+    padding: 12px 16px;
+    background: #FAFAFA;
+    border-bottom: 1px solid #EDEBE9;
+    display: grid;
+    grid-template-columns: 280px 1fr 140px 120px 120px 200px;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .progress-label {
+    font-size: 10px;
+    color: #605E5C;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .progress-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    grid-column: 2 / 6;
+  }
+  
+  .progress {
+    flex: 1;
+    height: 12px;
+    background: #EDEBE9;
+    border-radius: 0;
+    overflow: hidden;
+    border: 1px solid #D2D0CE;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+  }
+  
+  .progress-bar {
+    background: linear-gradient(90deg, #107C10 0%, #0E6B0E 100%);
+    border-radius: 0;
+    transition: width 0.3s;
+    height: 100%;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  
+  .progress-percent {
+    font-size: 12px;
+    font-weight: 700;
+    color: #107C10;
+    min-width: 50px;
+    text-align: right;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  
+  /* Account Actions */
+  .account-actions {
+    display: grid;
+    grid-template-columns: 280px 1fr 140px 120px 120px 200px;
+    background: #F8F9FA;
+    align-items: center;
+    gap: 12px;
+    padding: 0;
+    border-top: 1px solid #EDEBE9;
+  }
+  
+  .account-actions a,
+  .account-actions button {
+    padding: 12px 16px;
+    background: white;
+    border: 1px solid #D2D0CE;
+    border-radius: 0;
+    color: #4472C4;
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.2s;
+    cursor: pointer;
+    font-family: 'Segoe UI', sans-serif;
+    margin: 12px 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  
+  .account-actions a:hover,
+  .account-actions button:hover:not(:disabled) {
+    background: #4472C4;
+    color: white;
+    border-color: #4472C4;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(68, 114, 196, 0.3);
+  }
+  
+  .account-actions button:disabled {
+    background: #F3F2F1;
+    color: #A19F9D;
+    cursor: not-allowed;
+    border-color: #EDEBE9;
+  }
+  
+  .account-actions i {
+    font-size: 11px;
+    margin-right: 6px;
+  }
+    color: white;
+  }
+  
+  .account-actions button:disabled {
+    background: #E1DFDD;
+    color: #8A8886;
+    cursor: not-allowed;
+  }
+  
+  /* Empty State */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: linear-gradient(135deg, #F3F9FF 0%, #E6F2FF 100%);
+    border: 2px dashed #D2D0CE;
+    border-radius: 0;
+    margin-top: 20px;
+  }
+  
+  .empty-state i {
+    font-size: 48px;
+    color: #4472C4;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+  
+  .empty-state h5 {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #323130;
+    margin-bottom: 8px;
+  }
+  
+  .empty-state p {
+    font-size: 11pt;
+    color: #605E5C;
+    margin-bottom: 20px;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="reconciliation-container">
-    {% csrf_token %}
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-8">
-                    <h1 class="mb-2">
-                        <i class="bi bi-check-circle me-3"></i>
-                        Bank Reconciliation
-                    </h1>
-                    <p class="mb-0 opacity-90">Match and reconcile bank transactions with your accounting records</p>
-                </div>
-                <div class="col-md-4 text-end">
-                    <div class="mt-3">
-                        <button class="btn btn-primary dropdown-toggle" type="button" 
-                                data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-tools me-1"></i>
-                            Tools
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#" onclick="refreshAllAccounts()">
-                                <i class="fas fa-sync me-2"></i>Refresh All Accounts
-                            </a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="page-wrapper">
+  <!-- Unified Header -->
+  <div class="unified-header">
+    <div class="header-title-section">
+      <h2>
+        <i class="bi bi-check-circle"></i>
+        Bank Reconciliation
+      </h2>
+      <p class="company-name">Match and reconcile bank transactions with your accounting records</p>
     </div>
+    
+    <!-- Balance Grid -->
+    <div class="balance-grid">
+      <div class="balance-item">
+        <div class="balance-label">Total Accounts</div>
+        <div class="balance-value text-primary">{{ total_accounts|default:0 }}</div>
+      </div>
+      <div class="balance-item">
+        <div class="balance-label">Total Balance</div>
+        <div class="balance-value text-success">${{ total_balance|default:0|floatformat:2 }}</div>
+      </div>
+      <div class="balance-item">
+        <div class="balance-label">Reconciled</div>
+        <div class="balance-value text-warning">{{ total_reconciled|default:0 }}</div>
+      </div>
+      <div class="balance-item">
+        <div class="balance-label">Unreconciled</div>
+        <div class="balance-value text-danger">{{ total_unreconciled|default:0 }}</div>
+      </div>
+    </div>
+    
+    <!-- Header Actions -->
+    <div class="header-actions">
+      <a href="{% url 'dashboard' %}" class="btn btn-primary">
+        <i class="bi bi-speedometer2"></i>Dashboard
+      </a>
+    </div>
+  </div>
+  
+  <!-- Content Area -->
+  <div class="content-area">
 
-    <div class="container">
-        <!-- Bank Accounts List -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card-reconciliation">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="bi bi-bank me-2"></i>
-                            Bank Accounts - Reconciliation Status
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        {% if accounts_data %}
-                            {% for account_data in accounts_data %}
-                                <div class="bank-account-item mb-4" data-account="{{ account_data.account.id }}">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-3">
-                                            <div class="account-info">
-                                                <h6 class="mb-1">
-                                                    <i class="bi bi-bank2 me-2 text-primary"></i>{{ account_data.account.name }}
-                                                </h6>
-                                                <small class="text-muted">Account: {{ account_data.account_number }}</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <div class="account-balance">
-                                                <small class="text-muted">Balance</small><br>
-                                                {% if account_data.balance >= 0 %}
-                                                    <strong class="amount-credit">${{ account_data.balance|floatformat:2|intcomma }}</strong>
-                                                {% else %}
-                                                    <strong class="amount-debit">${{ account_data.balance|floatformat:2|intcomma }}</strong>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <div class="unreconciled-count">
-                                                <small class="text-muted">Unreconciled</small><br>
-                                                {% if account_data.unreconciled_count > 0 %}
-                                                    <span class="badge bg-warning">{{ account_data.unreconciled_count }} transaction{{ account_data.unreconciled_count|pluralize }}</span>
-                                                {% else %}
-                                                    <span class="badge bg-success">0 transactions</span>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="progress-info">
-                                                <small class="text-muted">Progress</small>
-                                                <div class="progress mt-1" style="height: 8px;">
-                                                    <div class="progress-bar bg-success" style="width: {{ account_data.reconciliation_percentage }}%"></div>
-                                                </div>
-                                                {% if account_data.reconciliation_percentage == 100 %}
-                                                    <small class="text-success">{{ account_data.reconciliation_percentage }}% Complete</small>
-                                                {% elif account_data.reconciliation_percentage >= 50 %}
-                                                    <small class="text-success">{{ account_data.reconciliation_percentage }}% Complete</small>
-                                                {% else %}
-                                                    <small class="text-warning">{{ account_data.reconciliation_percentage }}% Complete</small>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                        <div class="col-md-2 text-end">
-                                            <div class="btn-group" role="group">
-                                                {% if account_data.status == 'completed' %}
-                                                    <button class="btn btn-success" disabled>
-                                                        <i class="bi bi-check-circle me-1"></i>Complete
-                                                    </button>
-                                                    <button class="btn btn-outline-warning btn-sm" 
-                                                            onclick="restartReconciliation('{{ account_data.account.id }}', '{{ account_data.account.name }}', {{ account_data.reconciled_count|default:0 }})"
-                                                            title="Restart reconciliation for this account">
-                                                        <i class="bi bi-arrow-clockwise"></i>
-                                                    </button>
-                                                {% elif account_data.status == 'empty' %}
-                                                    <button class="btn btn-secondary" onclick="openAccountUpload('{{ account_data.account.id }}')">
-                                                        <i class="bi bi-upload me-1"></i>{{ account_data.action_text }}
-                                                    </button>
-                                                {% else %}
-                                                    <button class="btn btn-primary" onclick="openAccountReconciliationSimple('{{ account_data.account.id }}')">
-                                                        <i class="bi bi-lightning me-1"></i>Start Reconciliation
-                                                    </button>
-                                                    {% if account_data.reconciled_count > 0 %}
-                                                    <button class="btn btn-outline-warning btn-sm" 
-                                                            onclick="restartReconciliation('{{ account_data.account.id }}', '{{ account_data.account.name }}', {{ account_data.reconciled_count }})"
-                                                            title="Restart reconciliation for this account">
-                                                        <i class="bi bi-arrow-clockwise"></i>
-                                                    </button>
-                                                    {% endif %}
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="text-center py-5">
-                                <i class="bi bi-bank2 text-muted mb-3" style="font-size: 3rem;"></i>
-                                <h5 class="text-muted">No Bank Accounts Found</h5>
-                                <p class="text-muted">Please add bank accounts to start reconciliation.</p>
-                                <a href="/bank_accounts/" class="btn btn-primary">
-                                    <i class="bi bi-plus-circle me-1"></i>Add Bank Account
-                                </a>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+  {% if accounts_data %}
+  <div class="accounts-grid">
+    {% for account_data in accounts_data %}
+    <div class="account-card">
+      <!-- Account Header Row - Excel Style -->
+      <div class="account-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div class="account-icon">
+            <i class="bi bi-bank"></i>
+          </div>
+          <div class="account-info">
+            <div class="account-name">{{ account_data.account.name }}</div>
+          </div>
         </div>
+        <div class="account-type">{{ account_data.account_number|default:"—" }}</div>
+        <div class="account-balance">${{ account_data.balance|default:0|floatformat:2 }}</div>
+        <div style="text-align: center;">
+          <div class="stat-label">Reconciled</div>
+          <div class="stat-value reconciled">{{ account_data.reconciled_count|default:0 }}</div>
+        </div>
+        <div style="text-align: center;">
+          <div class="stat-label">Unreconciled</div>
+          <div class="stat-value unreconciled">{{ account_data.unreconciled_count|default:0 }}</div>
+        </div>
+        <div style="text-align: center;">
+          <div class="stat-label">Total</div>
+          <div class="stat-value">{{ account_data.transaction_count|default:0 }}</div>
+        </div>
+      </div>
+      
+      <!-- Progress Bar Row -->
+      <div class="reconciliation-progress">
+        <div class="progress-label">Progress</div>
+        <div class="progress-container">
+          <div class="progress">
+            <div class="progress-bar" style="width: {{ account_data.reconciliation_percentage|default:0 }}%"></div>
+          </div>
+          <div class="progress-percent">{{ account_data.reconciliation_percentage|default:0 }}%</div>
+        </div>
+      </div>
+      
+      <!-- Action Buttons Row -->
+      <div class="account-actions">
+        <div></div>
+        <div style="display: flex; gap: 8px; grid-column: 2 / 7; padding: 0 16px 14px;">
+          {% if account_data.status == 'completed' %}
+          <button disabled style="flex: 1;">
+            <i class="bi bi-check-circle"></i>Completed
+          </button>
+          {% else %}
+          <a href="{% url 'reconciliation:account_detail' account_data.account.id %}" style="flex: 1;">
+            <i class="bi bi-play-circle"></i>Start Reconcile
+          </a>
+          {% endif %}
+          <a href="{% url 'bank_accounts:bank_statement' account_data.account.id %}" style="flex: 1;">
+            <i class="bi bi-file-text"></i>View Statement
+          </a>
+          <a href="{% url 'bank_accounts:upload_transactions' account_data.account.id %}" style="flex: 1;">
+            <i class="bi bi-upload"></i>Upload File
+          </a>
+        </div>
+      </div>
     </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div>
+      <i class="bi bi-bank"></i>
+    </div>
+    <h5>No Bank Accounts Found</h5>
+    <p>Add bank accounts to start reconciliation</p>
+    <a href="{% url 'bank_accounts:add' %}" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-2"></i>Add Bank Account
+    </a>
+  </div>
+  {% endif %}
+
+  </div>
 </div>
-
-<!-- Toast Container -->
-<div class="toast-container"></div>
-
-<!-- Restart Confirmation Modal -->
-<div class="modal fade" id="restartConfirmationModal" tabindex="-1" aria-labelledby="restartConfirmationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <h5 class="modal-title" id="restartConfirmationModalLabel">
-                    <i class="bi bi-exclamation-triangle text-warning me-2"></i>
-                    Restart Reconciliation
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-warning border-0" role="alert">
-                    <i class="bi bi-info-circle me-2"></i>
-                    <strong>This action will permanently delete all reconciliation matches for this account.</strong>
-                </div>
-                
-                <p class="mb-3">You are about to restart reconciliation for:</p>
-                <div class="card bg-light border-0 mb-3">
-                    <div class="card-body py-2">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-bank2 text-primary me-2"></i>
-                            <strong id="restart-account-name">Account Name</strong>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mb-3">
-                    <p class="mb-2"><strong>What will happen:</strong></p>
-                    <ul class="list-unstyled">
-                        <li><i class="bi bi-x-circle text-danger me-2"></i><span id="restart-matches-count">0</span> transaction matches will be deleted</li>
-                        <li><i class="bi bi-arrow-clockwise text-info me-2"></i>Reconciliation progress will be reset to 0%</li>
-                        <li><i class="bi bi-journal-text text-info me-2"></i>Associated journal entries will be preserved (recommended)</li>
-                    </ul>
-                </div>
-                
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="deleteJournalsCheck">
-                    <label class="form-check-label" for="deleteJournalsCheck">
-                        <strong class="text-danger">Also delete associated journal entries</strong>
-                        <small class="d-block text-muted">⚠️ Warning: This cannot be undone and may affect your accounting records</small>
-                    </label>
-                </div>
-            </div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x me-1"></i>Cancel
-                </button>
-                <button type="button" class="btn btn-danger" id="confirmRestartBtn" onclick="confirmRestart()">
-                    <i class="bi bi-arrow-clockwise me-1"></i>Restart Reconciliation
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-// Global variables for restart functionality
-let restartAccountId = '';
-let restartAccountName = '';
-let restartMatchesCount = 0;
-
-// Open simple reconciliation interface
-function openAccountReconciliationSimple(accountId) {
-    // Show progress/loading state
-    const button = document.querySelector(`[data-account="${accountId}"] .btn-primary`);
-    if (button) {
-        const originalContent = button.innerHTML;
-        
-        button.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Loading...';
-        button.disabled = true;
-        
-        showToast('Starting Reconciliation', `Opening reconciliation for account ${accountId}`, 'info');
-        
-        // Simulate real process delay
-        setTimeout(() => {
-            // Redirect to the simple reconciliation interface
-            window.location.href = `/reconciliation/account/${accountId}/simple/`;
-        }, 1000);
-    }
-}
-
-// Restart reconciliation with confirmation
-function restartReconciliation(accountId, accountName, matchesCount) {
-    restartAccountId = accountId;
-    restartAccountName = accountName;
-    restartMatchesCount = matchesCount;
-    
-    // Update modal content
-    document.getElementById('restart-account-name').textContent = accountName;
-    document.getElementById('restart-matches-count').textContent = matchesCount;
-    
-    // Show the confirmation modal
-    const modal = new bootstrap.Modal(document.getElementById('restartConfirmationModal'));
-    modal.show();
-}
-
-// Confirm restart action
-async function confirmRestart() {
-    const deleteJournals = document.getElementById('deleteJournalsCheck').checked;
-    const confirmBtn = document.getElementById('confirmRestartBtn');
-    const modal = bootstrap.Modal.getInstance(document.getElementById('restartConfirmationModal'));
-    
-    // Show loading state
-    confirmBtn.disabled = true;
-    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Restarting...';
-    
-    try {
-        const response = await fetch('{% url "reconciliation:restart_reconciliation" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value || getCookie('csrftoken')
-            },
-            body: JSON.stringify({
-                account_id: restartAccountId,
-                delete_journals: deleteJournals
-            })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            // Hide modal
-            modal.hide();
-            
-            // Show success toast
-            showToast(
-                'Reconciliation Restarted', 
-                `Successfully restarted ${result.account_name}. ${result.matches_deleted} matches deleted.`, 
-                'success'
-            );
-            
-            // Update the UI
-            updateAccountAfterRestart(restartAccountId);
-            
-            // Auto-refresh page after 3 seconds
-            setTimeout(() => {
-                window.location.reload();
-            }, 3000);
-            
-        } else {
-            throw new Error(result.error || 'Failed to restart reconciliation');
-        }
-        
-    } catch (error) {
-        console.error('Error restarting reconciliation:', error);
-        showToast('Error', 'Failed to restart reconciliation: ' + error.message, 'error');
-        
-        // Reset button
-        confirmBtn.disabled = false;
-        confirmBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Restart Reconciliation';
-    }
-}
-
-// Update account display after restart
-function updateAccountAfterRestart(accountId) {
-    const accountItem = document.querySelector(`[data-account="${accountId}"]`);
-    if (accountItem) {
-        // Reset progress bar
-        const progressBar = accountItem.querySelector('.progress-bar');
-        const progressText = accountItem.querySelector('.progress-info small:last-child');
-        
-        if (progressBar) {
-            progressBar.style.width = '0%';
-        }
-        if (progressText) {
-            progressText.textContent = '0% Complete';
-            progressText.className = 'text-muted';
-        }
-        
-        // Update unreconciled count badge
-        const badge = accountItem.querySelector('.badge');
-        if (badge) {
-            badge.className = 'badge bg-warning';
-            badge.textContent = `${restartMatchesCount} transactions`;
-        }
-        
-        // Update button to show reconcile action
-        const buttonContainer = accountItem.querySelector('.col-md-2.text-end .btn-group');
-        if (buttonContainer) {
-            buttonContainer.innerHTML = `
-                <button class="btn btn-primary" onclick="openAccountReconciliationSimple('${accountId}')">
-                    <i class="bi bi-lightning me-1"></i>Start Reconciliation
-                </button>
-            `;
-        }
-    }
-}
-
-// Get CSRF token from cookies
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
-// Open account file upload
-function openAccountUpload(accountId) {
-    // Show progress/loading state
-    const button = document.querySelector(`[data-account="${accountId}"] .btn-secondary`);
-    if (button) {
-        const originalContent = button.innerHTML;
-        
-        button.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Loading...';
-        button.disabled = true;
-        
-        showToast('Starting Upload', `Opening upload for account ${accountId}`, 'info');
-        
-        // Simulate real process delay
-        setTimeout(() => {
-            // Redirect to the bank account upload page
-            window.location.href = `/bank_accounts/`;
-        }, 1500);
-    }
-}
-
-// Get account name by ID
-function getAccountName(accountId) {
-    const accountNames = {
-        'anz-business': 'ANZ Business Account',
-        'cba-savings': 'CBA Savings Account',
-        'westpac-credit': 'Westpac Credit Card',
-        'nab-term': 'NAB Term Deposit'
-    };
-    return accountNames[accountId] || 'Unknown Account';
-}
-
-// Update progress for an account
-function updateAccountProgress(accountId, progress) {
-    const accountItem = document.querySelector(`[data-account="${accountId}"]`);
-    if (accountItem) {
-        const progressBar = accountItem.querySelector('.progress-bar');
-        const progressText = accountItem.querySelector('.progress-info small:last-child');
-        
-        progressBar.style.width = `${progress}%`;
-        progressText.textContent = `${progress}% Complete`;
-        
-        if (progress === 100) {
-            progressText.className = 'text-success';
-            const button = accountItem.querySelector('.btn-reconcile');
-            button.className = 'btn btn-success';
-            button.innerHTML = '<i class="bi bi-check-circle me-1"></i>Complete';
-            button.disabled = true;
-        }
-    }
-}
-
-// Toast notification function
-function showToast(title, message, type = 'success') {
-    const toastContainer = document.querySelector('.toast-container');
-    
-    const iconClass = type === 'success' ? 'bi-check-circle-fill' : 
-                     type === 'info' ? 'bi-info-circle-fill' : 'bi-exclamation-circle-fill';
-    
-    const toastElement = document.createElement('div');
-    toastElement.className = `toast toast-${type} show`;
-    toastElement.innerHTML = `
-        <div class="toast-header">
-            <i class="${iconClass} me-2"></i>
-            <strong class="me-auto">${title}</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-        </div>
-        <div class="toast-body">
-            ${message}
-        </div>
-    `;
-    
-    toastContainer.appendChild(toastElement);
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        toastElement.remove();
-    }, 5000);
-}
-
-// Initialize page
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Bank Reconciliation Dashboard loaded successfully');
-    
-    // Add hover effects to account items
-    const accountItems = document.querySelectorAll('.bank-account-item');
-    accountItems.forEach(item => {
-        item.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-3px)';
-        });
-        item.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-        });
-    });
-
-    // Add hover effects to stats cards
-    const statsCards = document.querySelectorAll('.stats-card');
-    statsCards.forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-2px)';
-        });
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-        });
-    });
-});
-</script>
 {% endblock %}

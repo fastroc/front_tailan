@@ -25,11 +25,79 @@ class UploadedFile(models.Model):
     duplicate_count = models.IntegerField(default=0)
     error_count = models.IntegerField(default=0)
     
+    # Coverage tracking - date range of transactions in this file
+    date_from = models.DateField(null=True, blank=True, help_text="First transaction date in this file")
+    date_to = models.DateField(null=True, blank=True, help_text="Last transaction date in this file")
+    
     class Meta:
         ordering = ['-uploaded_at']
     
     def __str__(self):
         return f"{self.original_filename} - {self.imported_count} transactions"
+    
+    def calculate_date_range(self):
+        """Calculate and update date range from linked transactions"""
+        from django.db.models import Min, Max
+        
+        # Get transactions linked to this file (via stored_filename)
+        txns = BankTransaction.objects.filter(
+            coa_account=self.account,
+            uploaded_file=self.stored_filename
+        )
+        
+        if txns.exists():
+            date_range = txns.aggregate(
+                first=Min('date'),
+                last=Max('date')
+            )
+            self.date_from = date_range['first']
+            self.date_to = date_range['last']
+            self.save(update_fields=['date_from', 'date_to'])
+            return True
+        return False
+    
+    def get_period_days(self):
+        """Return number of days covered by this file"""
+        if self.date_from and self.date_to:
+            delta = self.date_to - self.date_from
+            return delta.days + 1  # Include both start and end dates
+        return 0
+    
+    def get_period_label(self):
+        """Return human-readable period description"""
+        if not self.date_from or not self.date_to:
+            return "Date range not calculated"
+        
+        days = self.get_period_days()
+        
+        # Same month
+        if self.date_from.year == self.date_to.year and self.date_from.month == self.date_to.month:
+            if days <= 7:
+                return f"{self.date_from.strftime('%b %d-%d, %Y')}"
+            else:
+                return f"{self.date_from.strftime('%b %Y')} (partial)" if days < 28 else f"{self.date_from.strftime('%b %Y')}"
+        
+        # Multiple months
+        if self.date_from.year == self.date_to.year:
+            return f"{self.date_from.strftime('%b')}-{self.date_to.strftime('%b %Y')}"
+        
+        # Multiple years
+        return f"{self.date_from.strftime('%b %Y')} - {self.date_to.strftime('%b %Y')}"
+    
+    def get_reconciled_count(self):
+        """Return number of reconciled transactions from this file"""
+        from reconciliation.models import TransactionMatch
+        
+        # Count transactions from this file that have been matched/reconciled
+        return TransactionMatch.objects.filter(
+            bank_transaction__coa_account=self.account,
+            bank_transaction__uploaded_file=self.stored_filename
+        ).count()
+    
+    @property
+    def reconciled_count(self):
+        """Property for easy access in templates"""
+        return self.get_reconciled_count()
 
 
 class BankStatementDocument(models.Model):
@@ -235,6 +303,7 @@ class BankTransaction(models.Model):
     coa_account = models.ForeignKey('coa.Account', on_delete=models.CASCADE, related_name='bank_transactions')
     company = models.ForeignKey('company.Company', on_delete=models.CASCADE, related_name='bank_transactions', null=True, blank=True, help_text="Company this transaction belongs to")
     # uploaded_file = models.ForeignKey(UploadedFile, on_delete=models.CASCADE, related_name='transactions', null=True, blank=True)
+    uploaded_file = models.CharField(max_length=255, blank=True)  # Temporary: reverting to match database
     
     date = models.DateField()
     transaction_datetime = models.DateTimeField(null=True, blank=True, help_text="Full transaction date and time if available")

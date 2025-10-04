@@ -1,0 +1,2726 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Bank Reconciliation - Simple Mode{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* EXCEL-LIKE SPREADSHEET DESIGN */
+  
+  body {
+    font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+    font-size: 11pt;
+    background: #f0f0f0;
+  }
+  
+  .page-wrapper {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+  
+  /* Unified Header Section - Modern Excel Style */
+  .unified-header {
+    background: linear-gradient(135deg, #4472C4 0%, #2B579A 100%);
+    border-bottom: 3px solid #1F4788;
+    padding: 16px 24px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .header-title-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+  
+  .header-title-section h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: white;
+    line-height: 1.2;
+  }
+  
+  .header-title-section h2 i {
+    font-size: 20px;
+    color: white;
+    opacity: 0.95;
+  }
+  
+  .header-title-section h2 .badge {
+    font-size: 10px;
+    padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 12px;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .company-name {
+    font-size: 12px;
+    opacity: 0.85;
+    color: rgba(255, 255, 255, 0.95);
+    margin: 0;
+    font-weight: 400;
+  }
+  
+  /* Balance Grid - Compact Cards */
+  .balance-grid {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    flex: 1;
+    justify-content: flex-end;
+  }
+  
+  .balance-item {
+    flex: 0 0 auto;
+    padding: 10px 16px;
+    background: white;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .balance-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  }
+  
+  .balance-item:first-child {
+    border-left: 3px solid #4472C4;
+  }
+  
+  .balance-item:nth-child(2) {
+    border-left: 3px solid #28a745;
+  }
+  
+  .balance-item:nth-child(3) {
+    border-left: 3px solid #ffc107;
+  }
+  
+  .balance-item:last-child {
+    border-left: 3px solid #17a2b8;
+  }
+  
+  .balance-label {
+    font-size: 9px;
+    color: #605E5C;
+    margin-bottom: 4px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: 'Segoe UI', sans-serif;
+    text-align: center;
+  }
+  
+  .balance-value {
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Segoe UI', sans-serif;
+    letter-spacing: -0.3px;
+    text-align: center;
+  }
+  
+  .balance-value.text-primary {
+    color: #4472C4 !important;
+  }
+  
+  .balance-value.text-info {
+    color: #2B579A !important;
+  }
+  
+  .balance-value.text-success {
+    color: #107C10 !important;
+  }
+  
+  .balance-value.text-warning {
+    color: #D83B01 !important;
+  }
+  
+  /* Excel-Style Ribbon Tabs */
+  .excel-ribbon {
+    background: #F3F2F1;
+    border-bottom: 2px solid #D2D0CE;
+    padding: 0;
+  }
+  
+  .ribbon-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 20px;
+  }
+  
+  .ribbon-tab {
+    background: transparent;
+    border: none;
+    padding: 12px 24px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #605E5C;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  
+  .ribbon-tab:hover {
+    background: rgba(0, 0, 0, 0.03);
+    color: #323130;
+  }
+  
+  .ribbon-tab.active {
+    color: #4472C4;
+    border-bottom-color: #4472C4;
+    background: white;
+    font-weight: 600;
+  }
+  
+  .ribbon-tab i {
+    font-size: 14px;
+  }
+  
+  /* Tab Content */
+  .tab-content {
+    display: none;
+  }
+  
+  .tab-content.active {
+    display: block;
+  }
+  
+  /* Excel Table Container - Horizontal scroll for smaller screens */
+  .excel-container {
+    margin: 0;
+    padding: 1rem;
+    overflow-x: auto;
+    overflow-y: visible;
+    background: white;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .excel-container::-webkit-scrollbar {
+    height: 12px;
+  }
+  
+  .excel-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+  
+  .excel-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 6px;
+  }
+  
+  .excel-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+  
+  /* Excel Table - Computer Friendly */
+  .excel-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    background: white;
+    font-size: 11pt;
+    min-width: 1200px;
+  }
+  
+  .excel-table thead {
+    background: #4472c4;
+    color: white;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  .excel-table thead th {
+    padding: 4px 6px;
+    text-align: left;
+    border: 1px solid #2b579a;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+  
+  .excel-table thead th.center {
+    text-align: center;
+  }
+  
+  .excel-table tbody td.center {
+    text-align: center;
+    vertical-align: middle;
+  }
+  
+  .excel-table tbody tr {
+    border-bottom: 1px solid #d4d4d4;
+    height: 21px;
+  }
+  
+  .excel-table tbody tr:nth-child(even) {
+    background: #f8f9fa;
+  }
+  
+  .excel-table tbody tr:hover {
+    background: #fff3cd;
+  }
+  
+  .excel-table tbody td {
+    padding: 2px 6px;
+    border: 1px solid #e0e0e0;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.3;
+  }
+  
+  /* Allow dropdown cells to overflow */
+  .excel-table tbody td.dropdown-cell {
+    overflow: visible;
+    position: relative;
+  }
+  
+  /* Row Number Column - Excel Style */
+  .row-number {
+    background: #e7e6e6;
+    color: #444;
+    font-weight: 600;
+    text-align: center;
+    border-right: 2px solid #d4d4d4;
+    font-size: 10pt;
+  }
+  
+  /* Date Column */
+  .date-cell {
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+  }
+  
+  /* Description Column */
+  .description-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 0;
+  }
+  
+  /* Amount Column - Excel Number Format */
+  .amount-cell {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    font-size: 10pt;
+  }
+  
+  .amount-positive {
+    color: #008000;
+  }
+  
+  .amount-negative {
+    color: #c00000;
+  }
+  
+  /* Input Cells - Excel Style */
+  .excel-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 2px 4px;
+    font-size: 10.5pt;
+    font-family: inherit;
+    line-height: 1.3;
+  }
+  
+  .excel-input:focus {
+    outline: 2px solid #4472c4;
+    background: white;
+  }
+  
+  /* Dropdown Cell - Inline in Sheet */
+  .dropdown-cell {
+    position: relative;
+    vertical-align: middle;
+    padding: 0 !important;
+    overflow: visible;
+  }
+  
+  .dropdown-input-wrapper {
+    position: relative;
+    width: 100%;
+    display: block;
+  }
+  
+  .dropdown-input {
+    width: 100%;
+    padding: 2px 4px;
+    border: 1px solid #d4d4d4;
+    font-size: 10.5pt;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.3;
+    height: auto;
+    box-sizing: border-box;
+    background: white;
+  }
+  
+  .dropdown-input:focus {
+    outline: 2px solid #4472c4;
+    border-color: #4472c4;
+    background: #fffef7;
+  }
+  
+  /* Inline Dropdown List - Excel-style */
+  .inline-dropdown {
+    display: none;
+    background: white;
+    border: 2px solid #4472c4;
+    border-top: none;
+    max-height: 250px;
+    overflow-y: auto;
+    width: 100%;
+    position: absolute;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    margin-top: 1px;
+    left: 0;
+  }
+  
+  .inline-dropdown.show {
+    display: block;
+  }
+  
+  .dropdown-header {
+    position: sticky;
+    top: 0;
+    background: #4472c4;
+    color: white;
+    padding: 6px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-bottom: 1px solid #2b579a;
+    z-index: 1001;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    line-height: 1.2;
+  }
+  
+  .dropdown-close {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+  }
+  
+  .dropdown-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .dropdown-item {
+    padding: 4px 6px;
+    cursor: pointer;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 10pt;
+    line-height: 1.3;
+  }
+  
+  .dropdown-item:hover {
+    background: #4472c4;
+    color: white;
+  }
+  
+  .dropdown-item strong {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  
+  .dropdown-item small {
+    display: block;
+    color: #666;
+    font-size: 9pt;
+    line-height: 1.2;
+  }
+  
+  .dropdown-item:hover small {
+    color: #e0e0e0;
+  }
+  
+  .no-results {
+    padding: 8px 6px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    font-size: 9.5pt;
+    line-height: 1.3;
+  }
+  
+  /* Dropdown scrollbar styling */
+  .inline-dropdown::-webkit-scrollbar {
+    width: 10px;
+  }
+  
+  .inline-dropdown::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+  
+  .inline-dropdown::-webkit-scrollbar-thumb {
+    background: #4472c4;
+    border-radius: 5px;
+  }
+  
+  .inline-dropdown::-webkit-scrollbar-thumb:hover {
+    background: #2b579a;
+  }
+  
+  /* Inline Suggestions Row */
+  .suggestions-row {
+    display: none;
+    background: #f8f9fa;
+    border-top: 2px solid #4472c4;
+  }
+  
+  .suggestions-row.show {
+    display: table-row;
+  }
+  
+  .suggestions-cell {
+    padding: 1rem !important;
+    border-bottom: 2px solid #dee2e6;
+  }
+  
+  .suggestions-container {
+    display: flex;
+    gap: 1rem;
+    max-width: 100%;
+  }
+  
+  .suggestion-column {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .suggestion-column-header {
+    background: linear-gradient(135deg, #4472c4 0%, #2b579a 100%);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px 4px 0 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .suggestion-column-content {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    padding: 0.75rem;
+    min-height: 100px;
+    overflow: hidden;
+    word-wrap: break-word;
+  }
+  
+  .suggestion-item {
+    padding: 0.75rem;
+    margin-bottom: 0.6rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    overflow: hidden;
+    word-wrap: break-word;
+  }
+  
+  .suggestion-item:hover {
+    border-color: #4472c4;
+    background: #f0f7ff;
+    transform: translateX(2px);
+  }
+  
+  .suggestion-item.applied {
+    border-color: #28a745;
+    background: #f0fff4;
+  }
+  
+  .suggestion-confidence {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+  
+  .confidence-badge {
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 0.3rem 0.6rem;
+    border-radius: 12px;
+    letter-spacing: 0.3px;
+  }
+  
+  .confidence-high {
+    background: #d4edda;
+    color: #155724;
+  }
+  
+  .confidence-medium {
+    background: #fff3cd;
+    color: #856404;
+  }
+  
+  .confidence-low {
+    background: #f8d7da;
+    color: #721c24;
+  }
+  
+  /* Reconciled Row Styling - keeps transaction in list but grayed out */
+  .reconciled-row {
+    background: linear-gradient(to right, #f0f0f0, #f8f8f8) !important;
+    opacity: 0.7;
+  }
+  
+  .reconciled-row:hover {
+    opacity: 0.85;
+  }
+  
+  .reconciled-row td {
+    color: #666;
+  }
+  
+  .reconciled-row input {
+    background: #f5f5f5 !important;
+    color: #666 !important;
+    cursor: not-allowed;
+  }
+  
+  .reconciled-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: #28a745;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin: 0 auto;
+  }
+  
+  /* Success notification animation */
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  .suggestion-field {
+    font-size: 1.05rem;
+    margin: 0.35rem 0;
+    line-height: 1.5;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  
+  .suggestion-field strong {
+    color: #495057;
+    display: inline-block;
+    min-width: 50px;
+    font-size: 1.05rem;
+    vertical-align: top;
+  }
+  
+  .suggestion-field span {
+    color: #212529;
+    font-family: 'Courier New', monospace;
+    font-size: 1.05rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    display: inline-block;
+    max-width: calc(100% - 60px);
+  }
+  
+  .suggestion-apply-btn {
+    width: 100%;
+    padding: 4px 8px;
+    margin-top: 0.4rem;
+    background: #4472c4;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1.2;
+  }
+  
+  .suggestion-apply-btn:hover {
+    background: #2b579a;
+  }
+  
+  .suggestion-apply-btn.applied {
+    background: #28a745;
+  }
+  
+  .no-suggestions {
+    text-align: center;
+    padding: 1rem;
+    color: #6c757d;
+    font-size: 0.8rem;
+    font-style: italic;
+  }
+  
+  /* AI Suggestions Button */
+  .toggle-suggestions-btn {
+    background: white;
+    border: none;
+    border-left: 1px solid #e0e0e0;
+    color: #4472c4;
+    padding: 0;
+    border-radius: 0;
+    font-size: 12px;
+    cursor: pointer;
+    transition: none;
+    font-weight: 600;
+    line-height: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 21px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .toggle-suggestions-btn:hover {
+    background: white;
+    color: #4472c4;
+  }
+  
+  .toggle-suggestions-btn:active {
+    background: white;
+  }
+  
+  .toggle-suggestions-btn.active {
+    background: white;
+    color: #4472c4;
+  }
+  
+  .toggle-suggestions-btn.has-suggestions {
+    background: white;
+    color: #ffc107;
+  }
+  
+  .toggle-suggestions-btn.has-suggestions:hover {
+    background: white;
+    color: #ffc107;
+  }
+  
+  .toggle-suggestions-btn.has-suggestions.active {
+    background: #ffc107;
+    color: white;
+  }
+  
+  .toggle-suggestions-btn i {
+    margin: 0;
+    font-size: 13px;
+  }
+  
+  .toggle-suggestions-btn.has-suggestions i {
+    animation: none;
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+  }
+  
+  /* Action Cell - OK Button */
+  .action-cell {
+    text-align: center;
+    padding: 0 !important;
+  }
+  
+  .ok-button {
+    background: #4472C4;
+    color: white;
+    border: none;
+    padding: 0;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 10px;
+    border-radius: 0;
+    display: none;
+    line-height: 1.2;
+    transition: all 0.15s;
+    width: 100%;
+    height: 100%;
+    min-height: 21px;
+  }
+  
+  .ok-button.show {
+    display: block;
+  }
+  
+  .ok-button:hover {
+    background: #2B579A;
+  }
+  
+  .ok-button:active {
+    background: #1F4788;
+  }
+  
+  /* Split Cell */
+  .split-cell {
+    text-align: center;
+    padding: 0 !important;
+  }
+  
+  /* AI Cell */
+  .ai-cell {
+    text-align: center;
+    padding: 0 !important;
+  }
+  
+  /* Split Button */
+  .details-button {
+    background: white;
+    border: none;
+    border-left: 1px solid #e0e0e0;
+    border-right: 1px solid #e0e0e0;
+    color: #4472c4;
+    padding: 0;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 0;
+    transition: none;
+    font-weight: 600;
+    line-height: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 21px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .details-button:hover {
+    background: white;
+    color: #4472c4;
+  }
+  
+  .details-button:active {
+    background: white;
+  }
+  
+  .details-button i {
+    margin: 0;
+    font-size: 13px;
+  }
+  
+  /* Column Width Classes - Excel-like proportional sizing */
+  .col-number { width: 3%; min-width: 35px; }
+  .col-date { width: 7%; min-width: 80px; }
+  .col-description { width: 16%; min-width: 160px; }
+  .col-debit { width: 7%; min-width: 70px; }
+  .col-credit { width: 7%; min-width: 70px; }
+  .col-who { width: 14%; min-width: 120px; }
+  .col-what { width: 16%; min-width: 140px; }
+  .col-why { width: 14%; min-width: 120px; }
+  .col-action { width: 5%; min-width: 50px; }
+  .col-split { width: 5%; min-width: 45px; }
+  .col-ai { width: 6%; min-width: 50px; }
+  
+  /* Alternating Row Colors */
+  .excel-table tbody tr:nth-child(odd) {
+    background: white;
+  }
+  
+  .excel-table tbody tr:nth-child(even) {
+    background: #f9f9f9;
+  }
+  
+  /* Selected Row Highlight */
+  .excel-table tbody tr.selected {
+    background: #cfe2f3 !important;
+  }
+  
+  /* Status Indicators */
+  .status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+  }
+  
+  .status-credit {
+    background: #008000;
+  }
+  
+  .status-debit {
+    background: #c00000;
+  }
+  
+  /* Responsive Design for Balance Section */
+  @media (max-width: 1400px) {
+    .balance-item {
+      min-width: 120px;
+      padding: 8px 12px;
+    }
+    
+    .balance-value {
+      font-size: 14px;
+    }
+    
+    .balance-label {
+      font-size: 8px;
+    }
+  }
+  
+  @media (max-width: 1200px) {
+    .unified-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+      padding: 16px 20px;
+    }
+    
+    .balance-grid {
+      justify-content: stretch;
+      gap: 8px;
+    }
+    
+    .balance-item {
+      flex: 1;
+      min-width: 100px;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .unified-header {
+      padding: 12px 16px;
+      gap: 12px;
+    }
+    
+    .balance-grid {
+      flex-wrap: wrap;
+    }
+    
+    .balance-item {
+      flex: 1 1 45%;
+      min-width: 120px;
+    }
+    
+    .balance-label {
+      font-size: 8px;
+    }
+    
+    .balance-value {
+      font-size: 13px;
+    }
+    
+    .header-title-section h2 {
+      font-size: 16px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    
+    .header-title-section h2 i {
+      font-size: 16px;
+    }
+    
+    .company-name {
+      font-size: 11px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .balance-grid {
+      flex-direction: column;
+    }
+    
+    .balance-item {
+      flex: 1 1 100%;
+      min-width: auto;
+    }
+  }
+  
+  /* Excel-Style Sheet Pagination */
+  .excel-pagination {
+    background: #F3F2F1;
+    border-top: 2px solid #D2D0CE;
+    padding: 12px 24px 8px 24px;
+    margin-top: 0;
+  }
+  
+  .excel-pagination-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  
+  .excel-pagination-arrows {
+    display: flex;
+    gap: 4px;
+  }
+  
+  .excel-pagination-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 24px;
+    background: white;
+    border: 1px solid #D2D0CE;
+    color: #323130;
+    text-decoration: none;
+    font-size: 12px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  
+  .excel-pagination-nav:hover:not(.disabled) {
+    background: #EDEBE9;
+    border-color: #8A8886;
+  }
+  
+  .excel-pagination-nav.disabled {
+    color: #C8C6C4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  
+  .excel-sheet-tabs {
+    display: flex;
+    gap: 2px;
+    flex: 1;
+    overflow-x: auto;
+    padding: 2px 0;
+  }
+  
+  .excel-sheet-tabs::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .excel-sheet-tabs::-webkit-scrollbar-track {
+    background: #F3F2F1;
+  }
+  
+  .excel-sheet-tabs::-webkit-scrollbar-thumb {
+    background: #D2D0CE;
+    border-radius: 3px;
+  }
+  
+  .excel-sheet-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    background: white;
+    border: 1px solid #D2D0CE;
+    border-bottom: none;
+    color: #605E5C;
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: 'Segoe UI', sans-serif;
+    white-space: nowrap;
+    transition: all 0.2s;
+    cursor: pointer;
+    position: relative;
+  }
+  
+  .excel-sheet-tab:hover:not(.active) {
+    background: #F3F9FF;
+    color: #4472C4;
+  }
+  
+  .excel-sheet-tab.active {
+    background: white;
+    color: #4472C4;
+    font-weight: 600;
+    border-bottom: 3px solid #4472C4;
+    padding-bottom: 3px;
+  }
+  
+  .excel-sheet-tab i {
+    font-size: 13px;
+  }
+  
+  .excel-sheet-ellipsis {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    color: #8A8886;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  
+  .excel-pagination-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px;
+    color: #605E5C;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  
+  .excel-pagination-divider {
+    color: #D2D0CE;
+  }
+  
+  /* Responsive pagination */
+  @media (max-width: 768px) {
+    .excel-pagination {
+      padding: 8px 16px 6px 16px;
+    }
+    
+    .excel-sheet-tab {
+      padding: 4px 12px;
+      font-size: 10px;
+    }
+    
+    .excel-sheet-tab span {
+      display: none;
+    }
+    
+    .excel-sheet-tab i {
+      font-size: 14px;
+    }
+    
+    .excel-pagination-info {
+      font-size: 10px;
+      flex-wrap: wrap;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+  
+  <!-- Unified Header with Balance Summary -->
+  <div class="unified-header">
+    <div class="header-title-section">
+      <h2>
+        <i class="fas fa-balance-scale"></i>
+        Bank Reconciliation - {{ account.name }}
+        <span class="badge bg-info">Simple Mode</span>
+      </h2>
+      <p class="company-name">{{ company.name }}</p>
+    </div>
+    
+    <!-- Balance Grid -->
+    <div class="balance-grid">
+      <div class="balance-item">
+        <div class="balance-label">Statement Balance</div>
+        <div class="balance-value text-primary">${{ progress.statement_balance|floatformat:2|intcomma }}</div>
+      </div>
+      <div class="balance-item">
+        <div class="balance-label">Reconciled Balance</div>
+        <div class="balance-value text-info">${{ progress.reconciled_balance|floatformat:2|intcomma }}</div>
+      </div>
+      <div class="balance-item">
+        <div class="balance-label">Difference</div>
+        <div class="balance-value {% if progress.difference == 0 %}text-success{% else %}text-warning{% endif %}">
+          ${{ progress.difference|floatformat:2|intcomma }}
+        </div>
+      </div>
+      <div class="balance-item">
+        <div class="balance-label">Progress</div>
+        <div class="balance-value text-success">{{ progress.percentage|floatformat:0 }}%</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- File Filter Notification -->
+  {% if filtered_by_file %}
+  <div style="background: #FFF4CE; border: 2px solid #FFB900; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <i class="bi bi-filter-circle-fill" style="font-size: 20px; color: #FFB900;"></i>
+      <div>
+        <div style="font-weight: 600; font-size: 12px; color: #323130; margin-bottom: 2px;">
+          <i class="bi bi-file-earmark-text"></i> Filtered by Upload File
+        </div>
+        <div style="font-size: 11px; color: #605E5C;">
+          <strong>File:</strong> {{ filtered_by_file.original_filename }} 
+          <span style="margin: 0 8px;">|</span>
+          <strong>Uploaded:</strong> {{ filtered_by_file.uploaded_at|date:"M d, Y H:i" }}
+          <span style="margin: 0 8px;">|</span>
+          <strong>Transactions:</strong> {{ filtered_by_file.imported_count }}
+        </div>
+      </div>
+    </div>
+    <a href="{% url 'reconciliation:account_detail' account.id %}" 
+       style="padding: 6px 16px; background: white; border: 1px solid #FFB900; color: #FFB900; font-size: 11px; font-weight: 600; text-decoration: none; border-radius: 0; transition: all 0.2s;">
+      <i class="bi bi-x-circle"></i> Clear Filter
+    </a>
+  </div>
+  {% endif %}
+  
+  <!-- Excel-Style Ribbon Tabs -->
+  <div class="excel-ribbon">
+    <div class="ribbon-tabs">
+      <button class="ribbon-tab active" onclick="switchTab('unreconciled', event)">
+        <i class="fas fa-list"></i>
+        Transactions to Reconcile
+      </button>
+      <button class="ribbon-tab" onclick="switchTab('reconciled', event)">
+        <i class="fas fa-check-circle"></i>
+        Reconciled Transactions
+      </button>
+    </div>
+  </div>
+  
+  <!-- Unreconciled Transactions Table -->
+  <div id="unreconciled-view" class="excel-container tab-content active">
+    <table class="excel-table">
+      <thead>
+        <tr>
+          <th class="col-number center">#</th>
+          <th class="col-date">Date</th>
+          <th class="col-description">Description</th>
+          <th class="col-debit center">Debit</th>
+          <th class="col-credit center">Credit</th>
+          <th class="col-who">WHO (Customer)</th>
+          <th class="col-what">WHAT (Account)</th>
+          <th class="col-why">WHY (Memo)</th>
+          <th class="col-action center">Action</th>
+          <th class="col-split center">Split</th>
+          <th class="col-ai center">AI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in transactions %}
+        <tr>
+          <!-- Row Number -->
+          <td class="row-number">{{ forloop.counter }}</td>
+          
+          <!-- Date -->
+          <td class="date-cell">
+            {% if t.transaction_datetime %}
+              {{ t.transaction_datetime|date:"Y-m-d H:i" }}
+            {% else %}
+              {{ t.date|date:"Y-m-d" }}
+            {% endif %}
+          </td>
+          
+          <!-- Description -->
+          <td class="description-cell">
+            <span class="status-indicator {% if t.amount > 0 %}status-credit{% else %}status-debit{% endif %}"></span>
+            {{ t.description|default:"(no description)" }}
+          </td>
+          
+          <!-- Debit (Money Out - Negative amounts) -->
+          <td class="amount-cell amount-negative">
+            {% if t.amount < 0 %}
+              ${{ t.amount|floatformat:2|cut:"-"|intcomma }}
+            {% endif %}
+          </td>
+          
+          <!-- Credit (Money In - Positive amounts) -->
+          <td class="amount-cell amount-positive">
+            {% if t.amount > 0 %}
+              ${{ t.amount|floatformat:2|intcomma }}
+            {% endif %}
+          </td>
+          
+          <!-- WHO Input -->
+          <td class="dropdown-cell">
+            <div class="dropdown-input-wrapper">
+              <input type="text" 
+                     id="who_{{ t.id }}"
+                     name="who_{{ t.id }}" 
+                     placeholder="Type to search customers..." 
+                     class="dropdown-input"
+                     autocomplete="off"
+                     onfocus="openCustomerDropdown({{ t.id }})"
+                     onkeyup="filterCustomers({{ t.id }})"
+                     onblur="closeDropdownDelayed('who_dropdown_{{ t.id }}')">
+              <div id="who_dropdown_{{ t.id }}" class="inline-dropdown"></div>
+            </div>
+          </td>
+          
+          <!-- WHAT Input -->
+          <td class="dropdown-cell">
+            <div class="dropdown-input-wrapper">
+              <input type="text" 
+                     id="what_{{ t.id }}"
+                     name="what_{{ t.id }}" 
+                     placeholder="Type to search accounts..." 
+                     class="dropdown-input"
+                     autocomplete="off"
+                     onfocus="openAccountDropdown({{ t.id }})"
+                     onkeyup="filterAccounts({{ t.id }})"
+                     oninput="checkAccountMatch({{ t.id }})"
+                     onblur="closeDropdownDelayed('dropdown_{{ t.id }}')"
+                     required>
+              <div id="dropdown_{{ t.id }}" class="inline-dropdown"></div>
+            </div>
+          </td>
+          
+          <!-- WHY Input -->
+          <td>
+            <input type="text" 
+                   name="why_{{ t.id }}" 
+                   placeholder="Description..." 
+                   value="{{ t.description }}"
+                   class="excel-input why-input"
+                   onchange="showOkButton({{ t.id }})">
+          </td>
+          
+          <!-- Save Button -->
+          <td class="action-cell">
+            <button type="button" 
+                    class="ok-button" 
+                    id="save{{ t.id }}"
+                    onclick="saveTransaction({{ t.id }})">
+              OK
+            </button>
+          </td>
+          
+          <!-- Split Button -->
+          <td class="split-cell">
+            <button type="button" 
+                    class="details-button" 
+                    onclick="toggleDetails({{ t.id }})"
+                    title="Split this transaction into multiple accounts">
+              <i class="bi bi-diagram-3"></i>
+            </button>
+          </td>
+          
+          <!-- AI Button -->
+          <td class="ai-cell">
+            <button type="button" 
+                    class="toggle-suggestions-btn{% if t.smart_suggestions %} has-suggestions{% endif %}" 
+                    id="suggestions-toggle-{{ t.id }}"
+                    onclick="toggleSuggestions({{ t.id }})"
+                    title="{% if t.smart_suggestions %}{{ t.smart_suggestions|length }} AI suggestion(s) available{% else %}No suggestions available{% endif %}">
+              <i class="bi bi-lightbulb{% if t.smart_suggestions %}-fill{% endif %}"></i>
+            </button>
+          </td>
+        </tr>
+        
+        <!-- Suggestions Row (Hidden by default) -->
+        <tr class="suggestions-row" id="suggestions-row-{{ t.id }}">
+          <td colspan="11" class="suggestions-cell">
+
+            
+            <div class="suggestions-container">
+              <!-- Loan Suggestions -->
+              <div class="suggestion-column">
+                <div class="suggestion-column-header">
+                  <i class="bi bi-cash-coin"></i>
+                  <span>Loan Matches</span>
+                </div>
+                <div class="suggestion-column-content">
+                  {% if t.smart_suggestions %}
+                    {% for suggestion in t.smart_suggestions %}
+                      {% if suggestion.source != 'bank_rule' and suggestion.source != 'ai_pattern' %}
+                      <div class="suggestion-item" onclick="applySuggestion({{ t.id }}, {{ forloop.counter0 }}, event)">
+                        <div class="suggestion-confidence">
+                          <span class="confidence-badge confidence-{% if suggestion.match_percentage >= 80 %}high{% elif suggestion.match_percentage >= 60 %}medium{% else %}low{% endif %}">
+                            {{ suggestion.confidence_tier|default:"MATCH"|upper }}
+                          </span>
+                          <span style="font-size: 0.95rem; color: #6c757d; font-weight: 600;">{{ suggestion.match_percentage|floatformat:0 }}%</span>
+                        </div>
+                        <div class="suggestion-field">
+                          <strong>🎯 {{ suggestion.engine_display_name }}</strong>
+                        </div>
+                        {% if suggestion.customer_name %}
+                        <div class="suggestion-field">
+                          <strong>WHO:</strong> <span>{{ suggestion.customer_name }}{% if suggestion.loan_number %} ({{ suggestion.loan_number }}){% endif %}</span>
+                        </div>
+                        {% endif %}
+                        {% if suggestion.suggested_coa %}
+                        <div class="suggestion-field">
+                          <strong>WHAT:</strong> 
+                          <span>
+                            {% if suggestion.suggested_coa.account_code %}
+                              {{ suggestion.suggested_coa.account_code }} - {{ suggestion.suggested_coa.account_name }}
+                            {% elif suggestion.suggested_coa.account_display %}
+                              {{ suggestion.suggested_coa.account_display }}
+                            {% else %}
+                              {{ suggestion.suggested_coa }}
+                            {% endif %}
+                          </span>
+                        </div>
+                        {% endif %}
+                        {% if suggestion.coa_reason %}
+                        <div style="font-size: 0.9rem; color: #6c757d; margin-top: 0.35rem; line-height: 1.4;">
+                          🔥 {{ suggestion.coa_reason }}
+                        </div>
+                        {% endif %}
+                        {% if suggestion.match_reason %}
+                        <div style="font-size: 0.85rem; color: #6c757d; margin-top: 0.25rem; line-height: 1.3;">
+                          {{ suggestion.match_reason }}
+                        </div>
+                        {% endif %}
+                        <button class="suggestion-apply-btn" id="apply-{{ t.id }}-{{ forloop.counter0 }}">
+                          Apply
+                        </button>
+                      </div>
+                      {% endif %}
+                    {% endfor %}
+                  {% endif %}
+                  
+                  <!-- Show "no suggestions" only if no loan suggestions were found -->
+                  {% if not t.smart_suggestions %}
+                    <div class="no-suggestions">
+                      <i class="bi bi-info-circle"></i>
+                      No loan matches found
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <!-- Bank Rules -->
+              <div class="suggestion-column">
+                <div class="suggestion-column-header">
+                  <i class="bi bi-list-check"></i>
+                  <span>Bank Rules</span>
+                </div>
+                <div class="suggestion-column-content">
+                  {% if t.smart_suggestions %}
+                    {% for suggestion in t.smart_suggestions %}
+                      {% if suggestion.source == 'bank_rule' %}
+                      <div class="suggestion-item" onclick="applySuggestion({{ t.id }}, {{ forloop.counter0 }}, event)">
+                        <div class="suggestion-confidence">
+                          <span class="confidence-badge confidence-high">
+                            RULE
+                          </span>
+                          <span style="font-size: 0.95rem; color: #6c757d; font-weight: 600;">{{ suggestion.match_percentage|default:90 }}%</span>
+                        </div>
+                        <div class="suggestion-field">
+                          <strong>🎯 {{ suggestion.rule_name|default:suggestion.engine_display_name }}</strong>
+                        </div>
+                        {% if suggestion.suggested_who_text or suggestion.customer_name %}
+                        <div class="suggestion-field">
+                          <strong>WHO:</strong> <span>{{ suggestion.suggested_who_text|default:suggestion.customer_name }}</span>
+                        </div>
+                        {% endif %}
+                        {% if suggestion.suggested_coa %}
+                        <div class="suggestion-field">
+                          <strong>WHAT:</strong> 
+                          <span>
+                            {% if suggestion.suggested_coa.account_code %}
+                              {{ suggestion.suggested_coa.account_code }} - {{ suggestion.suggested_coa.account_name }}
+                            {% else %}
+                              {{ suggestion.suggested_coa.account_display }}
+                            {% endif %}
+                          </span>
+                        </div>
+                        {% endif %}
+                        {% if suggestion.matched_data %}
+                        <div style="font-size: 0.9rem; color: #6c757d; margin-top: 0.35rem; line-height: 1.4;">
+                          📋 {{ suggestion.matched_data }}
+                        </div>
+                        {% endif %}
+                        {% if suggestion.matched_conditions %}
+                        <div style="font-size: 0.85rem; color: #6c757d; margin-top: 0.35rem; line-height: 1.3;">
+                          <strong>Conditions:</strong>
+                          {% for cond in suggestion.matched_conditions %}
+                            <div style="margin-left: 0.5rem;">• {{ cond.field }} {{ cond.operator }} "{{ cond.value }}"</div>
+                          {% endfor %}
+                        </div>
+                        {% endif %}
+                        <button class="suggestion-apply-btn" id="apply-{{ t.id }}-{{ forloop.counter0 }}">
+                          Apply
+                        </button>
+                      </div>
+                      {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    <div class="no-suggestions">
+                      <i class="bi bi-info-circle"></i>
+                      No matching rules
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <!-- AI Patterns -->
+              <div class="suggestion-column">
+                <div class="suggestion-column-header">
+                  <i class="bi bi-robot"></i>
+                  <span>AI Patterns</span>
+                </div>
+                <div class="suggestion-column-content">
+                  {% if t.smart_suggestions %}
+                    {% for suggestion in t.smart_suggestions %}
+                      {% if suggestion.source == 'ai_pattern' %}
+                      <div class="suggestion-item" onclick="applySuggestion({{ t.id }}, {{ forloop.counter0 }}, event)">
+                        <div class="suggestion-confidence">
+                          <span class="confidence-badge confidence-{% if suggestion.confidence >= 80 %}high{% elif suggestion.confidence >= 60 %}medium{% else %}low{% endif %}">
+                            AI
+                          </span>
+                          <span style="font-size: 0.95rem; color: #6c757d; font-weight: 600;">{{ suggestion.confidence|default:suggestion.match_percentage|floatformat:0 }}%</span>
+                        </div>
+                        <div class="suggestion-field">
+                          <strong>� AI Pattern</strong>
+                        </div>
+                        {% if suggestion.suggested_who_text or suggestion.customer_name %}
+                        <div class="suggestion-field">
+                          <strong>WHO:</strong> <span>{{ suggestion.suggested_who_text|default:suggestion.customer_name }}</span>
+                        </div>
+                        {% endif %}
+                        {% if suggestion.suggested_coa %}
+                        <div class="suggestion-field">
+                          <strong>WHAT:</strong> 
+                          <span>
+                            {% if suggestion.suggested_coa.account_code %}
+                              {{ suggestion.suggested_coa.account_code }} - {{ suggestion.suggested_coa.account_name }}
+                            {% elif suggestion.suggested_coa.account_display %}
+                              {{ suggestion.suggested_coa.account_display }}
+                            {% else %}
+                              {{ suggestion.suggested_coa }}
+                            {% endif %}
+                          </span>
+                        </div>
+                        {% endif %}
+                        {% if suggestion.coa_reason %}
+                        <div style="font-size: 0.9rem; color: #6c757d; margin-top: 0.35rem; line-height: 1.4;">
+                          🤖 {{ suggestion.coa_reason }}
+                        </div>
+                        {% endif %}
+                        <button class="suggestion-apply-btn" id="apply-{{ t.id }}-{{ forloop.counter0 }}">
+                          Apply
+                        </button>
+                      </div>
+                      {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    <div class="no-suggestions">
+                      <i class="bi bi-info-circle"></i>
+                      No AI patterns found
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        
+        {% endfor %}
+        
+        {% if not transactions %}
+        <tr>
+          <td colspan="10" style="text-align: center; padding: 3rem;">
+            <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
+            <div><strong>All Transactions Reconciled!</strong></div>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  
+  <!-- Excel-Style Sheet Pagination -->
+  {% if total_pages > 1 %}
+  <div class="excel-pagination">
+    <div class="excel-pagination-container">
+      <!-- Navigation Arrows -->
+      <div class="excel-pagination-arrows">
+        <a href="?page=1{% if file_id %}&file_id={{ file_id }}{% endif %}" 
+           class="excel-pagination-nav {% if not has_previous %}disabled{% endif %}" 
+           title="First Page">
+          <i class="bi bi-chevron-bar-left"></i>
+        </a>
+        <a href="?page={{ previous_page }}{% if file_id %}&file_id={{ file_id }}{% endif %}" 
+           class="excel-pagination-nav {% if not has_previous %}disabled{% endif %}" 
+           title="Previous Page">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+      </div>
+      
+      <!-- Sheet Tabs -->
+      <div class="excel-sheet-tabs">
+        {% for page_num in page_range %}
+          <a href="?page={{ page_num }}{% if file_id %}&file_id={{ file_id }}{% endif %}" 
+             class="excel-sheet-tab {% if page_num == current_page %}active{% endif %}"
+             title="Page {{ page_num }} (Transactions {% widthratio page_num 1 100|add:'-99' %}-{% widthratio page_num 1 100 %})">
+            <i class="bi bi-file-earmark-spreadsheet"></i>
+            <span>Page {{ page_num }}</span>
+          </a>
+        {% endfor %}
+        
+        <!-- Show ellipsis if there are more pages -->
+        {% if total_pages > 10 %}
+          <span class="excel-sheet-ellipsis">...</span>
+          
+          <!-- Show last page if there are many pages -->
+          {% if current_page != total_pages %}
+            <a href="?page={{ total_pages }}{% if file_id %}&file_id={{ file_id }}{% endif %}" 
+               class="excel-sheet-tab"
+               title="Last Page {{ total_pages }}">
+              <i class="bi bi-file-earmark-spreadsheet"></i>
+              <span>Page {{ total_pages }}</span>
+            </a>
+          {% endif %}
+        {% endif %}
+      </div>
+      
+      <!-- Navigation Arrows -->
+      <div class="excel-pagination-arrows">
+        <a href="?page={{ next_page }}{% if file_id %}&file_id={{ file_id }}{% endif %}" 
+           class="excel-pagination-nav {% if not has_next %}disabled{% endif %}" 
+           title="Next Page">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+        <a href="?page={{ total_pages }}{% if file_id %}&file_id={{ file_id }}{% endif %}" 
+           class="excel-pagination-nav {% if not has_next %}disabled{% endif %}" 
+           title="Last Page">
+          <i class="bi bi-chevron-bar-right"></i>
+        </a>
+      </div>
+    </div>
+    
+    <!-- Page Info -->
+    <div class="excel-pagination-info">
+      <span>Showing {{ showing_from }}-{{ showing_to }} of {{ total_transactions }} transactions</span>
+      <span class="excel-pagination-divider">|</span>
+      <span>Page {{ current_page }} of {{ total_pages }}</span>
+    </div>
+  </div>
+  {% endif %}
+  
+  <!-- Reconciled Transactions Table -->
+  <div id="reconciled-view" class="excel-container tab-content">
+    <table class="excel-table">
+      <thead>
+        <tr>
+          <th class="col-number center">#</th>
+          <th class="col-date">Date</th>
+          <th class="col-description">Description</th>
+          <th class="col-debit center">Debit</th>
+          <th class="col-credit center">Credit</th>
+          <th class="col-who">WHO (Customer)</th>
+          <th class="col-what">WHAT (Account)</th>
+          <th class="col-why">WHY (Memo)</th>
+          <th class="col-status center">Status</th>
+          <th class="col-date center">Reconciled At</th>
+        </tr>
+      </thead>
+      <tbody id="reconciled-transactions-body">
+        <tr>
+          <td colspan="10" style="text-align: center; padding: 2rem; color: #6c757d;">
+            <i class="fas fa-spinner fa-spin mb-2" style="font-size: 2rem;"></i>
+            <div>Loading reconciled transactions...</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// COA Data from Django
+const coaData = [
+    {% for group_name, accounts in coa_groups.items %}
+        {% for account in accounts %}
+        {
+            code: '{{ account.code }}',
+            name: '{{ account.name }}',
+            type: '{{ group_name }}',
+            display: '{{ account.code }} — {{ account.name }}'
+        },
+        {% endfor %}
+    {% endfor %}
+];
+
+// Loan Customers Data from Django
+const customersData = [
+    {% for customer in loan_customers %}
+    {
+        id: {{ customer.customer_id }},
+        name: '{{ customer.customer_name|escapejs }}',
+        loan_number: '{{ customer.loan_number|default:""|escapejs }}',
+        amount: '{{ customer.loan_amount|default:"0"|escapejs }}',
+        display: '{{ customer.customer_name|escapejs }}{% if customer.loan_number %} ({{ customer.loan_number }}){% endif %}'
+    },
+    {% endfor %}
+];
+
+// Debug: Log data arrays
+console.log('COA Data loaded:', coaData.length, 'accounts');
+console.log('Customer Data loaded:', customersData.length, 'customers');
+if (coaData.length > 0) console.log('Sample COA:', coaData[0]);
+if (customersData.length > 0) console.log('Sample Customer:', customersData[0]);
+
+let closeTimeout = null;
+
+// Close all dropdowns helper
+function closeAllDropdowns() {
+  document.querySelectorAll('.inline-dropdown').forEach(dropdown => {
+    dropdown.classList.remove('show');
+  });
+}
+
+// Customer Dropdown Functions
+function openCustomerDropdown(transactionId) {
+  clearTimeout(closeTimeout);
+  
+  // Close all other dropdowns first
+  closeAllDropdowns();
+  
+  const dropdown = document.getElementById('who_dropdown_' + transactionId);
+  const input = document.getElementById('who_' + transactionId);
+  
+  // Show all customers on focus
+  showAllCustomers(transactionId);
+  dropdown.classList.add('show');
+}
+
+function showAllCustomers(transactionId) {
+  const dropdown = document.getElementById('who_dropdown_' + transactionId);
+  
+  if (customersData.length === 0) {
+    dropdown.innerHTML = '<div class="no-results">No customers found</div>';
+    return;
+  }
+  
+  let html = '<div class="dropdown-header">Select Customer <button class="dropdown-close" onclick="closeAllDropdowns(); event.stopPropagation();">×</button></div>';
+  
+  customersData.forEach(customer => {
+    html += `
+      <div class="dropdown-item" onmousedown="selectCustomer(${transactionId}, '${customer.loan_number}', '${customer.name}')">
+        <strong>${customer.loan_number}</strong>
+        <small>${customer.name}</small>
+      </div>
+    `;
+  });
+  
+  dropdown.innerHTML = html;
+}
+
+function filterCustomers(transactionId) {
+  const input = document.getElementById('who_' + transactionId);
+  const dropdown = document.getElementById('who_dropdown_' + transactionId);
+  const searchTerm = input.value.toLowerCase();
+  
+  if (searchTerm === '') {
+    showAllCustomers(transactionId);
+    return;
+  }
+  
+  const filtered = customersData.filter(customer => 
+    customer.loan_number.toLowerCase().includes(searchTerm) ||
+    customer.name.toLowerCase().includes(searchTerm)
+  );
+  
+  if (filtered.length === 0) {
+    dropdown.innerHTML = '<div class="dropdown-header">Select Customer <button class="dropdown-close" onclick="closeAllDropdowns(); event.stopPropagation();">×</button></div><div class="no-results">No customers found</div>';
+    return;
+  }
+  
+  let html = '<div class="dropdown-header">Select Customer <button class="dropdown-close" onclick="closeAllDropdowns(); event.stopPropagation();">×</button></div>';
+  
+  filtered.forEach(customer => {
+    html += `
+      <div class="dropdown-item" onmousedown="selectCustomer(${transactionId}, '${customer.loan_number}', '${customer.name}')">
+        <strong>${customer.loan_number}</strong>
+        <small>${customer.name}</small>
+      </div>
+    `;
+  });
+  
+  dropdown.innerHTML = html;
+  dropdown.classList.add('show');
+}
+
+function selectCustomer(transactionId, loanNumber, customerName) {
+  const input = document.getElementById('who_' + transactionId);
+  input.value = loanNumber + ' - ' + customerName;
+  
+  const dropdown = document.getElementById('who_dropdown_' + transactionId);
+  dropdown.classList.remove('show');
+  
+  showOkButton(transactionId);
+}
+
+// Account Dropdown Functions
+function openAccountDropdown(transactionId) {
+  clearTimeout(closeTimeout);
+  
+  // Close all other dropdowns first
+  closeAllDropdowns();
+  
+  const dropdown = document.getElementById('dropdown_' + transactionId);
+  const input = document.getElementById('what_' + transactionId);
+  
+  // Show all accounts on focus
+  showAllAccounts(transactionId);
+  dropdown.classList.add('show');
+}
+
+function showAllAccounts(transactionId) {
+  const dropdown = document.getElementById('dropdown_' + transactionId);
+  
+  if (coaData.length === 0) {
+    dropdown.innerHTML = '<div class="no-results">No accounts found</div>';
+    return;
+  }
+  
+  let html = '<div class="dropdown-header">Select Account <button class="dropdown-close" onclick="closeAllDropdowns(); event.stopPropagation();">×</button></div>';
+  
+  coaData.forEach(account => {
+    html += `
+      <div class="dropdown-item" onmousedown="selectAccount(${transactionId}, '${account.code}', '${account.name}')">
+        <strong>${account.code}</strong>
+        <small>${account.name}</small>
+      </div>
+    `;
+  });
+  
+  dropdown.innerHTML = html;
+}
+
+function filterAccounts(transactionId) {
+  const input = document.getElementById('what_' + transactionId);
+  const dropdown = document.getElementById('dropdown_' + transactionId);
+  const searchTerm = input.value.toLowerCase();
+  
+  // Hide OK button if input is cleared
+  const okButton = document.getElementById(`save${transactionId}`);
+  if (okButton) {
+    if (searchTerm === '') {
+      okButton.classList.remove('show');
+    }
+  }
+  
+  if (searchTerm === '') {
+    showAllAccounts(transactionId);
+    return;
+  }
+  
+  const filtered = coaData.filter(account => 
+    account.code.toLowerCase().includes(searchTerm) ||
+    account.name.toLowerCase().includes(searchTerm)
+  );
+  
+  if (filtered.length === 0) {
+    dropdown.innerHTML = '<div class="dropdown-header">Select Account <button class="dropdown-close" onclick="closeAllDropdowns(); event.stopPropagation();">×</button></div><div class="no-results">No accounts found</div>';
+    return;
+  }
+  
+  let html = '<div class="dropdown-header">Select Account <button class="dropdown-close" onclick="closeAllDropdowns(); event.stopPropagation();">×</button></div>';
+  
+  filtered.forEach(account => {
+    html += `
+      <div class="dropdown-item" onmousedown="selectAccount(${transactionId}, '${account.code}', '${account.name}')">
+        <strong>${account.code}</strong>
+        <small>${account.name}</small>
+      </div>
+    `;
+  });
+  
+  dropdown.innerHTML = html;
+  dropdown.classList.add('show');
+}
+
+function selectAccount(transactionId, code, name) {
+  const input = document.getElementById('what_' + transactionId);
+  input.value = code + ' - ' + name;
+  input.dataset.accountCode = code; // Store the matched account code
+  
+  const dropdown = document.getElementById('dropdown_' + transactionId);
+  dropdown.classList.remove('show');
+  
+  showOkButton(transactionId);
+}
+
+// Check if input value matches a valid account
+function checkAccountMatch(transactionId) {
+  const input = document.getElementById('what_' + transactionId);
+  const okButton = document.getElementById(`save${transactionId}`);
+  
+  if (!input || !okButton) return;
+  
+  const value = input.value.trim();
+  
+  // If input is empty, hide OK button
+  if (value === '') {
+    okButton.classList.remove('show');
+    delete input.dataset.accountCode;
+    return;
+  }
+  
+  // Check if the current value matches any account (code or "code - name" format)
+  const hasMatch = coaData.some(account => {
+    const fullMatch = `${account.code} - ${account.name}`;
+    return value === fullMatch || value === account.code;
+  });
+  
+  // Only show OK button if there's a valid match
+  if (hasMatch) {
+    okButton.classList.add('show');
+  } else {
+    okButton.classList.remove('show');
+    delete input.dataset.accountCode;
+  }
+}
+
+function closeDropdownDelayed(dropdownId) {
+  closeTimeout = setTimeout(() => {
+    const dropdown = document.getElementById(dropdownId);
+    if (dropdown) {
+      dropdown.classList.remove('show');
+    }
+  }, 200);
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.dropdown-cell')) {
+    document.querySelectorAll('.inline-dropdown').forEach(dropdown => {
+      dropdown.classList.remove('show');
+    });
+  }
+});
+
+// Toggle Suggestions Row
+function toggleSuggestions(transactionId) {
+  const suggestionsRow = document.getElementById(`suggestions-row-${transactionId}`);
+  const toggleBtn = document.getElementById(`suggestions-toggle-${transactionId}`);
+  
+  // Close all other suggestion rows
+  document.querySelectorAll('.suggestions-row').forEach(row => {
+    if (row.id !== `suggestions-row-${transactionId}`) {
+      row.classList.remove('show');
+    }
+  });
+  
+  // Remove active class from all buttons
+  document.querySelectorAll('.toggle-suggestions-btn').forEach(btn => {
+    if (btn.id !== `suggestions-toggle-${transactionId}`) {
+      btn.classList.remove('active');
+    }
+  });
+  
+  // Toggle current row
+  suggestionsRow.classList.toggle('show');
+  toggleBtn.classList.toggle('active');
+}
+
+// Apply Suggestion to Transaction - Directly saves without needing OK button
+function applySuggestion(transactionId, suggestionIndex, event) {
+  event.stopPropagation(); // Prevent row click
+  
+  const whoInput = document.getElementById(`who_${transactionId}`);
+  const whatInput = document.getElementById(`what_${transactionId}`);
+  const whyInput = document.querySelector(`input[name="why_${transactionId}"]`);
+  
+  // Get suggestion data from the clicked item
+  const suggestionItem = event.target.closest('.suggestion-item');
+  
+  // Extract WHO value
+  const whoField = suggestionItem.querySelector('.suggestion-field strong');
+  let whoValue = '';
+  if (whoField && whoField.textContent.includes('WHO:')) {
+    const whoSpan = whoField.parentElement.querySelector('span');
+    if (whoSpan) whoValue = whoSpan.textContent.trim();
+  }
+  
+  // Extract WHAT value (account code and account ID)
+  const suggestionFields = suggestionItem.querySelectorAll('.suggestion-field');
+  let whatValue = '';
+  let accountCode = '';
+  let accountId = '';
+  let whyValue = 'Auto-reconciled by AI';
+  
+  suggestionFields.forEach(field => {
+    const label = field.querySelector('strong');
+    const value = field.querySelector('span');
+    
+    if (label && value) {
+      const labelText = label.textContent.trim();
+      const valueText = value.textContent.trim();
+      
+      if (labelText === 'WHAT:') {
+        whatValue = valueText;
+        // Extract account code from "122000 - General Loans Receivable"
+        const match = valueText.match(/^(\d+)\s*-/);
+        if (match) {
+          accountCode = match[1];
+        }
+      } else if (labelText === 'WHY:') {
+        whyValue = valueText;
+      } else if (labelText === 'Rule:' || labelText === 'Pattern:') {
+        whyValue = valueText;
+      }
+    }
+  });
+  
+  // Apply values to inputs
+  if (whoValue && whoInput) {
+    whoInput.value = whoValue;
+    // Extract customer ID from "Name (LN2025123456)"
+    const loanMatch = whoValue.match(/LN\d+/);
+    if (loanMatch) {
+      whoInput.dataset.loanNumber = loanMatch[0];
+    }
+  }
+  if (whatValue && whatInput) {
+    whatInput.value = whatValue;
+    whatInput.dataset.accountCode = accountCode;
+  }
+  if (whyValue && whyInput) whyInput.value = whyValue;
+  
+  // Mark as applied visually
+  document.querySelectorAll(`#suggestions-row-${transactionId} .suggestion-item`).forEach(item => {
+    item.classList.remove('applied');
+    const btn = item.querySelector('.suggestion-apply-btn');
+    if (btn) {
+      btn.classList.remove('applied');
+      btn.textContent = 'Apply';
+    }
+  });
+  
+  suggestionItem.classList.add('applied');
+  
+  // Mark button as applied
+  const applyBtn = document.getElementById(`apply-${transactionId}-${suggestionIndex}`);
+  if (applyBtn) {
+    applyBtn.classList.add('applied');
+    applyBtn.innerHTML = '<i class="bi bi-check2"></i> Applying...';
+    applyBtn.disabled = true;
+  }
+  
+  // Close suggestions row
+  toggleSuggestions(transactionId);
+  
+  // Directly save the transaction (no need for OK button)
+  saveTransaction(transactionId);
+  
+  console.log(`✅ Applied and saved transaction ${transactionId}:`, {who: whoValue, what: whatValue, why: whyValue});
+}
+
+// Toggle Details Section - Opens Split Transaction Modal
+function toggleDetails(transactionId) {
+  console.log('Opening split transaction modal for transaction:', transactionId);
+  
+  // Close any open dropdowns first
+  closeAllDropdowns();
+  
+  // Get transaction data from DOM
+  const whoInput = document.getElementById(`who_${transactionId}`);
+  const whatInput = document.getElementById(`what_${transactionId}`);
+  const whyInput = document.querySelector(`input[name="why_${transactionId}"]`);
+  
+  // Find transaction amount and description from the card
+  const transactionCard = document.querySelector(`input[name="why_${transactionId}"]`).closest('tr');
+  
+  // Get debit or credit amount
+  const debitCell = transactionCard.querySelector('.amount-negative');
+  const creditCell = transactionCard.querySelector('.amount-positive');
+  
+  let amount = '0.00';
+  let isDebit = false;
+  
+  if (debitCell && debitCell.textContent.trim()) {
+    amount = debitCell.textContent.replace(/[$,]/g, '').trim();
+    isDebit = true;
+  } else if (creditCell && creditCell.textContent.trim()) {
+    amount = creditCell.textContent.replace(/[$,]/g, '').trim();
+    isDebit = false;
+  }
+  
+  // Get date from the row
+  const dateCell = transactionCard.querySelector('.date-cell');
+  const descriptionCell = transactionCard.querySelector('.description-cell');
+  
+  const transactionData = {
+    id: transactionId,
+    description: whyInput ? whyInput.value : (descriptionCell ? descriptionCell.textContent.trim().replace(/^[\s\S]*?(?=\w)/, '') : 'Split Transaction'),
+    amount: amount,
+    payee: whoInput ? whoInput.value : '',
+    date: dateCell ? dateCell.textContent.trim().substring(0, 10) : new Date().toISOString().split('T')[0],
+    reference: '',
+    whatAccount: whatInput ? whatInput.value : '',
+    isDebit: isDebit
+  };
+  
+  console.log('Transaction data prepared:', transactionData);
+  
+  // Validate amount
+  if (parseFloat(amount) === 0) {
+    alert('⚠️ Cannot split a transaction with zero amount.');
+    return;
+  }
+  
+  // Show the split transaction modal
+  showSplitTransactionModal(transactionData);
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.dropdown-cell')) {
+    closeAllDropdowns();
+  }
+});
+
+// Close dropdowns on scroll
+window.addEventListener('scroll', function() {
+  closeAllDropdowns();
+});
+
+function showOkButton(transactionId) {
+  const whatInput = document.getElementById(`what_${transactionId}`);
+  const okButton = document.getElementById(`save${transactionId}`);
+  
+  if (!okButton || !whatInput) {
+    console.error('Elements not found for transaction:', transactionId);
+    return;
+  }
+  
+  // Show OK button if WHAT field has value (required field)
+  if (whatInput.value.trim()) {
+    okButton.classList.add('show');
+    console.log('OK button shown for transaction:', transactionId);
+  } else {
+    okButton.classList.remove('show');
+    console.log('OK button hidden for transaction:', transactionId);
+  }
+}
+
+function saveTransaction(transactionId) {
+  const whoInput = document.getElementById(`who_${transactionId}`);
+  const who = whoInput ? whoInput.value : '';
+  const customerId = whoInput ? whoInput.dataset.customerId || '' : '';
+  const loanNumber = whoInput ? whoInput.dataset.loanNumber || '' : '';
+  
+  const whatInput = document.getElementById(`what_${transactionId}`);
+  const what = whatInput ? whatInput.value : '';
+  const accountCode = whatInput ? whatInput.dataset.accountCode || '' : '';
+  
+  const whyInput = document.querySelector(`input[name="why_${transactionId}"]`);
+  const why = whyInput ? whyInput.value : '';
+  
+  if (!what) {
+    alert('WHAT (Account) field is required!');
+    return;
+  }
+  
+  // Get the transaction row
+  const transactionRow = document.querySelector(`input[name="why_${transactionId}"]`)?.closest('tr');
+  if (!transactionRow) return;
+  
+  // Show saving indicator
+  transactionRow.style.opacity = '0.6';
+  
+  // Prepare data for backend
+  const reconciliationData = {
+    transaction_id: transactionId,
+    who: who,
+    customer_id: customerId,
+    loan_number: loanNumber,
+    what: what,
+    account_code: accountCode,
+    why: why,
+    reconciled_at: new Date().toISOString()
+  };
+  
+  console.log('💾 Saving reconciliation to backend:', reconciliationData);
+  
+  // Send to backend
+  fetch(`/reconciliation/save-transaction/${transactionId}/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+    },
+    body: JSON.stringify(reconciliationData)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log('✅ Transaction saved successfully:', data);
+      
+      // Mark row as reconciled (gray background, slight opacity)
+      transactionRow.classList.add('reconciled-row');
+      transactionRow.style.opacity = '1';
+      transactionRow.style.background = 'linear-gradient(to right, #f0f0f0, #f8f8f8)';
+      transactionRow.style.textDecoration = 'none';
+      
+      // Disable inputs to show it's completed
+      if (whoInput) {
+        whoInput.disabled = true;
+        whoInput.style.background = '#f5f5f5';
+      }
+      if (whatInput) {
+        whatInput.disabled = true;
+        whatInput.style.background = '#f5f5f5';
+      }
+      if (whyInput) {
+        whyInput.disabled = true;
+        whyInput.style.background = '#f5f5f5';
+      }
+      
+      // Hide OK button
+      const okButton = document.getElementById(`save${transactionId}`);
+      if (okButton) {
+        okButton.style.display = 'none';
+      }
+      
+      // Add "Reconciled" badge
+      const detailsCell = transactionRow.querySelector('.save-cell');
+      if (detailsCell && !detailsCell.querySelector('.reconciled-badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'reconciled-badge';
+        badge.innerHTML = '<i class="bi bi-check-circle-fill"></i> Reconciled';
+        badge.style.cssText = 'display: inline-block; background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; margin-left: 8px;';
+        detailsCell.insertBefore(badge, detailsCell.firstChild);
+      }
+      
+      // Disable AI button
+      const aiButton = transactionRow.querySelector('.toggle-suggestions-btn');
+      if (aiButton) {
+        aiButton.disabled = true;
+        aiButton.style.opacity = '0.5';
+      }
+      
+      // Show success message briefly
+      const successMsg = document.createElement('div');
+      successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 9999; animation: slideIn 0.3s;';
+      successMsg.innerHTML = '<i class="bi bi-check-circle-fill"></i> Transaction reconciled successfully!';
+      document.body.appendChild(successMsg);
+      setTimeout(() => successMsg.remove(), 3000);
+      
+    } else {
+      alert('❌ Error saving transaction: ' + (data.error || 'Unknown error'));
+      transactionRow.style.opacity = '1';
+    }
+  })
+  .catch(error => {
+    console.error('Error saving transaction:', error);
+    alert('❌ Network error. Please try again.');
+    transactionRow.style.opacity = '1';
+  });
+}
+
+// ============================================
+// SPLIT TRANSACTION MODAL FUNCTIONS
+// ============================================
+
+function showSplitTransactionModal(transactionData) {
+  const sanitizedData = {
+    id: transactionData.id || 0,
+    description: (transactionData.description || 'Split Transaction').replace(/"/g, '&quot;'),
+    amount: parseFloat(transactionData.amount || 0).toFixed(2),
+    payee: (transactionData.payee || '').replace(/"/g, '&quot;'),
+    date: transactionData.date || new Date().toISOString().split('T')[0],
+    reference: (transactionData.reference || '').replace(/"/g, '&quot;'),
+    whatAccount: transactionData.whatAccount || ''
+  };
+  
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop fade show';
+  backdrop.style.zIndex = '1040';
+  
+  const modal = document.createElement('div');
+  modal.className = 'modal fade show';
+  modal.style.display = 'block';
+  modal.style.zIndex = '1050';
+  modal.setAttribute('tabindex', '-1');
+  
+  modal.innerHTML = `
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content" style="border: none; border-radius: 0; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+        <div class="modal-header" style="background: linear-gradient(135deg, #4472C4 0%, #2B579A 100%); border-bottom: 3px solid #1F4788; border-radius: 0; padding: 16px 24px;">
+          <div class="d-flex align-items-center">
+            <i class="bi bi-diagram-3 me-3" style="font-size: 24px; color: white;"></i>
+            <div>
+              <h5 class="modal-title mb-0" style="color: white; font-weight: 600; font-size: 18px;">Split Transaction into Multiple Accounts</h5>
+              <small style="color: rgba(255,255,255,0.9); font-size: 12px;">Divide this transaction across different GL codes</small>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" onclick="closeSplitModal()" title="Close modal"></button>
+        </div>
+        
+        <div class="modal-body" style="background: #f9f9f9; padding: 20px;">
+          <div class="container-fluid">
+            <div style="background: #E7F3FF; border-left: 4px solid #4472C4; padding: 16px; margin-bottom: 20px; border-radius: 4px;">
+              <div class="row align-items-center">
+                <div class="col-md-8">
+                  <div class="mb-1" style="color: #323130; font-size: 13px;">
+                    <i class="bi bi-info-circle me-1" style="color: #4472C4;"></i>
+                    <strong>Transaction:</strong> \${sanitizedData.description}
+                  </div>
+                  <small style="color: #605E5C; font-size: 12px;">
+                    💡 Tip: The total of all split lines must equal the original transaction amount
+                  </small>
+                </div>
+                <div class="col-md-4 text-end">
+                  <small style="color: #605E5C; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Original Amount</small>
+                  <div style="font-size: 22px; font-weight: 700; color: #4472C4; font-family: 'Segoe UI', sans-serif; letter-spacing: -0.5px;" id="originalAmount">$\${sanitizedData.amount}</div>
+                </div>
+              </div>
+              <input type="hidden" id="transactionId" value="\${sanitizedData.id}">
+            </div>
+            
+            <div class="row mb-3" style="gap: 12px 0;">
+              <div class="col-md-4">
+                <label class="form-label" style="font-size: 11px; font-weight: 600; color: #323130; margin-bottom: 4px;">Date:</label>
+                <input type="date" class="form-control" value="\${sanitizedData.date}" readonly style="border: 1px solid #8A8886; font-size: 11pt; font-family: 'Segoe UI'; padding: 4px 8px; background: #F3F2F1;">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" style="font-size: 11px; font-weight: 600; color: #323130; margin-bottom: 4px;"><i class="bi bi-person me-1"></i>Who (Payee):</label>
+                <input type="text" class="form-control" value="\${sanitizedData.payee}" placeholder="e.g., Customer Name" style="border: 1px solid #8A8886; font-size: 11pt; font-family: 'Segoe UI'; padding: 4px 8px;">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" style="font-size: 11px; font-weight: 600; color: #323130; margin-bottom: 4px;"><i class="bi bi-chat-text me-1"></i>Why (Description):</label>
+                <input type="text" class="form-control" id="splitDescription" value="\${sanitizedData.description}" placeholder="Description" style="border: 1px solid #8A8886; font-size: 11pt; font-family: 'Segoe UI'; padding: 4px 8px;">
+              </div>
+            </div>
+            
+            <div class="table-responsive" style="margin-top: 16px; max-height: 500px; overflow-y: auto;">
+              <table class="excel-table" id="splitLinesTable" style="margin-bottom: 0; min-width: 100%;">
+                <thead>
+                  <tr>
+                    <th style="width: 35%;">Description</th>
+                    <th style="width: 30%;">Account</th>
+                    <th style="width: 15%;">Tax Rate</th>
+                    <th style="width: 15%; text-align: right;">Amount</th>
+                    <th style="width: 5%; text-align: center;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="splitLineBody"></tbody>
+                <tfoot style="background: #F3F2F1; border-top: 2px solid #D2D0CE;">
+                  <tr style="background: #F3F2F1;">
+                    <td colspan="3" style="text-align: right; padding: 10px 12px; font-weight: 600; font-size: 12px; color: #323130; border: 1px solid #D2D0CE;">Split Total:</td>
+                    <td style="text-align: right; padding: 10px 12px; font-weight: 700; font-size: 13px; color: #323130; border: 1px solid #D2D0CE; font-family: 'Segoe UI';" id="splitTotalAmount">$0.00</td>
+                    <td style="border: 1px solid #D2D0CE;"></td>
+                  </tr>
+                  <tr id="balanceValidationRow" style="background: #FFFACD;">
+                    <td colspan="3" style="text-align: right; padding: 8px 12px; border: 1px solid #D2D0CE;">
+                      <div class="d-flex justify-content-end align-items-center gap-3">
+                        <div>
+                          <small style="color: #605E5C; font-size: 11px; font-weight: 600;">Original:</small>
+                          <span style="font-weight: 700; font-size: 12px; color: #323130; margin-left: 6px;" id="originalAmountFooter">$0.00</span>
+                        </div>
+                        <div style="border-left: 2px solid #D2D0CE; padding-left: 12px;">
+                          <small style="color: #605E5C; font-size: 11px; font-weight: 600;">Difference:</small>
+                          <span style="font-weight: 700; font-size: 12px; margin-left: 6px;" id="balanceDifference">$0.00</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td style="text-align: center; padding: 8px 12px; border: 1px solid #D2D0CE;">
+                      <span class="badge" id="balanceStatus" style="font-size: 11px; padding: 4px 8px;">Checking...</span>
+                    </td>
+                    <td style="border: 1px solid #D2D0CE;"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            
+            <button class="btn btn-sm mt-3" onclick="addSplitLine()" style="background: #4472C4; color: white; border: none; padding: 6px 16px; font-size: 12px; font-weight: 500; font-family: 'Segoe UI';">
+              <i class="bi bi-plus me-1"></i>Add Split Line
+            </button>
+          </div>
+        </div>
+        
+        <div class="modal-footer" style="background: #F3F2F1; border-top: 2px solid #D2D0CE; padding: 12px 24px;">
+          <div class="me-auto d-flex align-items-center">
+            <span style="background: #605E5C; color: white; padding: 4px 12px; border-radius: 3px; font-size: 11px; font-weight: 500;">
+              <i class="bi bi-info-circle"></i> Split Mode
+            </span>
+            <small style="color: #605E5C; margin-left: 12px; font-size: 12px;">
+              Use this to allocate one transaction to multiple accounts
+            </small>
+          </div>
+          <button type="button" class="btn btn-success" onclick="saveSplitTransaction()" style="padding: 6px 20px; font-size: 13px; font-weight: 500;">
+            <i class="bi bi-check-circle me-1"></i>Save Split
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="closeSplitModal()" style="padding: 6px 20px; font-size: 13px; font-weight: 500;">
+            <i class="bi bi-x-circle me-1"></i>Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(backdrop);
+  document.body.appendChild(modal);
+  document.body.classList.add('modal-open');
+  
+  initializeSplitLines(transactionData.amount, transactionData);
+}
+
+function initializeSplitLines(totalAmount, transactionData = {}) {
+  const amount = parseFloat(totalAmount) || 0;
+  document.getElementById('originalAmount').textContent = '$' + amount.toFixed(2);
+  document.getElementById('originalAmountFooter').textContent = '$' + amount.toFixed(2);
+  
+  const splitLines = [];
+  
+  if (transactionData.whatAccount && transactionData.whatAccount.trim() !== '') {
+    splitLines.push({
+      description: transactionData.description || 'Split Item 1',
+      account: transactionData.whatAccount,
+      taxRate: 'Tax Exempt (0%)',
+      amount: amount.toFixed(2)
+    });
+  } else {
+    splitLines.push({
+      description: transactionData.description || '',
+      account: '',
+      taxRate: 'Tax Exempt (0%)',
+      amount: amount.toFixed(2)
+    });
+    
+    if (amount > 100) {
+      splitLines.push({
+        description: '',
+        account: '',
+        taxRate: 'Tax Exempt (0%)',
+        amount: '0.00'
+      });
+    }
+  }
+  
+  const tbody = document.getElementById('splitLineBody');
+  tbody.innerHTML = '';
+  splitLines.forEach((line) => addSplitLineRow(line));
+  updateSplitTotal();
+}
+
+function addSplitLineRow(preset = {}) {
+  const tbody = document.getElementById('splitLineBody');
+  const row = document.createElement('tr');
+  
+  row.innerHTML = `
+    <td style="padding: 6px 10px;">
+      <input type="text" class="form-control-plaintext" 
+             value="\${preset.description || ''}" 
+             placeholder="Line description"
+             style="border: 1px solid transparent; font-size: 11pt; font-family: 'Segoe UI', Calibri; padding: 4px 8px; margin: 0; height: 28px; line-height: 1.4; width: 100%;"
+             onfocus="this.style.border='1px solid #4472C4'; this.style.background='white';"
+             onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
+    </td>
+    <td style="padding: 6px 10px;">
+      <input type="text" class="form-control-plaintext" 
+             value="\${preset.account || ''}" 
+             placeholder="Account code or name"
+             style="border: 1px solid transparent; font-size: 11pt; font-family: 'Segoe UI', Calibri; padding: 4px 8px; margin: 0; height: 28px; line-height: 1.4; width: 100%;"
+             onfocus="this.style.border='1px solid #4472C4'; this.style.background='white';"
+             onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
+    </td>
+    <td style="padding: 6px 10px;">
+      <select class="form-select-sm" style="border: 1px solid transparent; font-size: 11pt; font-family: 'Segoe UI', Calibri; padding: 4px 8px; margin: 0; height: 28px; line-height: 1.4; background: transparent; width: 100%;"
+              onfocus="this.style.border='1px solid #4472C4'; this.style.background='white';"
+              onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
+        <option value="tax_exempt" \${(preset.taxRate || '').includes('Tax Exempt') ? 'selected' : ''}>Tax Exempt (0%)</option>
+        <option value="gst_10" \${(preset.taxRate || '').includes('10%') ? 'selected' : ''}>GST (10%)</option>
+        <option value="gst_free" \${(preset.taxRate || '').includes('GST Free') ? 'selected' : ''}>GST Free</option>
+      </select>
+    </td>
+    <td style="padding: 6px 10px; text-align: right;">
+      <input type="number" class="form-control-plaintext text-end split-amount" 
+             value="\${preset.amount || ''}" 
+             step="0.01" 
+             placeholder="0.00"
+             oninput="updateSplitTotal()"
+             onchange="updateSplitTotal()"
+             style="border: 1px solid transparent; font-size: 11pt; font-family: 'Segoe UI', Calibri; padding: 4px 8px; margin: 0; height: 28px; line-height: 1.4; text-align: right; width: 100%;"
+             onfocus="this.style.border='1px solid #4472C4'; this.style.background='white';"
+             onblur="this.style.border='1px solid transparent'; this.style.background='transparent';">
+    </td>
+    <td style="padding: 6px 10px; text-align: center;">
+      <button type="button" class="btn btn-sm" onclick="removeSplitLine(this)" 
+              style="background: transparent; border: none; color: #D83B01; padding: 4px 8px; font-size: 14px; height: 28px; line-height: 1;"
+              onmouseover="this.style.background='#D83B01'; this.style.color='white';"
+              onmouseout="this.style.background='transparent'; this.style.color='#D83B01';"
+              title="Delete row">
+        <i class="bi bi-trash"></i>
+      </button>
+    </td>
+  `;
+  
+  tbody.appendChild(row);
+}
+
+function addSplitLine() {
+  addSplitLineRow();
+  updateSplitTotal();
+}
+
+function removeSplitLine(button) {
+  button.closest('tr').remove();
+  updateSplitTotal();
+}
+
+function updateSplitTotal() {
+  const amounts = document.querySelectorAll('.split-amount');
+  let splitTotal = 0;
+  
+  amounts.forEach(input => {
+    splitTotal += parseFloat(input.value) || 0;
+  });
+  
+  const originalAmountElement = document.getElementById('originalAmount');
+  const originalAmount = parseFloat(originalAmountElement.textContent.replace(/[$,]/g, '')) || 0;
+  const difference = splitTotal - originalAmount;
+  const absDifference = Math.abs(difference);
+  
+  document.getElementById('splitTotalAmount').textContent = '$' + splitTotal.toFixed(2);
+  document.getElementById('balanceDifference').textContent = (difference >= 0 ? '+' : '') + '$' + difference.toFixed(2);
+  
+  const statusBadge = document.getElementById('balanceStatus');
+  const differenceElement = document.getElementById('balanceDifference');
+  
+  if (absDifference === 0) {
+    statusBadge.className = 'badge bg-success';
+    statusBadge.innerHTML = '<i class="bi bi-check-circle"></i> Balanced';
+    differenceElement.className = 'fw-semibold text-success';
+  } else if (absDifference <= 0.01) {
+    statusBadge.className = 'badge bg-warning';
+    statusBadge.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Minor Diff';
+    differenceElement.className = 'fw-semibold text-warning';
+  } else {
+    statusBadge.className = 'badge bg-danger';
+    statusBadge.innerHTML = '<i class="bi bi-exclamation-circle"></i> Unbalanced';
+    differenceElement.className = 'fw-semibold text-danger';
+  }
+  
+  updateSaveButtonState(absDifference);
+}
+
+function updateSaveButtonState(difference) {
+  const saveButton = document.querySelector('button[onclick="saveSplitTransaction()"]');
+  if (!saveButton) return;
+  
+  if (difference === 0) {
+    saveButton.disabled = false;
+    saveButton.className = 'btn btn-success';
+    saveButton.innerHTML = '<i class="bi bi-check me-1"></i>Apply Split';
+  } else if (difference <= 0.01) {
+    saveButton.disabled = false;
+    saveButton.className = 'btn btn-warning text-dark';
+    saveButton.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>Apply (Minor Diff)';
+  } else {
+    saveButton.disabled = true;
+    saveButton.className = 'btn btn-danger';
+    saveButton.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Balance Required';
+  }
+}
+
+function saveSplitTransaction() {
+  const transactionId = document.getElementById('transactionId').value;
+  const description = document.getElementById('splitDescription').value;
+  const splitLines = [];
+  const rows = document.querySelectorAll('#splitLineBody tr');
+  
+  rows.forEach((row, index) => {
+    const descInput = row.querySelector('input[placeholder="Line description"]');
+    const accountInput = row.querySelector('input[placeholder="Account code or name"]');
+    const taxSelect = row.querySelector('select');
+    const amountInput = row.querySelector('.split-amount');
+    
+    if (accountInput.value.trim() && parseFloat(amountInput.value || 0) !== 0) {
+      splitLines.push({
+        description: descInput.value.trim() || `Split line ${index + 1}`,
+        account: accountInput.value.trim(),
+        taxRate: taxSelect.value,
+        amount: parseFloat(amountInput.value || 0)
+      });
+    }
+  });
+  
+  if (splitLines.length === 0) {
+    alert('⚠️ Please add at least one split line with an account and amount.');
+    return;
+  }
+  
+  console.log('Saving split transaction:', {
+    transactionId: transactionId,
+    description: description,
+    splitLines: splitLines
+  });
+  
+  // Calculate total for display
+  const total = splitLines.reduce((sum, line) => sum + line.amount, 0);
+  
+  // Show detailed success message
+  const linesSummary = splitLines.map((line, i) => 
+    `\n${i + 1}. ${line.account} - $${line.amount.toFixed(2)}`
+  ).join('');
+  
+  alert(`✅ Split Transaction Saved Successfully!\n\nTransaction ID: ${transactionId}\nSplit into ${splitLines.length} lines:\n${linesSummary}\n\nTotal: $${total.toFixed(2)}\n\n📝 Note: This is a prototype - data will be saved when backend is connected.`);
+  
+  closeSplitModal();
+}
+
+function closeSplitModal() {
+  const modals = document.querySelectorAll('.modal, .modal-backdrop');
+  modals.forEach(modal => modal.remove());
+  document.body.classList.remove('modal-open');
+}
+
+// Tab Switching Function (Excel-style)
+function switchTab(tabName, event) {
+  // Update tab buttons
+  document.querySelectorAll('.ribbon-tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  
+  // Get the clicked button
+  const clickedButton = event ? event.currentTarget : document.querySelector('.ribbon-tab');
+  if (clickedButton) {
+    clickedButton.classList.add('active');
+  }
+  
+  // Update content views
+  document.querySelectorAll('.tab-content').forEach(content => {
+    content.classList.remove('active');
+  });
+  
+  if (tabName === 'unreconciled') {
+    document.getElementById('unreconciled-view').classList.add('active');
+  } else if (tabName === 'reconciled') {
+    document.getElementById('reconciled-view').classList.add('active');
+    loadReconciledTransactions();
+  }
+}
+
+// Load Reconciled Transactions
+let reconciledTransactionsLoaded = false;
+
+function loadReconciledTransactions() {
+  if (reconciledTransactionsLoaded) return;
+  
+  const accountId = {{ account.id }};
+  const fileId = {{ file_id|default:"null" }};  // Get file_id from context
+  const tbody = document.getElementById('reconciled-transactions-body');
+  
+  console.log('Loading reconciled transactions for account:', accountId);
+  console.log('TBody element found:', tbody);
+  
+  if (!tbody) {
+    console.error('ERROR: reconciled-transactions-body not found!');
+    return;
+  }
+  
+  // Build URL with optional file_id parameter
+  let url = `/reconciliation/api/reconciled-transactions/${accountId}/`;
+  if (fileId) {
+    url += `?file_id=${fileId}`;
+  }
+  
+  fetch(url)
+    .then(response => {
+      console.log('Response status:', response.status);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Received data:', data);
+      if (data.success && data.transactions && data.transactions.length > 0) {
+        const html = data.transactions.map((t, index) => `
+          <tr class="reconciled-row">
+            <td class="row-number">${index + 1}</td>
+            <td class="date-cell">${t.date}</td>
+            <td class="description-cell">
+              <span class="status-indicator ${t.amount > 0 ? 'status-credit' : 'status-debit'}"></span>
+              ${t.description}
+            </td>
+            <td class="amount-cell center">${t.debit || ''}</td>
+            <td class="amount-cell center">${t.credit || ''}</td>
+            <td class="input-cell">${t.contact || ''}</td>
+            <td class="input-cell">${t.account_code || ''} — ${t.account_name || ''}</td>
+            <td class="input-cell">${t.memo || ''}</td>
+            <td class="center">
+              <span class="reconciled-badge">
+                <i class="fas fa-check-circle"></i> Reconciled
+              </span>
+            </td>
+            <td class="center" style="font-size: 11px;">${t.reconciled_at || ''}</td>
+          </tr>
+        `).join('');
+        
+        console.log('Generated HTML length:', html.length);
+        tbody.innerHTML = html;
+        console.log(`Loaded ${data.transactions.length} reconciled transactions`);
+        console.log('TBody after update:', tbody.innerHTML.substring(0, 200));
+      } else {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="10" style="text-align: center; padding: 2rem; color: #6c757d;">
+              <i class="fas fa-info-circle mb-2" style="font-size: 2rem;"></i>
+              <div>No reconciled transactions found.</div>
+              <div style="font-size: 12px; margin-top: 8px;">Try reconciling some transactions first.</div>
+            </td>
+          </tr>
+        `;
+        console.log('No reconciled transactions found');
+      }
+      reconciledTransactionsLoaded = true;
+    })
+    .catch(error => {
+      console.error('Error loading reconciled transactions:', error);
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="10" style="text-align: center; padding: 2rem; color: #dc3545;">
+            <i class="fas fa-exclamation-triangle mb-2" style="font-size: 2rem;"></i>
+            <div>Error loading reconciled transactions.</div>
+            <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
+          </td>
+        </tr>
+      `;
+    });
+}
+</script>
+
+{% endblock %}

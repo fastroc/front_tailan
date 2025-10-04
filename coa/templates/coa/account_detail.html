@@ -62,10 +62,10 @@
             </div>
             <div class="d-flex gap-2">
                 {% if not account.is_locked %}
-                <button class="btn btn-outline-primary btn-professional">
+                <a href="{% url 'coa:edit_account' account.id %}" class="btn btn-outline-primary btn-professional">
                     <i class="bi bi-pencil me-2"></i>
                     Edit Account
-                </button>
+                </a>
                 {% endif %}
                 <div class="dropdown">
                     <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
@@ -76,7 +76,25 @@
                         <li><a class="dropdown-item" href="#"><i class="bi bi-clock-history me-2"></i>View History</a></li>
                         <li><hr class="dropdown-divider"></li>
                         {% if account.can_be_deleted %}
-                        <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-trash me-2"></i>Delete Account</a></li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="{% url 'coa:delete_account' account.id %}" onclick="return confirm('⚠️ Are you sure you want to delete this account?\n\nAccount: {{ account.code }} - {{ account.name }}\nThis action cannot be undone!')">
+                                <i class="bi bi-trash me-2"></i>Delete Account
+                            </a>
+                        </li>
+                        {% else %}
+                            {% if account.is_locked %}
+                            <li>
+                                <span class="dropdown-item text-muted disabled" title="Cannot delete locked accounts">
+                                    <i class="bi bi-lock me-2"></i>Account is Locked
+                                </span>
+                            </li>
+                            {% elif account.get_children.exists %}
+                            <li>
+                                <span class="dropdown-item text-muted disabled" title="Cannot delete accounts with children">
+                                    <i class="bi bi-diagram-3 me-2"></i>Has Child Accounts
+                                </span>
+                            </li>
+                            {% endif %}
                         {% endif %}
                     </ul>
                 </div>
@@ -94,6 +112,23 @@
         </div>
     </div>
 </div>
+
+<!-- Inactive Account Alert -->
+{% if not account.is_active %}
+<div class="alert alert-warning border-warning border-2 d-flex align-items-center mb-4" role="alert">
+    <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+    <div class="flex-grow-1">
+        <h6 class="alert-heading mb-1">⚠️ Inactive Account</h6>
+        <p class="mb-0">This account is currently inactive and not available for new transactions.</p>
+    </div>
+    {% if account.can_be_deleted %}
+    <a href="{% url 'coa:delete_account' account.id %}" class="btn btn-outline-danger btn-sm ms-3" onclick="return confirm('⚠️ Are you sure you want to permanently delete this inactive account?\n\nAccount: {{ account.code }} - {{ account.name }}\n\nThis action cannot be undone and will remove:\n• Account configuration\n• All historical balances\n• Associated AI learning data (if any)\n\nContinue with deletion?')">
+        <i class="bi bi-trash me-1"></i>
+        Permanently Delete
+    </a>
+    {% endif %}
+</div>
+{% endif %}
 
 <!-- Account Details Cards -->
 <div class="row g-4 mb-4">

@@ -3,167 +3,360 @@
 
 {% block extra_css %}
 <style>
-    .dashboard-header {
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        color: white;
-        padding: 2rem 0;
-        margin: -2rem -2rem 2rem -2rem;
-        border-radius: 0 0 1rem 1rem;
+    /* EXCEL-LIKE MINIMAL DESIGN - MATCHING RECONCILIATION PAGE */
+    
+    body {
+        font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+        font-size: 11pt;
+        background: #f0f0f0;
     }
     
-    /* Setup Status Styling */
-    .setup-status-card {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    .page-wrapper {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        background: white;
+    }
+    
+    /* Unified Header Section - Modern Excel Style */
+    .unified-header {
+        background: linear-gradient(135deg, #4472C4 0%, #2B579A 100%);
+        border-bottom: 3px solid #1F4788;
+        padding: 16px 24px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .header-title-section {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 0 0 auto;
+    }
+    
+    .header-title-section h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+        font-family: 'Segoe UI', sans-serif;
+        display: flex;
+        align-items: center;
+        gap: 12px;
         color: white;
+        line-height: 1.2;
+    }
+    
+    .header-title-section h2 i {
+        font-size: 20px;
+        color: white;
+        opacity: 0.95;
+    }
+    
+    .company-name {
+        font-size: 12px;
+        opacity: 0.85;
+        color: rgba(255, 255, 255, 0.95);
+        margin: 0;
+        font-weight: 400;
+    }
+    
+    /* Balance Grid - Compact Cards */
+    .balance-grid {
+        display: flex;
+        align-items: stretch;
+        gap: 12px;
+        flex: 1;
+        justify-content: flex-end;
+    }
+    
+    .balance-item {
+        flex: 0 0 auto;
+        padding: 10px 16px;
+        background: white;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-width: 140px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .balance-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .balance-item:first-child {
+        border-left: 3px solid #4472C4;
+    }
+    
+    .balance-item:nth-child(2) {
+        border-left: 3px solid #107C10;
+    }
+    
+    .balance-item:nth-child(3) {
+        border-left: 3px solid #CA5010;
+    }
+    
+    .balance-item:last-child {
+        border-left: 3px solid #D83B01;
+    }
+    
+    .balance-label {
+        font-size: 9px;
+        color: #605E5C;
+        margin-bottom: 4px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-family: 'Segoe UI', sans-serif;
+        text-align: center;
+    }
+    
+    .balance-value {
+        font-size: 16px;
+        font-weight: 700;
+        font-family: 'Segoe UI', sans-serif;
+        letter-spacing: -0.3px;
+        text-align: center;
+    }
+    
+    .balance-value.text-primary {
+        color: #4472C4 !important;
+    }
+    
+    .balance-value.text-success {
+        color: #107C10 !important;
+    }
+    
+    .balance-value.text-warning {
+        color: #CA5010 !important;
+    }
+    
+    .balance-value.text-danger {
+        color: #D83B01 !important;
+    }
+    
+    /* Excel-Style Content Area */
+    .content-area {
+        background: white;
+        padding: 20px 24px;
+    }
+    
+    /* Setup Status Banner - Excel Ribbon Style */
+    .setup-status-card {
+        background: linear-gradient(135deg, #FFC107 0%, #F59E0B 100%);
+        color: #323130;
         border: none;
-        border-radius: 1rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
-        animation: pulse-glow 2s infinite;
+        border-radius: 0;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        border-left: 4px solid #F59E0B;
     }
     
     .setup-status-card.critical {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+        background: linear-gradient(135deg, #FFE0E0 0%, #FFCCCC 100%);
+        border-left-color: #D83B01;
+        color: #323130;
     }
     
     .setup-status-card.ready {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
-    }
-    
-    @keyframes pulse-glow {
-        0%, 100% {
-            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
-        }
-        50% {
-            box-shadow: 0 12px 40px rgba(245, 158, 11, 0.5);
-        }
+        background: linear-gradient(135deg, #DFF6DD 0%, #C7E6C5 100%);
+        border-left-color: #107C10;
+        color: #323130;
     }
     
     .setup-progress {
-        background: rgba(255, 255, 255, 0.2);
-        height: 8px;
-        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.5);
+        height: 6px;
+        border-radius: 0;
         overflow: hidden;
         margin: 1rem 0;
+        border: 1px solid rgba(0,0,0,0.1);
     }
     
     .setup-progress-bar {
-        background: rgba(255, 255, 255, 0.9);
+        background: #4472C4;
         height: 100%;
-        border-radius: 4px;
+        border-radius: 0;
         transition: width 0.8s ease;
     }
     
+    /* Excel-Style Metric Cards */
     .metric-card {
         background: white;
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border: 1px solid #D2D0CE;
+        border-radius: 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         height: 100%;
+        padding: 16px;
     }
     
     .metric-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        border-color: #4472C4;
     }
     
     .metric-icon {
-        width: 3rem;
-        height: 3rem;
-        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #4472C4, #2B579A);
         color: white;
-        border-radius: 50%;
+        border-radius: 4px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.25rem;
-        margin-bottom: 1rem;
+        font-size: 20px;
+        margin-bottom: 12px;
     }
     
     .metric-value {
-        font-size: 2rem;
+        font-size: 28px;
         font-weight: 700;
-        color: #1f2937;
-        margin-bottom: 0.5rem;
+        color: #323130;
+        margin-bottom: 6px;
+        font-family: 'Segoe UI', sans-serif;
+        letter-spacing: -0.5px;
     }
     
     .metric-label {
-        color: #6b7280;
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .metric-change {
-        font-size: 0.8rem;
+        color: #605E5C;
+        font-size: 11px;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
         font-weight: 600;
     }
     
+    .metric-change {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 3px;
+        display: inline-block;
+    }
+    }
+    
     .metric-change.positive {
-        color: #10b981;
+        color: #107C10;
+        background: #DFF6DD;
     }
     
     .metric-change.neutral {
-        color: #6b7280;
+        color: #605E5C;
+        background: #F3F2F1;
     }
     
+    /* Excel-Style Buttons */
+    .btn-primary {
+        background: #4472C4;
+        border: none;
+        border-radius: 0;
+        font-family: 'Segoe UI', sans-serif;
+        font-weight: 500;
+        color: white;
+        padding: 8px 20px;
+        font-size: 11pt;
+    }
+    
+    .btn-primary:hover {
+        background: #365a9b;
+        color: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+    
+    .btn-light {
+        background: white;
+        border: 1px solid #8A8886;
+        border-radius: 0;
+        color: #323130;
+        font-family: 'Segoe UI', sans-serif;
+        font-weight: 500;
+        padding: 8px 20px;
+        font-size: 11pt;
+    }
+    
+    .btn-light:hover {
+        background: #F3F2F1;
+        border-color: #605E5C;
+        color: #323130;
+    }
+    
+    /* Excel-Style Quick Actions */
     .quick-actions {
-        background: #f8fafc;
-        border-radius: 0.75rem;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
+        background: white;
+        border-radius: 0;
+        padding: 20px;
+        margin-bottom: 1.5rem;
+        border: 1px solid #D2D0CE;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
     }
     
     .action-btn {
         background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.5rem;
-        padding: 1rem;
+        border: 1px solid #8A8886;
+        border-radius: 0;
+        padding: 12px 16px;
         text-decoration: none;
-        color: #374151;
+        color: #323130;
         display: flex;
         align-items: center;
-        transition: all 0.2s ease;
-        margin-bottom: 0.75rem;
+        transition: all 0.15s ease;
+        margin-bottom: 10px;
+        font-size: 11pt;
+        font-family: 'Segoe UI', sans-serif;
     }
     
     .action-btn:hover {
-        background: #2563eb;
+        background: #4472C4;
         color: white;
-        border-color: #2563eb;
-        transform: translateX(5px);
+        border-color: #4472C4;
+        transform: translateX(3px);
     }
     
     .action-icon {
-        width: 2.5rem;
-        height: 2.5rem;
-        background: #f3f4f6;
-        border-radius: 0.5rem;
+        width: 36px;
+        height: 36px;
+        background: #F3F2F1;
+        border-radius: 3px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-right: 1rem;
-        transition: background 0.2s ease;
+        margin-right: 12px;
+        transition: background 0.15s ease;
+        color: #323130;
+        font-size: 16px;
     }
     
     .action-btn:hover .action-icon {
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.25);
+        color: white;
     }
     
+    /* Excel-Style Recent Activity */
     .recent-activity {
         background: white;
-        border-radius: 0.75rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        padding: 1.5rem;
+        border-radius: 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        padding: 20px;
+        border: 1px solid #D2D0CE;
     }
     
     .activity-item {
-        padding: 0.75rem 0;
-        border-bottom: 1px solid #f3f4f6;
+        padding: 10px 0;
+        border-bottom: 1px solid #EDEBE9;
         display: flex;
         align-items: center;
+        font-size: 11pt;
     }
     
     .activity-item:last-child {
@@ -171,39 +364,176 @@
     }
     
     .activity-icon {
-        width: 2rem;
-        height: 2rem;
-        background: #e5e7eb;
-        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        background: #F3F2F1;
+        border-radius: 3px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-right: 0.75rem;
-        font-size: 0.8rem;
+        margin-right: 12px;
+        font-size: 14px;
+        color: #605E5C;
     }
     
     .activity-content {
         flex: 1;
+        color: #323130;
     }
     
     .activity-time {
-        color: #6b7280;
-        font-size: 0.8rem;
+        color: #605E5C;
+        font-size: 10pt;
     }
     
     .welcome-new-user {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4472C4 0%, #2B579A 100%);
         color: white;
-        border-radius: 1rem;
-        padding: 2rem;
-        margin-bottom: 2rem;
+        border-radius: 0;
+        padding: 24px;
+        margin-bottom: 1.5rem;
         text-align: center;
+        border-left: 4px solid #1F4788;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Excel-Style Section Headers */
+    h2, h3, h4, h5 {
+        font-family: 'Segoe UI', sans-serif;
+        font-weight: 600;
+        color: #323130;
+    }
+    
+    .card-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #323130;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #4472C4;
+    }
+    
+    /* Excel-Style Buttons */
+    .btn-primary {
+        background: #4472C4;
+        border: none;
+        border-radius: 0;
+        padding: 8px 20px;
+        font-size: 11pt;
+        font-weight: 500;
+        font-family: 'Segoe UI', sans-serif;
+        transition: background 0.15s ease;
+    }
+    
+    .btn-primary:hover {
+        background: #2B579A;
+    }
+    
+    .btn-light {
+        background: white;
+        border: 1px solid #8A8886;
+        border-radius: 0;
+        color: #323130;
+        padding: 8px 20px;
+        font-size: 11pt;
+        font-weight: 500;
+        font-family: 'Segoe UI', sans-serif;
+    }
+    
+    .btn-light:hover {
+        background: #F3F2F1;
+        border-color: #605E5C;
+        color: #323130;
+    }
+    
+    /* Header Actions */
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .header-actions .btn-primary {
+        background: white;
+        color: #4472C4;
+        border: none;
+        border-radius: 0;
+        padding: 10px 20px;
+        font-size: 11pt;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        transition: all 0.2s;
+    }
+    
+    .header-actions .btn-primary:hover {
+        background: #F3F9FF;
+        color: #2B579A;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
 </style>
 {% endblock %}
 
 {% block content %}
 {% if user.is_authenticated %}
+
+<div class="page-wrapper">
+    <!-- Unified Header - Excel Style like Reconciliation Page -->
+    <div class="unified-header">
+        <div class="header-title-section">
+            <h2>
+                <i class="bi bi-speedometer2"></i>
+                Dashboard
+            </h2>
+            <p class="company-name">
+                {% if active_company %}
+                    {{ active_company.name }} • {{ user.first_name|default:user.username }}
+                {% else %}
+                    {{ user.first_name|default:user.username }}
+                {% endif %}
+            </p>
+        </div>
+        
+        <!-- Balance Grid - Key Metrics -->
+        <div class="balance-grid">
+            <div class="balance-item">
+                <div class="balance-label">Total Assets</div>
+                <div class="balance-value text-primary">$0</div>
+            </div>
+            
+            <div class="balance-item">
+                <div class="balance-label">Revenue MTD</div>
+                <div class="balance-value text-success">$0</div>
+            </div>
+            
+            <div class="balance-item">
+                <div class="balance-label">Expenses MTD</div>
+                <div class="balance-value text-warning">$0</div>
+            </div>
+            
+            <div class="balance-item">
+                <div class="balance-label">Net Income</div>
+                <div class="balance-value text-danger">$0</div>
+            </div>
+        </div>
+        
+        <div class="header-actions">
+            <a href="/journal/" class="btn btn-primary">
+                <i class="bi bi-journal-text"></i>New Entry
+            </a>
+            <a href="/reports/" class="btn btn-primary">
+                <i class="bi bi-file-earmark-text"></i>Reports
+            </a>
+        </div>
+    </div>
+    
+    <!-- Content Area -->
+    <div class="content-area">
 
 <!-- Setup Status Banner -->
 {% if dashboard_state != 'ready' %}
@@ -244,32 +574,6 @@
     </div>
 </div>
 {% endif %}
-
-<!-- Dashboard Header -->
-<div class="dashboard-header">
-    <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="h3 mb-1 fw-bold">Welcome back, {{ user.first_name|default:user.username }}!</h1>
-                <p class="mb-0 opacity-75">
-                    {% if active_company %}
-                        Managing {{ active_company.name }}
-                    {% else %}
-                        Let's get your business set up
-                    {% endif %}
-                </p>
-            </div>
-            <div>
-                {% if dashboard_state == 'ready' %}
-                <button class="btn btn-light">
-                    <i class="bi bi-upload me-2"></i>
-                    Upload Bank Statement
-                </button>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Content based on dashboard state -->
 {% if dashboard_state == 'no_company' %}
@@ -340,7 +644,7 @@
             </a>
         </div>
         <div class="col-lg-3 col-md-6">
-            <a href="/reconciliation/" class="action-btn">
+            <a href="/bank_accounts/" class="action-btn">
                 <div class="action-icon">
                     <i class="bi bi-arrow-repeat"></i>
                 </div>
@@ -554,6 +858,9 @@
     </div>
 </div>
 {% endif %}
+
+    </div><!-- /.content-area -->
+</div><!-- /.page-wrapper -->
 
 {% else %}
 <!-- Non-authenticated user content -->
